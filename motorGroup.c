@@ -34,7 +34,7 @@ typedef struct {
 	bool hasEncoder, hasPotentiometer;
 	tSensors encoder, potentiometer;
 	//button control
-	int upPower, downPower;
+	int upPower, downPower, stillSpeed;
 	//joystick control
 	int deadband; //range of motor values around 0 for which motors are not engaged
 	bool isRamped; //whether group is ramped
@@ -53,10 +53,11 @@ void initializeGroup(motorGroup &group, int numMotors, tMotor motor1, tMotor mot
 	group.numMotors = numMotors;
 }
 
-void configureButtonInput(motorGroup &group, TVexJoysticks posBtn, TVexJoysticks negBtn, int upPower=127, int downPower=-127) {
+void configureButtonInput(motorGroup &group, TVexJoysticks posBtn, TVexJoysticks negBtn, int stillSpeed=0, int upPower=127, int downPower=-127) {
 	group.controlType = BUTTON;
 	group.posInput = posBtn;
 	group.negInput = negBtn;
+	group.stillSpeed = stillSpeed;
 	group.upPower = upPower;
 	group.downPower = downPower;
 }
@@ -110,7 +111,13 @@ void setPower(motorGroup &group, int power) {
 
 void takeInput(motorGroup &group) {
 	if (group.controlType == BUTTON) {
-		setPower(group, group.upPower*vexRT[group.posInput] - group.downPower*vexRT[group.negInput]);
+		if (vexRT[group.posInput] == 1) {
+			setPower(group, group.upPower);
+		} else if (vexRT[group.negInput] == 1) {
+			setPower(group, group.downPower);
+		} else {
+			setPower(group, group.stillSpeed);
+		}
 	} else if (group.controlType == JOYSTICK) {
 		int input = vexRT[group.posInput];
 		int power = sgn(input) * group.coeff * abs(pow(input, group.powMap)) / pow(127, group.powMap-1);
