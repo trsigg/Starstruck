@@ -1,4 +1,5 @@
-#pragma config(Sensor, dgtl1,  pneumaticSoul,  sensorDigitalOut)
+#pragma config(Sensor, dgtl1,  theClaaaaaaaw,  sensorDigitalOut)
+#pragma config(Sensor, dgtl2,  pneumaticSoul,  sensorDigitalOut)
 #pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           lbd,           tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           lfd,           tmotorVex393_MC29, openLoop)
@@ -17,28 +18,14 @@
 
 #include "buttonTracker.c"
 #include "parallelDrive.c"
+#include "motorGroup.c"
 
-#define liftUpBtn Btn5U
-#define liftDownBtn Btn5D
-#define clawUpBtn Btn6U
-#define clawDownBtn Btn6D
 #define toggleClawBtn Btn7U
+#define toggleDumpBtn Btn8U
 
 parallel_drive drive;
-
-//set functions region
-void setLiftPower(int power) {
-  motor[lift1] = power;
-  motor[lift2] =  power;
-  motor[lift3] = power;
-  motor[lift4] = power;
-}
-
-void setClawPower(int power) {
-  motor[claw1] = power;
-  motor[claw2] = power;
-}
-//end set funcitons region
+motorGroup lift;
+motorGroup claw;
 
 void pre_auton() { bStopTasksBetweenModes = true; }
 
@@ -51,12 +38,20 @@ task usercontrol() {
   setLeftMotors(drive, 2, lfd, lbd);
   setRightMotors(drive, 2, rfd, rbd);
 
+  initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
+  configureButtonInput(lift, Btn5U, Btn5D, 10);
+
+  initializeGroup(claw, 2, claw1, claw2);
+  configureButtonInput(claw, Btn6U, Btn6D, 5);
+
   while (true) {
     driveRuntime(drive);
 
-    setLiftPower(127*vexRT[liftUpBtn] - 127*vexRT[liftDownBtn]);
-    setClawPower(127*vexRT[clawUpBtn] - 127*vexRT[clawDownBtn]);
+    takeInput(lift);
+    takeInput(claw);
 
-    if (newlyPressed(toggleClawBtn)) SensorValue[pneumaticSoul] = 1 - SensorValue[pneumaticSoul];
+    if (newlyPressed(toggleClawBtn)) SensorValue[theClaaaaaaaw] = 1 - SensorValue[theClaaaaaaaw];
+
+    if (newlyPressed(toggleDumpBtn)) SensorValue[pneumaticSoul] = 1 - SensorValue[pneumaticSoul];
   }
 }
