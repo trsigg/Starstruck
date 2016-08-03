@@ -111,7 +111,7 @@ void _turn_(parallel_drive &drive, float angle, float a, float b, float c, bool 
 void turn(parallel_drive &drive, float angle, angleType angleType=DEGREES, bool runAsTask=false, int initialPower=40, int maxPower=100, int finalPower=0, int waitAtEnd=100, int brakePower=20) {
 	angle = convertAngle(angle, DEGREES, angleType);
 	float a = (pow(angle, 2) * (finalPower+initialPower-2*maxPower) - 2*pow(exp(4 * log(angle)) * (finalPower-maxPower) * (initialPower-maxPower), 0.5)) / pow(angle, 4);
-	float b = (finalPower-initialPower)/angle - a*angle;
+	float b = ((finalPower-initialPower)/angle - a*angle) * sgn(angle);
 
 	_turn_(drive, angle, a, b, initialPower, runAsTask, waitAtEnd, brakePower);
 }
@@ -253,7 +253,7 @@ void _driveStraight_(parallel_drive &drive, float distance, float a, float b, fl
 
 void driveStraight(parallel_drive &drive, float distance, bool runAsTask=false, int initialPower=40, int maxPower=120, int finalPower=0, float kP=0.25, float kI=0.25, float kD=0.25, correctionType correctionType=AUTO, bool rawValue=false, float minSpeed=3, int timeout=60000, int waitAtEnd=100, int sampleTime=50) {
 	float a = (pow(distance, 2) * (finalPower+initialPower-2*maxPower) - 2*pow(exp(4 * log(distance)) * (finalPower-maxPower) * (initialPower-maxPower), 0.5)) / pow(distance, 4);
-	float b = (finalPower-initialPower)/distance - a*distance;
+	float b = ((finalPower-initialPower)/distance - a*distance) * sgn(angle);
 
 	_driveStraight_(drive, distance, a, b, initialPower, runAsTask, kP, kI, kD, correctionType, rawValue, minSpeed, timeout, waitAtEnd, sampleTime);
 }
