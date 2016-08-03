@@ -1,5 +1,4 @@
-/*
-/////////////////  INSTRUCTIONS  /////////////////
+/*///////////////  INSTRUCTIONS  /////////////////
 
 
 	1. Save this file as well as coreIncludes.c, parallelDrive.c, PID.c, and timer.c in the same directory as your code

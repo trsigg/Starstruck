@@ -1,5 +1,4 @@
-/*
-/////////////////  INSTRUCTIONS  /////////////////
+/*///////////////  INSTRUCTIONS  /////////////////
 
 
 	1. Save this file, timer.c, and coreIncludes.c in the same directory as your code
@@ -65,7 +64,7 @@ typedef struct {
 	int msPerPowerChange; //if ramping, time between motor power changes, calculated using maxAcc100ms
 	int deadband; //range of motor values around 0 for which motors are not engaged
 	float powMap; //degree of polynomial to which inputs are mapped (1 for linear)
-	float powerCoeff; //factor by which motor speeds are multiplied
+	float powerCoeff; //factor by which motor powers are multiplied
 	robotPosition position; //(x, y) coordinates and orientation of robot
 	float width; //width of drive in inches (wheel well to wheel well). Used to track position.
 	int minSampleTime; //minimum wait before updating robot position
