@@ -11,6 +11,8 @@
 #include "parallelDrive.c"
 #include "pd_autoMove.c"
 
+float da, dl, dr, ra, rl, rr, gyro;
+
 void autonomous() {
 	//driveStraight(drive, 24);
 	turn(drive, -90);
@@ -28,6 +30,14 @@ task main() {
 	while (true) {
 		driveRuntime(drive);
 		updatePosition(drive);
+
+		da = encoderVal(drive);
+		dl = encoderVal_L(drive);
+		dr = encoderVal_R(drive);
+		ra = encoderVal(drive, true);
+		rl = encoderVal_L(drive, true);
+		rr = encoderVal_R(drive, true);
+		gyro = gyroVal(drive, DEGREES);
 
 		if (vexRT[Btn5U] == 1) autonomous();
 
