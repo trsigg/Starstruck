@@ -17,9 +17,9 @@
 motorGroup feed;
 
 void autonomous() {
-	//driveStraight(drive, 24);
+	driveStraight(drive, 24);
 	turn(drive, -90);
-	//driveStraight(drive, 48);
+	driveStraight(drive, 48);
 }
 
 task main() {
@@ -31,7 +31,7 @@ task main() {
 	attachEncoderR(drive, rightE, true);
 
 	initializeGroup(feed, 2, Seymore, FeedMe);
-	configureButtonInput(feed, Btn5U, Btn5D);
+	configureButtonInput(feed, Btn7U, Btn7D);
 
 	while (true) {
 		driveRuntime(drive);

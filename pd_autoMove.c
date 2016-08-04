@@ -54,7 +54,7 @@ typedef struct {
 turnStruct turnData;
 
 bool turnIsComplete() {
-	return /*abs(gyroVal(autoDrive, DEGREES)) >= abs(turnData.angle)*/false;
+	return abs(gyroVal(autoDrive, DEGREES)) >= abs(turnData.angle);
 }
 
 void turnRuntime() {
