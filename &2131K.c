@@ -35,13 +35,14 @@ bool clawClosed = false;
 
 task usercontrol() {
   initializeDrive(drive);
-  setLeftMotors(drive, 2, lfd, lbd);
-  setRightMotors(drive, 2, rfd, rbd);
+  setLeftMotors(drive, 2, leftFront, leftBack);
+  setRightMotors(drive, 2, rightFront, rightBack);
 
-  initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
+  initializeGroup(lift, 4, toprightLift, bottomrightLift, toprightLift, topleftLift);
   configureButtonInput(lift, Btn5U, Btn5D, 10, 127, -80);
 
-  initializeGroup(claw, 2, claw1, claw2);
+  initializeGroup(claw, 2, clawLeft, clawRight);
+
 
   while (true) {
     driveRuntime(drive);
