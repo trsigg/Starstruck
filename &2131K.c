@@ -1,3 +1,4 @@
+#pragma config(Sensor, in1,    liftPot,        sensorPotentiometer)
 #pragma config(Motor,  port1,           rightFront,    tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           rightBack,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           toprightLift,  tmotorVex393_MC29, openLoop)
@@ -19,6 +20,13 @@
 
 #define clawInBtn Btn6U
 #define clawOutBtn Btn6D
+#define liftUpBtn Btn5U
+#define liftDownBtn Btn5D
+#define liftTopBtn Btn7U
+#define liftBottomBtn Btn7D
+
+#define liftMax 850
+#define liftMin 2250
 #define clawStillSpeed 15
 
 parallel_drive drive;
@@ -37,17 +45,19 @@ task usercontrol() {
   setRightMotors(drive, 2, rightFront, rightBack);
 
   initializeGroup(lift, 4, toprightLift, bottomrightLift, toprightLift, topleftLift);
-  configureButtonInput(lift, Btn5U, Btn5D, 10, 127, -80);
+  configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
+  attachPotentiometer(lift, liftPot);
 
   initializeGroup(claw, 2, clawLeft, clawRight);
 
   bool clawClosed = false;
+  int target;
+	int prevLiftPos, newLiftPos;
 
   while (true) {
     driveRuntime(drive);
 
-    takeInput(lift);
-
+		//claw
     if (vexRT[clawInBtn] == 1) {
       clawClosed = true;
       setPower(claw, 127);
@@ -57,5 +67,29 @@ task usercontrol() {
     } else {
       setPower(claw, clawClosed ? clawStillSpeed : 0);
     }
+
+    //lift
+    if (vexRT[liftUpBtn]==1 || vexRT[liftDownBtn]==1) {
+			target = 0;
+		} else if (vexRT[liftTopBtn] == 1) {
+			target = liftMax;
+			prevLiftPos = potentiometerVal(lift);
+		} else if (vexRT[liftBottomBtn] == 1) {
+			target = liftMin;
+			prevLiftPos = potentiometerVal(lift);
+		}
+
+		if (target == 0) {
+			takeInput(lift);
+		} else {
+			newLiftPos = potentiometerVal(lift);
+
+			if (sgn(prevLiftPos - target) == sgn(newLiftPos - target)) {
+				prevLiftPos = potentiometerVal(lift);
+				setPower(lift, prevLiftPos>target ? 127 : -127);
+			} else {
+				target = 0;
+			}
+		}
   }
 }

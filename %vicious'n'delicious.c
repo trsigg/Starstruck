@@ -1,3 +1,8 @@
+#pragma config(Sensor, in1,    clawPot,        sensorPotentiometer)
+#pragma config(Sensor, in2,    rightLiftPot,   sensorPotentiometer)
+#pragma config(Sensor, in3,    leftLiftPot,    sensorPotentiometer)
+#pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
+#pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           lfd,           tmotorVex393_HBridge, openLoop)
 #pragma config(Motor,  port2,           lbd,           tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           rfd,           tmotorVex393_MC29, openLoop, reversed)
@@ -19,6 +24,14 @@
 
 #define clawInBtn Btn6U
 #define clawOutBtn Btn6D
+#define liftUpBtn Btn5U
+#define liftDownBtn Btn5D
+#define liftTopBtn Btn7U
+#define liftBottomBtn Btn7D
+
+#define liftMax 3750
+#define liftMin 2200
+//#define clawClosedCutoff 200
 #define clawStillSpeed 15
 
 parallel_drive drive;
@@ -31,23 +44,28 @@ task autonomous() {
   AutonomousCodePlaceholderForTesting();
 }
 
-bool clawClosed = false;
-
 task usercontrol() {
   initializeDrive(drive);
   setLeftMotors(drive, 2, lfd, lbd);
   setRightMotors(drive, 2, rfd, rbd);
+  attachEncoderL(drive, leftEnc);
+  attachEncoderR(drive, rightEnc);
 
   initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
-  configureButtonInput(lift, Btn5U, Btn5D, 10, 127, -80);
+  configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
+  attachPotentiometer(lift, rightLiftPot);
 
   initializeGroup(claw, 2, claw1, claw2);
+  attachPotentiometer(claw, clawPot);
+
+  bool clawClosed = false;
+  int target;
+	int prevLiftPos, newLiftPos;
 
   while (true) {
     driveRuntime(drive);
 
-    takeInput(lift);
-
+		//claw
     if (vexRT[clawInBtn] == 1) {
       clawClosed = true;
       setPower(claw, 127);
@@ -55,7 +73,31 @@ task usercontrol() {
       clawClosed = false;
       setPower(claw, -127);
     } else {
-      setPower(claw, clawClosed ? clawStillSpeed : 0);
+      setPower(claw, clawClosed/*&&potentiometerVal(claw)<clawClosedCutoff*/ ? clawStillSpeed : 0);
     }
+
+    //lift
+    if (vexRT[liftUpBtn]==1 || vexRT[liftDownBtn]==1) {
+			target = 0;
+		} else if (vexRT[liftTopBtn] == 1) {
+			target = liftMax;
+			prevLiftPos = potentiometerVal(lift);
+		} else if (vexRT[liftBottomBtn] == 1) {
+			target = liftMin;
+			prevLiftPos = potentiometerVal(lift);
+		}
+
+		if (target == 0) {
+			takeInput(lift);
+		} else {
+			newLiftPos = potentiometerVal(lift);
+
+			if (sgn(prevLiftPos - target) == sgn(newLiftPos - target)) {
+				prevLiftPos = potentiometerVal(lift);
+				setPower(lift, prevLiftPos<target ? 127 : -127);
+			} else {
+				target = 0;
+			}
+		}
   }
 }
