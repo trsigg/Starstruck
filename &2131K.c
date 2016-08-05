@@ -27,6 +27,8 @@
 
 #define liftMax 850
 #define liftMin 2250
+#define liftAbsMax 800
+#define liftAbsMin 2500
 #define clawStillSpeed 15
 
 parallel_drive drive;
@@ -44,7 +46,7 @@ task usercontrol() {
   setLeftMotors(drive, 2, leftFront, leftBack);
   setRightMotors(drive, 2, rightFront, rightBack);
 
-  initializeGroup(lift, 4, toprightLift, bottomrightLift, toprightLift, topleftLift);
+  initializeGroup(lift, 4, toprightLift, bottomrightLift, topLeftLift, bottomleftLift);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
   attachPotentiometer(lift, liftPot);
 
@@ -80,7 +82,7 @@ task usercontrol() {
 		}
 
 		if (target == 0) {
-			takeInput(lift);
+			/*if (potentiometerVal(lift)<liftAbsMin && potentiometerVal(lift)>liftAbsMax)*/ takeInput(lift);
 		} else {
 			newLiftPos = potentiometerVal(lift);
 
