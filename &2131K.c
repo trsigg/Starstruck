@@ -87,7 +87,7 @@ task usercontrol() {
 			newLiftPos = potentiometerVal(lift);
 
 			if (sgn(prevLiftPos - target) == sgn(newLiftPos - target)) {
-				prevLiftPos = potentiometerVal(lift);
+				prevLiftPos = newLiftPos;
 				setPower(lift, prevLiftPos>target ? 127 : -127);
 			} else {
 				target = 0;
