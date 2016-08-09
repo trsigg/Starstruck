@@ -46,7 +46,7 @@ task usercontrol() {
   setLeftMotors(drive, 2, leftFront, leftBack);
   setRightMotors(drive, 2, rightFront, rightBack);
 
-  initializeGroup(lift, 4, toprightLift, bottomrightLift, topLeftLift, bottomleftLift);
+  initializeGroup(lift, 4, toprightLift, bottomrightLift, topleftLift, bottomleftLift);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
   attachPotentiometer(lift, liftPot);
 
