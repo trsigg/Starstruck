@@ -6,7 +6,7 @@
 	2. Include this line near the top of your code:
 			| #include "pd_autoMove.c"
 
-	3. Do not create a parallel_drive object in your code as normal, instead substitute driveName in the define statement below with the name of the drive.
+	3. Do not create a parallel_drive object in your code as normal, instead substitute the word after autoDrive in the define statement below with the name of the drive.
 		Configure the drive as normal. (still call initializeDrive(), attach motors, etc.) */
 
 #define autoDrive drive

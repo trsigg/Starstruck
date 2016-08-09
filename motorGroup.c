@@ -23,6 +23,8 @@
 	8. To access the value of a sensor, use encoderVal(groupName) or potentiometeVal(groupName);
 */
 
+#define numTargets 4
+
 typedef enum controlType { NONE, BUTTON, JOYSTICK };
 
 typedef struct {
@@ -30,9 +32,6 @@ typedef struct {
 	int numMotors;
 	controlType controlType; //true if controlled by button, false if by joystick
 	TVexJoysticks posInput, negInput; //inputs. NegInput only assigned if using button control
-	//sensors
-	bool hasEncoder, hasPotentiometer;
-	tSensors encoder, potentiometer;
 	//button control
 	int upPower, downPower, stillSpeed;
 	//joystick control
@@ -42,15 +41,27 @@ typedef struct {
 	float powMap; //degree of polynomial to which inputs are mapped (1 for linear)
 	float coeff; //factor by which motor powers are multiplied
 	long lastUpdated; //ramping
+	//sensors
+	bool hasEncoder, hasPotentiometer;
+	bool encoderReversed, potentiometerReversed;
+	tSensors encoder, potentiometer;
+	//position targets
+	int targets[numTargets];
+	TVexJoysticks targetButtons[numTargets];
+	int targetIndex;
+	int prevPos;
 } motorGroup;
 
 void initializeGroup(motorGroup &group, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1, tMotor motor7=port1, tMotor motor8=port1, tMotor motor9=port1, tMotor motor10=port1, tMotor motor11=port1, tMotor motor12=port1) {
 	tMotor motors[12] = { motor1, motor2, motor3, motor4, motor5, motor6, motor7, motor8, motor9, motor10, motor11, motor12 };
-	for (int i=0; i<numMotors; i++) {
+	for (int i=0; i<numMotors; i++)
 		group.motors[i] = motors[i];
-	}
+
+	for (int i=0; i<numTargets; i++)
+		group.targets[i] = -1;
 
 	group.numMotors = numMotors;
+	group.targetIndex = -1;
 }
 
 void configureButtonInput(motorGroup &group, TVexJoysticks posBtn, TVexJoysticks negBtn, int stillSpeed=0, int upPower=127, int downPower=-127) {
@@ -74,21 +85,23 @@ void configureJoystickInput(motorGroup &group, TVexJoysticks joystick, int deadb
 }
 
 //sensor setup region
-void attachEncoder(motorGroup &group, tSensors encoder) {
+void attachEncoder(motorGroup &group, tSensors encoder, bool reversed=false) {
 	group.hasEncoder = true;
 	group.encoder = encoder;
+	group.encoderReversed = reversed;
 }
 
-void attachPotentiometer(motorGroup &group, tSensors potentiometer) {
+void attachPotentiometer(motorGroup &group, tSensors potentiometer, bool reversed=false) {
 	group.hasPotentiometer = true;
 	group.potentiometer = potentiometer;
+	group.potentiometerReversed = reversed;
 }
 //end sensor setup region
 
 //sensor access region
 int encoderVal(motorGroup &group) {
 	if (group.hasEncoder) {
-		return SensorValue[group.encoder];
+		return (group.encoderReversed ?  -SensorValue[group.encoder] : SensorValue[group.encoder]);
 	} else {
 		return 0;
 	}
@@ -96,12 +109,26 @@ int encoderVal(motorGroup &group) {
 
 int potentiometerVal(motorGroup &group) {
 	if (group.hasPotentiometer) {
-		return SensorValue[group.potentiometer];
+		return (group.potentiometerReversed ? 4096-SensorValue[group.potentiometer] : SensorValue[group.potentiometer]);
 	} else {
 		return 0;
 	}
 }
 //end sensor access region
+
+//motor targets region
+void createTarget(motorGroup &group, int position, TVexJoysticks btn) {
+	if (group.hasPotentiometer) {
+		for (int i=0; i<numTargets; i++) {
+			if (group.targets[i] != -1) {
+				group.targets[i] = position;
+				group.targetButtons[i] = btn;
+				break;
+			}
+		}
+	}
+}
+//end motor targets region
 
 void setPower(motorGroup &group, int power) {
 	for (int i=0; i<group.numMotors; i++) {
@@ -113,10 +140,35 @@ void takeInput(motorGroup &group) {
 	if (group.controlType == BUTTON) {
 		if (vexRT[group.posInput] == 1) {
 			setPower(group, group.upPower);
+			group.targetIndex = -1;
 		} else if (vexRT[group.negInput] == 1) {
 			setPower(group, group.downPower);
+			group.targetIndex = -1;
 		} else {
-			setPower(group, group.stillSpeed);
+			//check for target input
+			for (int i=0; i<numTargets; i++) {
+				if (group.targets[i] == -1) {
+					break;
+				} else if (vexRT[group.targetButtons[i]] == 1) {
+					group.targetIndex = i;
+					group.prevPos = potentiometerVal(group);
+				}
+			}
+
+			if (group.targetIndex == -1) {
+				setPower(group, group.stillSpeed);
+			} else {
+				//go to target
+				int newPos = potentiometerVal(group);
+				int target = group.targets[group.targetIndex];
+
+				if (sgn(group.prevPos - target) == sgn(newPos - target)) {
+					setPower(group, newPos>target ? -127 : 127);
+					group.prevPos = newPos;
+				} else {
+					group.targetIndex = -1;
+				}
+			}
 		}
 	} else if (group.controlType == JOYSTICK) {
 		int input = vexRT[group.posInput];
