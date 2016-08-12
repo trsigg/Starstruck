@@ -136,7 +136,7 @@ void setPower(motorGroup &group, int power) {
 	}
 }
 
-void takeInput(motorGroup &group) {
+int takeInput(motorGroup &group, bool setMotors=true) {
 	if (group.controlType == BUTTON) {
 		if (vexRT[group.posInput] == 1) {
 			setPower(group, group.upPower);
@@ -194,6 +194,7 @@ void takeInput(motorGroup &group) {
 			}
 		}
 
-		setPower(group, power);
+		if (setMotors) setPower(group, power);
+		return power;
 	}
 }
