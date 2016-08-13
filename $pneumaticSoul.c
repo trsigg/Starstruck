@@ -27,14 +27,10 @@ parallel_drive drive;
 motorGroup lift;
 motorGroup scoop;
 
-void pre_auton() { bStopTasksBetweenModes = true; }
+void pre_auton() {
+	bStopTasksBetweenModes = true;
 
-task autonomous() {
-  AutonomousCodePlaceholderForTesting();
-}
-
-task usercontrol() {
-  initializeDrive(drive);
+	initializeDrive(drive);
   setLeftMotors(drive, 2, lfd, lbd);
   setRightMotors(drive, 2, rfd, rbd);
 
@@ -43,7 +39,13 @@ task usercontrol() {
 
   initializeGroup(scoop, 2, scoop1, scoop2);
   configureButtonInput(scoop, Btn5U, Btn5D, 5);
+}
 
+task autonomous() {
+  AutonomousCodePlaceholderForTesting();
+}
+
+task usercontrol() {
   while (true) {
     driveRuntime(drive);
 

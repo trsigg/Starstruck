@@ -6,12 +6,6 @@
 	2. Include this line near the top of your code:
 			| #include "pd_autoMove.c"
 
-	3. Do not create a parallel_drive object in your code as normal, instead substitute the word after autoDrive in the define statement below with the name of the drive.
-		Configure the drive as normal. (still call initializeDrive(), attach motors, etc.) */
-
-#define autoDrive drive
-
-/*
 -----------------  FOR TURNING  -----------------
 	1. Call turn(driveName, angle) where driveName is a parallel_drive object with a gyro attached
 	    Optional arguments can be used to configure the angle input type, whether to run as a task or function,
@@ -147,7 +141,7 @@ bool drivingComplete() {
 
 void driveStraightRuntime() {
 	int power = driveData.a*pow(driveData.totalDist, 2) + driveData.b*driveData.totalDist + driveData.c;
-	float slaveCoeff = 1 + PID_pointerRuntime(driveData.pid);
+	float slaveCoeff = 1 + PID_runtime(driveData.pid);
 
 	setDrivePower(autoDrive, slaveCoeff*driveData.direction*power, driveData.direction*power);
 
