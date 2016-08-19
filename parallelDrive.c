@@ -82,10 +82,10 @@ typedef struct {
 } parallel_drive;
 
 
-void initializeDrive(parallel_drive *drive, bool isRamped=false, int maxAcc100ms=20, int deadband=10, float powMap=1, float coeff=1, float initialX=0, float initialY=0, float initialTheta=PI/2, float width=16, int minSampleTime=50, TVexJoysticks leftInput=Ch3, TVexJoysticks rightInput=Ch2) {
+void initializeDrive(parallel_drive *drive, bool isRamped=false, int maxAcc100ms=20, int deadband=10, float powMap=1, float maxPow=1, float initialX=0, float initialY=0, float initialTheta=PI/2, float width=16, int minSampleTime=50, TVexJoysticks leftInput=Ch3, TVexJoysticks rightInput=Ch2) {
 	//initialize drive variables
-	configureJoystickInput(drive->leftDrive, leftInput, deadband, isRamped, maxAcc100ms, powMap, coeff);
-	configureJoystickInput(drive->rightDrive, rightInput, deadband, isRamped, maxAcc100ms, powMap, coeff);
+	configureJoystickInput(drive->leftDrive, leftInput, deadband, isRamped, maxAcc100ms, powMap, maxPow);
+	configureJoystickInput(drive->rightDrive, rightInput, deadband, isRamped, maxAcc100ms, powMap, maxPow);
 	drive->position.x = initialX;
 	drive->position.y = initialY;
 	drive->position.theta = initialTheta;
@@ -95,7 +95,7 @@ void initializeDrive(parallel_drive *drive, bool isRamped=false, int maxAcc100ms
 	drive->posLastUpdated = resetTimer();
 }
 
-void setLeftMotors(parallel_drive *drive, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1) { //look, I know this is stupid.  But arrays in ROBOTC */really/* suck
+void setLeftMotors(parallel_drive *drive, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1) {
 	initializeGroup(drive->leftDrive, numMotors, motor1, motor2, motor3, motor4, motor5, motor6);
 }
 

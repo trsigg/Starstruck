@@ -25,8 +25,8 @@
 #define liftTopBtn Btn7U
 #define liftBottomBtn Btn7D
 
-#define liftMax 850
-#define liftMin 2250
+#define liftMax 3246
+#define liftMin 1846
 #define liftAbsMax 800
 #define liftAbsMin 2500
 #define clawStillSpeed 15
@@ -35,31 +35,35 @@ parallel_drive drive;
 motorGroup lift;
 motorGroup claw;
 
-void pre_auton() { bStopTasksBetweenModes = true; }
+void pre_auton() {
+  bStopTasksBetweenModes = true;
+
+  initializeDrive(drive, false, 20, 10, 1, 120);
+  setLeftMotors(drive, 2, leftFront, leftBack);
+  setRightMotors(drive, 2, rightFront, rightBack);
+
+  initializeGroup(lift, 4, toprightLift, bottomrightLift, topleftLift, bottomleftLift);
+  configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
+  attachPotentiometer(lift, liftPot, true);
+  createTarget(lift, liftMax, liftTopBtn);
+  createTarget(lift, liftMin, liftBottomBtn);
+
+  initializeGroup(claw, 2, clawLeft, clawRight);
+}
 
 task autonomous() {
   AutonomousCodePlaceholderForTesting();
 }
 
 task usercontrol() {
-  initializeDrive(drive, false, 20, 10, 1, 0.92125);
-  setLeftMotors(drive, 2, leftFront, leftBack);
-  setRightMotors(drive, 2, rightFront, rightBack);
-
-  initializeGroup(lift, 4, toprightLift, bottomrightLift, topleftLift, bottomleftLift);
-  configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
-  attachPotentiometer(lift, liftPot);
-
-  initializeGroup(claw, 2, clawLeft, clawRight);
-
   bool clawClosed = false;
-  int target;
-	int prevLiftPos, newLiftPos;
 
   while (true) {
     driveRuntime(drive);
 
-		//claw
+    takeInput(lift);
+
+    //claw
     if (vexRT[clawInBtn] == 1) {
       clawClosed = true;
       setPower(claw, 127);
@@ -69,29 +73,5 @@ task usercontrol() {
     } else {
       setPower(claw, clawClosed ? clawStillSpeed : 0);
     }
-
-    //lift
-    if (vexRT[liftUpBtn]==1 || vexRT[liftDownBtn]==1) {
-			target = 0;
-		} else if (vexRT[liftTopBtn] == 1) {
-			target = liftMax;
-			prevLiftPos = potentiometerVal(lift);
-		} else if (vexRT[liftBottomBtn] == 1) {
-			target = liftMin;
-			prevLiftPos = potentiometerVal(lift);
-		}
-
-		if (target == 0) {
-			/*if (potentiometerVal(lift)<liftAbsMin && potentiometerVal(lift)>liftAbsMax)*/ takeInput(lift);
-		} else {
-			newLiftPos = potentiometerVal(lift);
-
-			if (sgn(prevLiftPos - target) == sgn(newLiftPos - target)) {
-				prevLiftPos = newLiftPos;
-				setPower(lift, prevLiftPos>target ? 127 : -127);
-			} else {
-				target = 0;
-			}
-		}
   }
 }

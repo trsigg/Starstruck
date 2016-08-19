@@ -52,7 +52,7 @@ typedef struct {
 	int prevPos;
 } motorGroup;
 
-void initializeGroup(motorGroup *group, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1, tMotor motor7=port1, tMotor motor8=port1, tMotor motor9=port1, tMotor motor10=port1, tMotor motor11=port1, tMotor motor12=port1) {
+void initializeGroup(motorGroup *group, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1, tMotor motor7=port1, tMotor motor8=port1, tMotor motor9=port1, tMotor motor10=port1, tMotor motor11=port1, tMotor motor12=port1) { //look, I know this is stupid.  But arrays in ROBOTC */really/* suck
 	tMotor motors[12] = { motor1, motor2, motor3, motor4, motor5, motor6, motor7, motor8, motor9, motor10, motor11, motor12 };
 	for (int i=0; i<numMotors; i++)
 		group->motors[i] = motors[i];
@@ -73,14 +73,14 @@ void configureButtonInput(motorGroup *group, TVexJoysticks posBtn, TVexJoysticks
 	group->downPower = downPower;
 }
 
-void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadband=10, bool isRamped=false, int maxAcc100ms=20, float powMap=1, float coeff=1) {
+void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadband=10, bool isRamped=false, int maxAcc100ms=20, float powMap=1, int maxPow=1) {
 	group->controlType = JOYSTICK;
 	group->posInput = joystick;
 	group->deadband = deadband;
 	group->isRamped = isRamped;
 	group->msPerPowerChange = 100 / maxAcc100ms;
 	group->powMap = powMap;
-	group->coeff = coeff;
+	group->coeff = maxPow /  127;
 	group->lastUpdated = nPgmTime;
 }
 

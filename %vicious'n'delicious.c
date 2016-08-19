@@ -38,13 +38,9 @@ parallel_drive drive;
 motorGroup lift;
 motorGroup claw;
 
-void pre_auton() { bStopTasksBetweenModes = true; }
+void pre_auton() {
+  bStopTasksBetweenModes = true;
 
-task autonomous() {
-  AutonomousCodePlaceholderForTesting();
-}
-
-task usercontrol() {
   initializeDrive(drive);
   setLeftMotors(drive, 2, lfd, lbd);
   setRightMotors(drive, 2, rfd, rbd);
@@ -54,16 +50,24 @@ task usercontrol() {
   initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
   attachPotentiometer(lift, rightLiftPot);
+  createTarget(lift, liftMax, liftTopBtn);
+  createTarget(lift, liftMin, liftBottomBtn);
 
   initializeGroup(claw, 2, claw1, claw2);
   attachPotentiometer(claw, clawPot);
+}
 
+task autonomous() {
+  AutonomousCodePlaceholderForTesting();
+}
+
+task usercontrol() {
   bool clawClosed = false;
-  int target;
-	int prevLiftPos, newLiftPos;
 
   while (true) {
     driveRuntime(drive);
+
+    takeInput(lift);
 
 		//claw
     if (vexRT[clawInBtn] == 1) {
@@ -75,29 +79,5 @@ task usercontrol() {
     } else {
       setPower(claw, clawClosed/*&&potentiometerVal(claw)<clawClosedCutoff*/ ? clawStillSpeed : 0);
     }
-
-    //lift
-    if (vexRT[liftUpBtn]==1 || vexRT[liftDownBtn]==1) {
-			target = 0;
-		} else if (vexRT[liftTopBtn] == 1) {
-			target = liftMax;
-			prevLiftPos = potentiometerVal(lift);
-		} else if (vexRT[liftBottomBtn] == 1) {
-			target = liftMin;
-			prevLiftPos = potentiometerVal(lift);
-		}
-
-		if (target == 0) {
-			takeInput(lift);
-		} else {
-			newLiftPos = potentiometerVal(lift);
-
-			if (sgn(prevLiftPos - target) == sgn(newLiftPos - target)) {
-				prevLiftPos = newLiftPos
-				setPower(lift, prevLiftPos<target ? 127 : -127);
-			} else {
-				target = 0;
-			}
-		}
   }
 }
