@@ -25,8 +25,8 @@
 #define liftTopBtn Btn7U
 #define liftBottomBtn Btn7D
 
-#define liftMax 3246
-#define liftMin 1846
+#define liftMax 3000
+#define liftMin 1900
 #define liftAbsMax 800
 #define liftAbsMin 2500
 #define clawStillSpeed 15
@@ -57,6 +57,10 @@ task autonomous() {
 
 task usercontrol() {
   bool clawClosed = false;
+  //debug
+  bool targeting = false;
+  int potpos[2] = {0, 0};
+  //end debug
 
   while (true) {
     driveRuntime(drive);
@@ -73,5 +77,18 @@ task usercontrol() {
     } else {
       setPower(claw, clawClosed ? clawStillSpeed : 0);
     }
+
+    //debug
+    potpos[0] = potentiometerVal(lift);
+    potpos[1] = SensorValue[liftPot];
+
+    if (lift.targetIndex==-1) {
+    	if (targeting) {
+    		targeting = false;
+    	}
+    } else {
+    	targeting = true;
+    }
+    //end debug
   }
 }

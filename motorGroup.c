@@ -73,7 +73,7 @@ void configureButtonInput(motorGroup *group, TVexJoysticks posBtn, TVexJoysticks
 	group->downPower = downPower;
 }
 
-void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadband=10, bool isRamped=false, int maxAcc100ms=20, float powMap=1, int maxPow=1) {
+void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadband=10, bool isRamped=false, int maxAcc100ms=20, float powMap=1, int maxPow=127) {
 	group->controlType = JOYSTICK;
 	group->posInput = joystick;
 	group->deadband = deadband;
@@ -120,7 +120,7 @@ int potentiometerVal(motorGroup *group) {
 void createTarget(motorGroup *group, int position, TVexJoysticks btn) {
 	if (group->hasPotentiometer) {
 		for (int i=0; i<numTargets; i++) {
-			if (group->targets[i] != -1) {
+			if (group->targets[i] == -1) {
 				group->targets[i] = position;
 				group->targetButtons[i] = btn;
 				break;
@@ -167,6 +167,7 @@ int takeInput(motorGroup *group, bool setMotors=true) {
 					group->prevPos = newPos;
 				} else {
 					group->targetIndex = -1;
+					setPower(group, 0);
 				}
 			}
 		}
