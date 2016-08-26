@@ -26,10 +26,14 @@
 #define liftBottomBtn Btn7D
 
 #define liftMax 3000
-#define liftMin 1900
+#define liftMin 2100
 #define liftAbsMax 800
 #define liftAbsMin 2500
 #define clawStillSpeed 15
+
+//debug
+int potpos[2] = {0, 0};
+//debug
 
 parallel_drive drive;
 motorGroup lift;
@@ -47,6 +51,7 @@ void pre_auton() {
   attachPotentiometer(lift, liftPot, true);
   createTarget(lift, liftMax, liftTopBtn);
   createTarget(lift, liftMin, liftBottomBtn);
+  lift.timeout = 65;
 
   initializeGroup(claw, 2, clawLeft, clawRight);
 }
@@ -59,7 +64,6 @@ task usercontrol() {
   bool clawClosed = false;
   //debug
   bool targeting = false;
-  int potpos[2] = {0, 0};
   //end debug
 
   while (true) {
@@ -79,11 +83,10 @@ task usercontrol() {
     }
 
     //debug
-    potpos[0] = potentiometerVal(lift);
-    potpos[1] = SensorValue[liftPot];
-
     if (lift.targetIndex==-1) {
     	if (targeting) {
+    		potpos[0] = potentiometerVal(lift);
+    		potpos[1] = SensorValue[liftPot];
     		targeting = false;
     	}
     } else {

@@ -25,6 +25,10 @@
 
 #define numTargets 4
 
+#include "timer.c"
+
+#define DEFAULT_TIMEOUT 15;
+
 typedef enum controlType { NONE, BUTTON, JOYSTICK };
 
 typedef struct {
@@ -50,6 +54,8 @@ typedef struct {
 	TVexJoysticks targetButtons[numTargets];
 	int targetIndex;
 	int prevPos;
+	int timeout;
+	long timer;
 } motorGroup;
 
 void initializeGroup(motorGroup *group, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1, tMotor motor7=port1, tMotor motor8=port1, tMotor motor9=port1, tMotor motor10=port1, tMotor motor11=port1, tMotor motor12=port1) { //look, I know this is stupid.  But arrays in ROBOTC */really/* suck
@@ -62,6 +68,7 @@ void initializeGroup(motorGroup *group, int numMotors, tMotor motor1, tMotor mot
 
 	group->numMotors = numMotors;
 	group->targetIndex = -1;
+	group->timeout = DEFAULT_TIMEOUT;
 }
 
 void configureButtonInput(motorGroup *group, TVexJoysticks posBtn, TVexJoysticks negBtn, int stillSpeed=0, int upPower=127, int downPower=-127) {
@@ -80,7 +87,7 @@ void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadb
 	group->isRamped = isRamped;
 	group->msPerPowerChange = 100 / maxAcc100ms;
 	group->powMap = powMap;
-	group->coeff = maxPow /  127;
+	group->coeff = maxPow /  127.0;
 	group->lastUpdated = nPgmTime;
 }
 
@@ -150,6 +157,7 @@ int takeInput(motorGroup *group, bool setMotors=true) {
 				if (group->targets[i] == -1) {
 					break;
 				} else if (vexRT[group->targetButtons[i]] == 1) {
+					group->timer = resetTimer();
 					group->targetIndex = i;
 					group->prevPos = potentiometerVal(group);
 				}
@@ -165,7 +173,8 @@ int takeInput(motorGroup *group, bool setMotors=true) {
 				if (sgn(group->prevPos - target) == sgn(newPos - target)) {
 					setPower(group, newPos>target ? -127 : 127);
 					group->prevPos = newPos;
-				} else {
+					group->timer = resetTimer();
+				} else if (time(group->timer) > group->timeout) {
 					group->targetIndex = -1;
 					setPower(group, 0);
 				}
