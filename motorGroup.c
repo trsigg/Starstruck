@@ -27,7 +27,7 @@
 
 #include "timer.c"
 
-#define DEFAULT_TIMEOUT 15;
+#define DEFAULT_TIMEOUT 15
 
 typedef enum controlType { NONE, BUTTON, JOYSTICK };
 

@@ -3,12 +3,14 @@
 
 typedef struct {
 	motorGroup leftDrive, rightDrive;
-	TVexJoysticks xInput, yInput;
+	TVexJoysticks xInput, yInput, turnInput;
+	int deadBand;
 } holonomicDrive;
 
-void initializeDrive(holonomicDrive *drive, TVexJoysticks xInput=Ch4, TVexJoysticks yInput=Ch3) {
+void initializeDrive(holonomicDrive *drive, int deadBand=15, TVexJoysticks xInput=Ch4, TVexJoysticks yInput=Ch3) {
 	drive->xInput = xInput;
 	drive->yInput = yInput;
+	drive->deadBand = deadBand;
 }
 
 void setLeftMotors(holonomicDrive *drive, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1) {
@@ -32,7 +34,7 @@ void setDrivePowerByAngle(holonomicDrive *drive, float angle, float magnitude=0,
 	angle = convertAngle(angle, RADIANS, inputType);
 
 	if (magnitude == 0) //calculate maximum magnitude in specified direction
-		magnitude = 127*sqrt(2) / (abs(tan(angle)) + 1) * cos(angle);
+		magnitude = 127*sqrt(2) / ((abs(tan(angle)) + 1) * cos(angle));
 
 	setDrivePowerByVector(drive, magnitude*cos(angle), magnitude*sin(angle));
 }
@@ -41,11 +43,17 @@ void driveRuntime(holonomicDrive *drive) {
 	int inX = vexRT[ drive->xInput ];
 	int inY = vexRT[ drive->yInput ];
 
-	//Input transformed from joystick circle to velocity square. If you want more detail ask Tynan. Sorry.
-	int squareX = sgn(inX)*sqrt(2) / (abs(inY/inX) + 1);
-	int squareY = squareX * inY/inX;
+	if (inX < drive->deadBand && inY < drive->deadBand) {
+		//Input transformed from joystick circle to velocity square. If you want more detail ask Tynan. Sorry.
+		int squareX = sgn(inX)*sqrt(2) / (abs(inY/inX) + 1);
+		int squareY = squareX * inY/inX;
 
-	float magnitude = (inX*inX + inY*inY) / 127.0;
+		float magnitude = (inX*inX + inY*inY) / 127.0;
 
-	setDrivePowerByVector(drive, squareX*magnitude, squareY*magnitude);
+		setDrivePowerByVector(drive, squareX*magnitude, squareY*magnitude);
+	} else {
+		int turnPower = vexRT[ drive->turnInput ];
+
+		setDrivePower(drive, turnPower, -turnPower);
+	}
 }

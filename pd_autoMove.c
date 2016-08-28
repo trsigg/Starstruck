@@ -35,7 +35,7 @@ typedef enum correctionType { NONE, GYRO, ENCODER, AUTO };
 //drive defaults
 #define DRIVE_BRAKE_POWER 30 //power used during driveStraight braking
 #define DRIVE_BRAKE_DURATION 100 //maximum duration of braking at end of driveStraight
-correctionType defCorrectionType AUTO; 
+correctionType defCorrectionType = AUTO; 
 bool defDriveBools[2] = { false, false }; //runAsTask, rawValue
 int defDriveInts[6] = { 40, 120, 0, 1000, 100, 50 }; //initialPower, maxPower, finalPower, timeout, waitAtEnd, sampleTime
 float defDriveFloats[4] = { 0.25, 0.25, 0.25, 3 }
@@ -129,7 +129,7 @@ void setTurnDefaults(angleType angleType, bool runAsTask=defTurnRunAsTask, int i
 	defTurnRunAsTask = runAsTask;
 
 	int defInts[5] = { initialPower, maxPower, finalPower, waitAtEnd, brakePower };
-	
+
 	defTurnInts = defInts;
 }
 //end turning region
