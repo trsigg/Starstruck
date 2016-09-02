@@ -26,37 +26,32 @@ void setDrivePower(holonomicDrive *drive, int leftPower, int rightPower, bool di
 }
 
 void setDrivePowerByVector(holonomicDrive *drive, float x, float y) { //sets motor powers so that drive exerts a force along <x, y> with magnitude proportional to its length
-	setDrivePower(drive, (x+y)/sqrt(2), (y-x)/sqrt(2));
+	float squareX, squareY
+
+	if (x != 0) {
+		//Input transformed from joystick circle to velocity square. If you want more detail ask Tynan. Sorry.
+		squareX = sgn(x) / (abs(y/x) + 1);
+		squareY = squareX * y/x;
+	} else {
+		squareX = 0;
+		squareY = sgn(y);
+	}
+
+	setDrivePower(drive, (squareX+squareY), (squareY-squareX));
 }
 
-void setDrivePowerByAngle(holonomicDrive *drive, float angle, float magnitude=0, angleType inputType=DEGREES) { //sets motor powers to exert force in a specified direction with a specified magnitude
+void setDrivePowerByAngle(holonomicDrive *drive, float angle, float magnitude=127, angleType inputType=DEGREES) { //sets motor powers to exert force in a specified direction with a specified magnitude
 	angle = convertAngle(angle, RADIANS, inputType);
-
-	if (magnitude == 0) //calculate maximum magnitude in specified direction
-		magnitude = 127*sqrt(2) / ((abs(tan(angle)) + 1) * cos(angle));
 
 	setDrivePowerByVector(drive, magnitude*cos(angle), magnitude*sin(angle));
 }
 
 void driveRuntime(holonomicDrive *drive) {
-	int inX = vexRT[ drive->xInput ];
-	int inY = vexRT[ drive->yInput ];
+	int x = vexRT[ drive->xInput ];
+	int y = vexRT[ drive->yInput ];
 
-	float squareX, squareY;
-
-	if (abs(inX) > drive->deadBand || abs(inY) > drive->deadBand) {
-		if (inX != 0) {
-			//Input transformed from joystick circle to velocity square. If you want more detail ask Tynan. Sorry.
-			squareX = sgn(inX)*sqrt(2) / (abs(inY/inX) + 1);
-			squareY = squareX * inY/inX;
-		} else {
-			squareX = 0;
-			squareY = sqrt(2)*sgn(inY);
-		}
-
-		float magnitude = (inX*inX + inY*inY) / 127.0;
-
-		setDrivePowerByVector(drive, squareX*magnitude, squareY*magnitude);
+	if (abs(x) > drive->deadBand || abs(y) > drive->deadBand) {
+		setDrivePowerByVector(drive, x, y);
 	} else {
 		int turnPower = vexRT[ drive->turnInput ];
 
