@@ -38,7 +38,7 @@ typedef enum correctionType { NONE, GYRO, ENCODER, AUTO };
 correctionType defCorrectionType = AUTO; 
 bool defDriveBools[2] = { false, false }; //runAsTask, rawValue
 int defDriveInts[6] = { 40, 120, 0, 1000, 100, 50 }; //initialPower, maxPower, finalPower, timeout, waitAtEnd, sampleTime
-float defDriveFloats[4] = { 0.25, 0.25, 0.25, 3 }
+float defDriveFloats[4] = { 0.25, 0.25, 0.25, 3 } //kP, kI, kD, minSpeed
 //end drive defaults
 
 #include "coreIncludes.c"

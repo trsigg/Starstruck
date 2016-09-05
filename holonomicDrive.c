@@ -30,7 +30,7 @@ void setDrivePowerByVector(holonomicDrive *drive, float x, float y) { //sets mot
 	setDrivePower(drive, (x+y)/sqrt(2), (y-x)/sqrt(2));
 }
 
-void setDrivePowerByAngle(holonomicDrive *drive, float angle, float magnitude=0, angleType inputType=DEGREES) { //sets motor powers to exert force in a specified direction with a specified magnitude
+void setDrivePowerByAngle(holonomicDrive *drive, float angle, float magnitude=0, angleType inputType=DEGREES) { //sets motor powers to exert force with a specified direction and magnitude
 	angle = convertAngle(angle, RADIANS, inputType);
 
 	if (magnitude == 0) //calculate maximum magnitude in specified direction
