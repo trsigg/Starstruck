@@ -40,11 +40,7 @@ void setDrivePowerByVector(holonomicDrive *drive, float x, float y) { //sets mot
 	setDrivePower(drive, (squareX+squareY), (squareY-squareX));
 }
 
-<<<<<<< HEAD
-void setDrivePowerByAngle(holonomicDrive *drive, float angle, float magnitude=0, angleType inputType=DEGREES) { //sets motor powers to exert force with a specified direction and magnitude
-=======
-void setDrivePowerByAngle(holonomicDrive *drive, float angle, float magnitude=127, angleType inputType=DEGREES) { //sets motor powers to exert force in a specified direction with a specified magnitude
->>>>>>> origin/master
+void setDrivePowerByAngle(holonomicDrive *drive, float angle, float magnitude=127, angleType inputType=DEGREES) { //sets motor powers to exert force with a specified direction and magnitude
 	angle = convertAngle(angle, RADIANS, inputType);
 
 	setDrivePowerByVector(drive, magnitude*cos(angle), magnitude*sin(angle));
