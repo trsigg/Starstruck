@@ -4,7 +4,7 @@
 	1. Save this file in the same directory as your code
 
 	2. Include this line near the top of your code:
-			| #include "motorGroup.c"
+			| #include "motorgroup.c"
 
 	3. To create group, include the following lines in your code:
 			| motorGroup groupName;
@@ -23,6 +23,12 @@
 	8. To access the value of a sensor, use encoderVal(groupName) or potentiometeVal(groupName);
 */
 
+#define numTargets 4
+
+#include "timer.c"
+
+#define DEFAULT_TIMEOUT 15
+
 typedef enum controlType { NONE, BUTTON, JOYSTICK };
 
 typedef struct {
@@ -30,9 +36,6 @@ typedef struct {
 	int numMotors;
 	controlType controlType; //true if controlled by button, false if by joystick
 	TVexJoysticks posInput, negInput; //inputs. NegInput only assigned if using button control
-	//sensors
-	bool hasEncoder, hasPotentiometer;
-	tSensors encoder, potentiometer;
 	//button control
 	int upPower, downPower, stillSpeed;
 	//joystick control
@@ -42,106 +45,168 @@ typedef struct {
 	float powMap; //degree of polynomial to which inputs are mapped (1 for linear)
 	float coeff; //factor by which motor powers are multiplied
 	long lastUpdated; //ramping
+	//sensors
+	bool hasEncoder, hasPotentiometer;
+	bool encoderReversed, potentiometerReversed;
+	tSensors encoder, potentiometer;
+	//position targets
+	int targets[numTargets];
+	TVexJoysticks targetButtons[numTargets];
+	int targetIndex;
+	int prevPos;
+	int timeout;
+	long timer;
 } motorGroup;
 
-void initializeGroup(motorGroup &group, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1, tMotor motor7=port1, tMotor motor8=port1, tMotor motor9=port1, tMotor motor10=port1, tMotor motor11=port1, tMotor motor12=port1) {
+void initializeGroup(motorGroup *group, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1, tMotor motor7=port1, tMotor motor8=port1, tMotor motor9=port1, tMotor motor10=port1, tMotor motor11=port1, tMotor motor12=port1) { //look, I know this is stupid.  But arrays in ROBOTC */really/* suck
 	tMotor motors[12] = { motor1, motor2, motor3, motor4, motor5, motor6, motor7, motor8, motor9, motor10, motor11, motor12 };
-	for (int i=0; i<numMotors; i++) {
-		group.motors[i] = motors[i];
-	}
+	for (int i=0; i<numMotors; i++)
+		group->motors[i] = motors[i];
 
-	group.numMotors = numMotors;
+	for (int i=0; i<numTargets; i++)
+		group->targets[i] = -1;
+
+	group->numMotors = numMotors;
+	group->targetIndex = -1;
+	group->timeout = DEFAULT_TIMEOUT;
 }
 
-void configureButtonInput(motorGroup &group, TVexJoysticks posBtn, TVexJoysticks negBtn, int stillSpeed=0, int upPower=127, int downPower=-127) {
-	group.controlType = BUTTON;
-	group.posInput = posBtn;
-	group.negInput = negBtn;
-	group.stillSpeed = stillSpeed;
-	group.upPower = upPower;
-	group.downPower = downPower;
+void configureButtonInput(motorGroup *group, TVexJoysticks posBtn, TVexJoysticks negBtn, int stillSpeed=0, int upPower=127, int downPower=-127) {
+	group->controlType = BUTTON;
+	group->posInput = posBtn;
+	group->negInput = negBtn;
+	group->stillSpeed = stillSpeed;
+	group->upPower = upPower;
+	group->downPower = downPower;
 }
 
-void configureJoystickInput(motorGroup &group, TVexJoysticks joystick, int deadband=10, bool isRamped=false, int maxAcc100ms=20, float powMap=1, float coeff=1) {
-	group.controlType = JOYSTICK;
-	group.posInput = joystick;
-	group.deadband = deadband;
-	group.isRamped = isRamped;
-	group.msPerPowerChange = 100 / maxAcc100ms;
-	group.powMap = powMap;
-	group.coeff = coeff;
-	group.lastUpdated = nPgmTime;
+void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadband=10, bool isRamped=false, int maxAcc100ms=20, float powMap=1, int maxPow=127) {
+	group->controlType = JOYSTICK;
+	group->posInput = joystick;
+	group->deadband = deadband;
+	group->isRamped = isRamped;
+	group->msPerPowerChange = 100 / maxAcc100ms;
+	group->powMap = powMap;
+	group->coeff = maxPow /  127.0;
+	group->lastUpdated = nPgmTime;
 }
 
 //sensor setup region
-void attachEncoder(motorGroup &group, tSensors encoder) {
-	group.hasEncoder = true;
-	group.encoder = encoder;
+void attachEncoder(motorGroup *group, tSensors encoder, bool reversed=false) {
+	group->hasEncoder = true;
+	group->encoder = encoder;
+	group->encoderReversed = reversed;
 }
 
-void attachPotentiometer(motorGroup &group, tSensors potentiometer) {
-	group.hasPotentiometer = true;
-	group.potentiometer = potentiometer;
+void attachPotentiometer(motorGroup *group, tSensors potentiometer, bool reversed=false) {
+	group->hasPotentiometer = true;
+	group->potentiometer = potentiometer;
+	group->potentiometerReversed = reversed;
 }
 //end sensor setup region
 
 //sensor access region
-int encoderVal(motorGroup &group) {
-	if (group.hasEncoder) {
-		return SensorValue[group.encoder];
+int encoderVal(motorGroup *group) {
+	if (group->hasEncoder) {
+		return (group->encoderReversed ?  -SensorValue[group->encoder] : SensorValue[group->encoder]);
 	} else {
 		return 0;
 	}
 }
 
-int potentiometerVal(motorGroup &group) {
-	if (group.hasPotentiometer) {
-		return SensorValue[group.potentiometer];
+int potentiometerVal(motorGroup *group) {
+	if (group->hasPotentiometer) {
+		return (group->potentiometerReversed ? 4096-SensorValue[group->potentiometer] : SensorValue[group->potentiometer]);
 	} else {
 		return 0;
 	}
 }
 //end sensor access region
 
-void setPower(motorGroup &group, int power) {
-	for (int i=0; i<group.numMotors; i++) {
-		motor[group.motors[i]] = power;
+//motor targets region
+void createTarget(motorGroup *group, int position, TVexJoysticks btn) {
+	if (group->hasPotentiometer) {
+		for (int i=0; i<numTargets; i++) {
+			if (group->targets[i] == -1) {
+				group->targets[i] = position;
+				group->targetButtons[i] = btn;
+				break;
+			}
+		}
+	}
+}
+//end motor targets region
+
+void setPower(motorGroup *group, int power) {
+	for (int i=0; i<group->numMotors; i++) {
+		motor[group->motors[i]] = power;
 	}
 }
 
-void takeInput(motorGroup &group) {
-	if (group.controlType == BUTTON) {
-		if (vexRT[group.posInput] == 1) {
-			setPower(group, group.upPower);
-		} else if (vexRT[group.negInput] == 1) {
-			setPower(group, group.downPower);
+int takeInput(motorGroup *group, bool setMotors=true) {
+	if (group->controlType == BUTTON) {
+		if (vexRT[group->posInput] == 1) {
+			setPower(group, group->upPower);
+			group->targetIndex = -1;
+		} else if (vexRT[group->negInput] == 1) {
+			setPower(group, group->downPower);
+			group->targetIndex = -1;
 		} else {
-			setPower(group, group.stillSpeed);
-		}
-	} else if (group.controlType == JOYSTICK) {
-		int input = vexRT[group.posInput];
-		int power = sgn(input) * group.coeff * abs(pow(input, group.powMap)) / pow(127, group.powMap-1);
+			//check for target input
+			for (int i=0; i<numTargets; i++) {
+				if (group->targets[i] == -1) {
+					break;
+				} else if (vexRT[group->targetButtons[i]] == 1) {
+					group->timer = resetTimer();
+					group->targetIndex = i;
+					group->prevPos = potentiometerVal(group);
+				}
+			}
 
-		if (abs(power) < group.deadband) power = 0;
+			if (group->targetIndex == -1) {
+				setPower(group, group->stillSpeed);
+			} else {
+				//go to target
+				int newPos = potentiometerVal(group);
+				int target = group->targets[group->targetIndex];
+
+				if (sgn(group->prevPos - target) == sgn(newPos - target)) {
+					setPower(group, newPos>target ? -127 : 127);
+					group->prevPos = newPos;
+					group->timer = resetTimer();
+				} else if (time(group->timer) > group->timeout) {
+					group->targetIndex = -1;
+					setPower(group, 0);
+				}
+			}
+		}
+	} else if (group->controlType == JOYSTICK) {
+		int input = vexRT[group->posInput];
+		int power = sgn(input) * group->coeff * abs(pow(input, group->powMap)) / pow(127, group->powMap-1);
+
+		if (abs(power) < group->deadband) power = 0;
 
 		//handle ramping
-		if (group.isRamped) {
+		if (group->isRamped) {
 			long now = nPgmTime;
-			int elapsed = now - group.lastUpdated;
-			int currentPower = motor[ group.motors[0] ];
+			int elapsed = now - group->lastUpdated;
+			int currentPower = motor[ group->motors[0] ];
 
-			if (elapsed > group.msPerPowerChange) {
-				int maxDiff = elapsed / group.msPerPowerChange;
+			if (elapsed > group->msPerPowerChange) {
+				int maxDiff = elapsed / group->msPerPowerChange;
 
 				if (abs(currentPower - power) < maxDiff) {
-					group.lastUpdated = now;
+					group->lastUpdated = now;
 				} else {
 					power = (power>currentPower ? currentPower+maxDiff : currentPower-maxDiff);
-					group.lastUpdated = now - (elapsed % group.msPerPowerChange);
+					group->lastUpdated = now - (elapsed % group->msPerPowerChange);
 				}
 			}
 		}
 
-		setPower(group, power);
+		if (setMotors) setPower(group, power);
+		return power;
 	}
+
+	return 0;
 }
