@@ -3,12 +3,13 @@
 #pragma config(Sensor, in3,    RightPot,       sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEncoder,   sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftEncoder,    sensorQuadEncoder)
+#pragma config(Sensor, dgtl5,  leftLiftPneu,   sensorDigitalOut)
+#pragma config(Sensor, dgtl6,  rightLiftPneu,  sensorDigitalOut)
+#pragma config(Sensor, dgtl7,  clawPneu,       sensorDigitalOut)
 #pragma config(Motor,  port1,           lbd,           tmotorVex393_HBridge, openLoop)
 #pragma config(Motor,  port2,           lfd,           tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           lift1,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port4,           lift2,         tmotorVex393_MC29, openLoop, reversed)
-#pragma config(Motor,  port5,           claw1,         tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port6,           claw2,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port7,           lift3,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port8,           lift4,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port9,           rfd,           tmotorVex393_MC29, openLoop)
@@ -21,9 +22,10 @@
 
 #include "parallelDrive.c"
 #include "motorGroup.c"
+#include "buttonTracker.c"
 
-#define clawInBtn Btn6U
-#define clawOutBtn Btn6D
+#define toggleClawBtn Btn6U
+#define toggleLiftBtn Btn7U
 #define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
 #define liftTopBtn Btn7U
@@ -53,8 +55,8 @@ void pre_auton() {
   createTarget(lift, liftMax, liftTopBtn);
   createTarget(lift, liftMin, liftBottomBtn);
 
-  initializeGroup(claw, 2, claw1, claw2);
-  attachPotentiometer(claw, ClawPot);
+  //initializeGroup(claw, 2, claw1, claw2);
+  //attachPotentiometer(claw, ClawPot);
 }
 
 task autonomous() {
@@ -69,15 +71,23 @@ task usercontrol() {
 
     takeInput(lift);
 
-		//claw
-    if (vexRT[clawInBtn] == 1) {
-      clawClosed = true;
-      setPower(claw, 127);
-    } else if (vexRT[clawOutBtn] == 1) {
-      clawClosed = false;
-      setPower(claw, -127);
-    } else {
-      setPower(claw, clawClosed/*&&potentiometerVal(claw)<clawClosedCutoff*/ ? clawStillSpeed : 0);
+    if (newlyPressed(toggleClawBtn)) {
+    	SensorValue[clawPneu] = 1 - SensorValue[clawPneu];
     }
+
+    if (newlyPressed(toggleLiftBtn)) {
+    	SensorValue[leftLiftPneu] = 1 - SensorValue[leftLiftPneu];
+    	SensorValue[rightLiftPneu] = SensorValue[leftLiftPneu];
+    }
+		//claw
+    //if (vexRT[clawInBtn] == 1) {
+    //  clawClosed = true;
+    //  setPower(claw, 127);
+    //} else if (vexRT[clawOutBtn] == 1) {
+    //  clawClosed = false;
+    //  setPower(claw, -127);
+    //} else {
+    //  setPower(claw, clawClosed/*&&potentiometerVal(claw)<clawClosedCutoff*/ ? clawStillSpeed : 0);
+    //}
   }
 }
