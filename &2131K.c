@@ -29,7 +29,7 @@
 #define liftMin 2100
 #define liftAbsMax 800
 #define liftAbsMin 2500
-#define clawStillSpeed 15
+#define clawStillSpeed 25
 
 //debug
 int potpos[2] = {0, 0};
