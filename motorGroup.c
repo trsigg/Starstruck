@@ -45,6 +45,7 @@ typedef struct {
 	float powMap; //degree of polynomial to which inputs are mapped (1 for linear)
 	float coeff; //factor by which motor powers are multiplied
 	long lastUpdated; //ramping
+	int absMin, absMax; //extreme potentiometer positions of motorGroup
 	//sensors
 	bool hasEncoder, hasPotentiometer;
 	bool encoderReversed, potentiometerReversed;
@@ -65,6 +66,9 @@ void initializeGroup(motorGroup *group, int numMotors, tMotor motor1, tMotor mot
 
 	for (int i=0; i<numTargets; i++)
 		group->targets[i] = -1;
+
+	group->absMin = -1;
+	group->absMax = 4097;
 
 	group->numMotors = numMotors;
 	group->targetIndex = -1;
@@ -123,6 +127,13 @@ int potentiometerVal(motorGroup *group) {
 }
 //end sensor access region
 
+//position limiting region
+void setAbsolutes(motorGroup *group, int min, int max=4097) {
+	group->absMin = min;
+	group->absMax = max;
+}
+//end position limiting region
+
 //motor targets region
 void createTarget(motorGroup *group, int position, TVexJoysticks btn) {
 	if (group->hasPotentiometer) {
@@ -144,12 +155,14 @@ void setPower(motorGroup *group, int power) {
 }
 
 int takeInput(motorGroup *group, bool setMotors=true) {
+	int power = 0;
+
 	if (group->controlType == BUTTON) {
 		if (vexRT[group->posInput] == 1) {
-			setPower(group, group->upPower);
+			power = group->upPower;
 			group->targetIndex = -1;
 		} else if (vexRT[group->negInput] == 1) {
-			setPower(group, group->downPower);
+			power = group->downPower;
 			group->targetIndex = -1;
 		} else {
 			//check for target input
@@ -164,19 +177,19 @@ int takeInput(motorGroup *group, bool setMotors=true) {
 			}
 
 			if (group->targetIndex == -1) {
-				setPower(group, group->stillSpeed);
+				power = group->stillSpeed;
 			} else {
 				//go to target
 				int newPos = potentiometerVal(group);
 				int target = group->targets[group->targetIndex];
 
 				if (sgn(group->prevPos - target) == sgn(newPos - target)) {
-					setPower(group, newPos>target ? -127 : 127);
+					power = newPos>target ? -127 : 127;
 					group->prevPos = newPos;
 					group->timer = resetTimer();
 				} else if (time(group->timer) > group->timeout) {
 					group->targetIndex = -1;
-					setPower(group, 0);
+					power = 0;
 				}
 			}
 		}
@@ -203,10 +216,11 @@ int takeInput(motorGroup *group, bool setMotors=true) {
 				}
 			}
 		}
-
-		if (setMotors) setPower(group, power);
-		return power;
 	}
 
-	return 0;
+	if ((potentiometerVal(group) < group->absMin && power<0) || (potentiometerVal(group) > group->absMax && power>0))
+		power = 0;
+
+	if (setMotors) setPower(group, power);
+		return power;
 }
