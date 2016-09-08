@@ -27,7 +27,7 @@
 
 #define liftMax 3000
 #define liftMin 2150
-#define liftAbsMin 2100
+#define liftAbsMin 1900
 #define clawStillSpeed 25
 
 parallel_drive drive;
