@@ -195,7 +195,7 @@ int takeInput(motorGroup *group, bool setMotors=true) {
 		}
 	} else if (group->controlType == JOYSTICK) {
 		int input = vexRT[group->posInput];
-		int power = sgn(input) * group->coeff * abs(pow(input, group->powMap)) / pow(127, group->powMap-1);
+		power = sgn(input) * group->coeff * abs(pow(input, group->powMap)) / pow(127, group->powMap-1);
 
 		if (abs(power) < group->deadband) power = 0;
 
@@ -219,7 +219,7 @@ int takeInput(motorGroup *group, bool setMotors=true) {
 	}
 
 	if ((potentiometerVal(group) < group->absMin && power<0) || (potentiometerVal(group) > group->absMax && power>0))
-		power = 0;
+		power = group->stillSpeed;
 
 	if (setMotors) setPower(group, power);
 		return power;
