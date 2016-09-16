@@ -1,10 +1,10 @@
 #pragma config(Sensor, in1,    liftPot,        sensorPotentiometer)
+#pragma config(Sensor, dgtl1,  claw1,          sensorDigitalOut)
+#pragma config(Sensor, dgtl2,  claw2,          sensorDigitalOut)
 #pragma config(Motor,  port1,           rightFront,    tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           rightBack,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           toprightLift,  tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,           bottomrightLift, tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port5,           clawRight,     tmotorVex393_MC29, openLoop, reversed)
-#pragma config(Motor,  port6,           clawLeft,      tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port7,           bottomleftLift, tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port8,           topleftLift,   tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port9,           leftFront,     tmotorVex393_MC29, openLoop, reversed)
@@ -17,9 +17,9 @@
 
 #include "parallelDrive.c"
 #include "motorGroup.c"
+#include "buttonTracker.c"
 
-#define clawInBtn Btn6U
-#define clawOutBtn Btn6D
+#define toggleClawBtn Btn6U
 #define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
 #define liftTopBtn Btn7U
@@ -46,10 +46,8 @@ void pre_auton() {
   attachPotentiometer(lift, liftPot, true);
   createTarget(lift, liftMax, liftTopBtn);
   createTarget(lift, liftMin, liftBottomBtn);
-  setAbsolutes(lift, liftAbsMin);
+  //setAbsolutes(lift, liftAbsMin);
   lift.timeout = 65;
-
-  initializeGroup(claw, 2, clawLeft, clawRight);
 }
 
 task autonomous() {
@@ -64,15 +62,9 @@ task usercontrol() {
 
     takeInput(lift);
 
-    //claw
-    if (vexRT[clawInBtn] == 1) {
-      clawClosed = true;
-      setPower(claw, 127);
-    } else if (vexRT[clawOutBtn] == 1) {
-      clawClosed = false;
-      setPower(claw, -127);
-    } else {
-      setPower(claw, clawClosed ? clawStillSpeed : 0);
+    if (newlyPressed(toggleClawBtn)) {
+    	SensorValue[claw1] = 1 - SensorValue[claw1];
+    	SensorValue[claw2] = SensorValue[claw1];
     }
   }
 }

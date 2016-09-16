@@ -3,8 +3,8 @@
 #pragma config(Sensor, in3,    RightPot,       sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEncoder,   sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftEncoder,    sensorQuadEncoder)
-#pragma config(Sensor, dgtl6,  clawPneu,       sensorDigitalOut)
-#pragma config(Sensor, dgtl7,  wheeliePneu,    sensorDigitalOut)
+#pragma config(Sensor, dgtl6,  clawPneu1,      sensorDigitalOut)
+#pragma config(Sensor, dgtl7,  clawPneu2,      sensorDigitalOut)
 #pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           lfd,           tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           lift1,         tmotorVex393_MC29, openLoop, reversed)
@@ -59,17 +59,14 @@ task autonomous() {
 }
 
 task usercontrol() {
-  bool clawClosed = false;
-
   while (true) {
     driveRuntime(drive);
 
     takeInput(lift);
 
-    if (newlyPressed(toggleClawBtn))
-    	SensorValue[clawPneu] = 1 - SensorValue[clawPneu];
-
-    if (newlyPressed(wheelieBtn))
-    	SensorValue[wheeliePneu] = 1 - SensorValue[wheeliePneu];
+    if (newlyPressed(toggleClawBtn)) {
+    	SensorValue[clawPneu1] = 1 - SensorValue[clawPneu1];
+    	SensorValue[clawPneu2] = SensorValue[clawPneu1];
+    }
   }
 }
