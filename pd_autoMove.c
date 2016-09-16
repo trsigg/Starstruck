@@ -23,6 +23,11 @@
 	Note: the functions _turn_() and _driveStraight_() are much less user friendly, but can be used in place of turn() and driveStraight() to more finely configure robot behavior
 */
 
+#include "coreIncludes.c"
+#include "parallelDrive.c"
+#include "PID.c"
+#include "timer.c"
+
 //turn defaults
 #define TURN_BRAKE_DURATION 100 //maximum duration of braking at end of turn
 angleType defAngleType = DEGREES;
@@ -35,16 +40,11 @@ typedef enum correctionType { NONE, GYRO, ENCODER, AUTO };
 //drive defaults
 #define DRIVE_BRAKE_POWER 30 //power used during driveStraight braking
 #define DRIVE_BRAKE_DURATION 100 //maximum duration of braking at end of driveStraight
-correctionType defCorrectionType = AUTO; 
+correctionType defCorrectionType = AUTO;
 bool defDriveBools[2] = { false, false }; //runAsTask, rawValue
 int defDriveInts[6] = { 40, 120, 0, 1000, 100, 50 }; //initialPower, maxPower, finalPower, timeout, waitAtEnd, sampleTime
-float defDriveFloats[4] = { 0.25, 0.25, 0.25, 3 } //kP, kI, kD, minSpeed
+float defDriveFloats[4] = { 0.25, 0.25, 0.25, 3 }; //kP, kI, kD, minSpeed
 //end drive defaults
-
-#include "coreIncludes.c"
-#include "parallelDrive.c"
-#include "PID.c"
-#include "timer.c"
 
 
 parallel_drive autoDrive;
