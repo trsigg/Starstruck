@@ -17,9 +17,9 @@
 
 #include "parallelDrive.c"
 #include "motorGroup.c"
-#include "buttonTracker.c"
 
-#define toggleClawBtn Btn6U
+#define openClawBtn Btn6U
+#define closeClawBtn Btn6D
 #define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
 #define liftTopBtn Btn7U
@@ -28,11 +28,14 @@
 #define liftMax 3000
 #define liftMin 2150
 #define liftAbsMin 1900
-#define clawStillSpeed 25
 
 parallel_drive drive;
 motorGroup lift;
-motorGroup claw;
+
+void setClawState(bool val) {
+	SensorValue[claw1] = val;
+  SensorValue[claw2] = val;
+}
 
 void pre_auton() {
   bStopTasksBetweenModes = true;
@@ -55,16 +58,15 @@ task autonomous() {
 }
 
 task usercontrol() {
-  bool clawClosed = false;
-
-  while (true) {
+	while (true) {
     driveRuntime(drive);
 
     takeInput(lift);
 
-    if (newlyPressed(toggleClawBtn)) {
-    	SensorValue[claw1] = 1 - SensorValue[claw1];
-    	SensorValue[claw2] = SensorValue[claw1];
+    if (vexRT[openClawBtn] == 1) {
+    	setClawState(1);
+    } else if (vexRT[closeClawBtn] == 1) {
+    	setClawState(0);
     }
   }
 }
