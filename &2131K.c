@@ -49,7 +49,7 @@ void pre_auton() {
   attachPotentiometer(lift, liftPot, true);
   createTarget(lift, liftMax, liftTopBtn);
   createTarget(lift, liftMin, liftBottomBtn);
-  //setAbsolutes(lift, liftAbsMin);
+  setAbsolutes(lift, liftAbsMin);
   lift.timeout = 65;
 }
 
