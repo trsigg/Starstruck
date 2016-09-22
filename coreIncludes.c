@@ -1,3 +1,6 @@
+enum angleType { DEGREES, RADIANS, RAW };
+enum side { LEFT, RIGHT };
+
 int limit(int input, int min, int max) {
 	if (input <= max && input >= min) {
 		return input;
@@ -6,8 +9,6 @@ int limit(int input, int min, int max) {
 		return (input > max ? max : min);
 	}
 }
-
-enum angleType { DEGREES, RADIANS, RAW };
 
 float convertAngle(float angle, angleType output, angleType input=RAW) {
 	if (input != output) {
