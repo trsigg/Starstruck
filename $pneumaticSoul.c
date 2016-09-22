@@ -1,3 +1,5 @@
+#pragma config(Sensor, in1,    rightPot,       sensorPotentiometer)
+#pragma config(Sensor, in2,    leftPot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  hippo,          sensorDigitalOut)
 #pragma config(Sensor, dgtl2,  hungryHungry,   sensorDigitalOut)
 #pragma config(Motor,  port1,           lbd,           tmotorVex393_HBridge, openLoop)
@@ -26,6 +28,8 @@
 parallel_drive drive;
 motorGroup lift;
 
+int debug[2] = {0, 0};
+
 void pre_auton() {
 	bStopTasksBetweenModes = true;
 
@@ -43,6 +47,9 @@ task autonomous() {
 
 task usercontrol() {
 	while (true) {
+		debug[0] = SensorValue[leftPot];
+		debug[1] = 1 - debug[1];
+
   	driveRuntime(drive);
 
   	takeInput(lift);
