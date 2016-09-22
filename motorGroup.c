@@ -95,20 +95,21 @@ void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadb
 	group->lastUpdated = nPgmTime;
 }
 
-//sensor region
-void addSensor(motorGroup *group, tSensors sensor, bool reversed=false) {
-	switch (SensorType[sensor]) {
-		case sensorPotentiometer:
-			group->hasPotentiometer = true;
-			group->potentiometer = sensor;
-			group->potentiometerReversed = reversed;
-		case sensorEncoder:
-			group->hasEncoder = true;
-			group->encoder = sensor;
-			group->encoderReversed = reversed;
-	}
+//sensor setup region
+void attachEncoder(motorGroup *group, tSensors encoder, bool reversed=false) {
+	group->hasEncoder = true;
+	group->encoder = encoder;
+	group->encoderReversed = reversed;
 }
 
+void attachPotentiometer(motorGroup *group, tSensors potentiometer, bool reversed=false) {
+	group->hasPotentiometer = true;
+	group->potentiometer = potentiometer;
+	group->potentiometerReversed = reversed;
+}
+//end sensor setup region
+
+//sensor access region
 int encoderVal(motorGroup *group) {
 	if (group->hasEncoder) {
 		return (group->encoderReversed ?  -SensorValue[group->encoder] : SensorValue[group->encoder]);
@@ -124,7 +125,7 @@ int potentiometerVal(motorGroup *group) {
 		return 0;
 	}
 }
-//end sensor region
+//end sensor access region
 
 //position limiting region
 void setAbsolutes(motorGroup *group, int min, int max=4097) {
