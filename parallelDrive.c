@@ -69,16 +69,13 @@ typedef struct {
 	long posLastUpdated;
 	int minSampleTime;
 	gyroCorrectionType gyroCorrection;
-	//motor ports used for drive
-	tMotor rightMotors[6];
-	tMotor leftMotors[6];
 	//associated sensors
 	encoderConfig encoderConfig;
-	bool hasGyro, hasEncoderL, hasEncoderR;
+	bool hasGyro;
 	bool gyroReversed;
 	float angleOffset; //amount added to gyro values to obtain absolute angle
 	float leftEncCoeff, rightEncCoeff; //coefficients used to translate encoder values to distance traveled
-	tSensors gyro, leftEncoder, rightEncoder;
+	tSensors gyro;
 } parallel_drive;
 
 
@@ -106,8 +103,8 @@ void setRightMotors(parallel_drive *drive, int numMotors, tMotor motor1, tMotor 
 
 //sensor setup region
 void updateEncoderConfig(parallel_drive *drive) {
-	if (drive->hasEncoderL) {
-		if (drive->hasEncoderR) {
+	if (drive->leftDrive->hasEncoder) {
+		if (drive->rightDrive->hasEncoder) {
 			drive->encoderConfig = AVERAGE;
 		} else {
 			drive->encoderConfig = LEFT;
@@ -117,20 +114,11 @@ void updateEncoderConfig(parallel_drive *drive) {
 	}
 }
 
-void attachEncoderL(parallel_drive *drive, tSensors encoder, bool reversed=false, float wheelDiameter=3.25, float gearRatio=1) {
-	drive->leftEncoder = encoder;
-	drive->hasEncoderL = true;
-	drive->leftEncCoeff = PI * wheelDiameter * gearRatio * (reversed ? -1 : 1) / 360;
+void attachEncoder(parallel_drive *drive, tSensors encoder, bool left=true, bool reversed=false, float wheelDiameter=3.25, float gearRatio=1) {
+	addSensor((left ? drive->leftDrive : drive->rightDrive), reversed);
+	drive->EncCoeff = PI * wheelDiameter * gearRatio / 360;
 	updateEncoderConfig(drive);
 }
-
-void attachEncoderR(parallel_drive *drive, tSensors encoder, bool reversed=false, float wheelDiameter=3.25, float gearRatio=1) {
-	drive->rightEncoder = encoder;
-	drive->hasEncoderR = true;
-	drive->rightEncCoeff = PI * wheelDiameter * gearRatio * (reversed ? -1 : 1) / 360;
-	updateEncoderConfig(drive);
-}
-
 
 void attachGyro(parallel_drive *drive, tSensors gyro, bool reversed=true, gyroCorrectionType correction=MEDIUM, bool setAbsAngle=true) {
 	drive->gyro = gyro;
@@ -148,20 +136,8 @@ void setEncoderConfig(parallel_drive *drive, encoderConfig config) {
 
 
 //sensor access region
-float encoderVal_L(parallel_drive *drive, bool rawValue=false) {
-	if (drive->hasEncoderL) {
-		return SensorValue[drive->leftEncoder] * (rawValue ? sgn(drive->leftEncCoeff) : drive->leftEncCoeff);
-	} else {
-		return 0;
-	}
-}
-
-float encoderVal_R(parallel_drive *drive, bool rawValue=false) {
-	if (drive->hasEncoderR) {
-		return SensorValue[drive->rightEncoder] * (rawValue ? sgn(drive->rightEncCoeff) : drive->rightEncCoeff);
-	} else {
-		return 0;
-	}
+float driveEncoderVal(parallel_drive *drive, side encSide=CENTER, bool rawValue=false, bool absolute=true) {
+	return encoderVal(left ? drive->leftDrive : drive->rightDrive) * (rawValue ? 1 : drive->EncCoeff);
 }
 
 float encoderVal(parallel_drive *drive, bool rawValue=false, bool absolute=true) {
@@ -181,13 +157,13 @@ float encoderVal(parallel_drive *drive, bool rawValue=false, bool absolute=true)
 }
 
 void resetLeft(parallel_drive *drive, int resetVal=0) {
-	if (drive->hasEncoderL) {
+	if (drive->leftDrive->hasEncoder) {
 		SensorValue[drive->leftEncoder] = resetVal;
 	}
 }
 
 void resetRight(parallel_drive *drive, int resetVal=0) {
-	if (drive->hasEncoderR) {
+	if (drive->rightDrive->hasEncoder) {
 		SensorValue[drive->rightEncoder] = resetVal;
 	}
 }
