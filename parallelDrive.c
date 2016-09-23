@@ -1,11 +1,7 @@
 /*///////////////  INSTRUCTIONS  /////////////////
-
-
 	1. Save this file, timer.c, coreIncludes.c, and motorGroup.c in the same directory as your code
-
 	2. Include this line near the top of your code:
 			| #include "paralleldrive.c"
-
 	3. To create drive, include the following lines in your code:
 			| parallel_drive driveName;
 			| initializeDrive(driveName);
@@ -17,32 +13,23 @@
 	   The optional arguments of initializeDrive can be used to further configure the drive
 	   	e.g. a user creating a drive with ramping and quadratic input mapping would substitute the second line of code with:
 	   	| initializeDrive(driveName, true, 20, 10, 2);
-
 	4. Whenever the drive should be updated (probably once every input cycle) include the following line of code
 			| driveRuntime(driveName);
 		Where driveName is the same as in the previous step
-
 	5. To explicitly set drive power, use setDrivePower(driveName, leftPower, rightPower), setRightPower(driveName, power), or setLeftPower(driveName, power)
-
 	6. To attach sensors, call attachGyro(driveName, gyro), attachEncoderL(driveName, leftEncoder), or attachEncoderR(driveName, rightEncoder), where gyro, leftEncoder, and rightEncoder are the names assigned in sensor setup
 		The attachEncoder functions also accept wheelDiameter and gearRatio arguments. These default to 3.25" and 1, and are used to convert encoder values to distance ones.
-
 	7. To explicitly control how encoders are used for distance measurement, call setEncoderConfig(driveName, config) where config is NONE, LEFT, RIGHT, or AVERAGE
-
 	8. To access a sensor value, call encoderVal(driveName), encoderVal_L(driveName), encoderVal_R(driveName), gyroVal(driveName), or absAngle(driveName).
 		Encoder values are converted into distance ones unless optional rawValue argument is set to true.
 		The optional angleType argument accepts DEGREES, RADIANS, or RAW, and controls the output format of gyroVal() and absAngle().
 		absAngle() returns the absolute gyro reading, which stays constant even when the gyro is reset.
-
 	9. To reset a sensor, call resetEncoders(driveName), resetLeft(driveName), resetRight(driveName), resetGyro(driveName), or resetAbsAngle(driveName).
 		To set a sensor to a value other than zero, use the optional resetVal argument. To specify the input format for the gyro, use the angleType argument.
-
 	10.To set the robot's position, call setRobotPosition(driveName, x, y, theta);
-
 	11.To have the robot's position automatically updated (very experimental feature), include the following line of code in the main loop
 			| updatePosition(driveName);
 		This function returns a robotPosition object.
-
 	12.To auto-calculate a drive's width, write a test program creating a parallel drive with a gyro and at least one encoder.
 		The function calculateWidth(driveName) will cause the robot to turn several times, using gyro and encoder values to calculate the width of the drive-> It returns a float.
 */
@@ -69,16 +56,13 @@ typedef struct {
 	long posLastUpdated;
 	int minSampleTime;
 	gyroCorrectionType gyroCorrection;
-	//motor ports used for drive
-	tMotor rightMotors[6];
-	tMotor leftMotors[6];
 	//associated sensors
 	encoderConfig encoderConfig;
-	bool hasGyro, hasEncoderL, hasEncoderR;
+	bool hasGyro;
 	bool gyroReversed;
 	float angleOffset; //amount added to gyro values to obtain absolute angle
 	float leftEncCoeff, rightEncCoeff; //coefficients used to translate encoder values to distance traveled
-	tSensors gyro, leftEncoder, rightEncoder;
+	tSensors gyro;
 } parallel_drive;
 
 
@@ -106,8 +90,8 @@ void setRightMotors(parallel_drive *drive, int numMotors, tMotor motor1, tMotor 
 
 //sensor setup region
 void updateEncoderConfig(parallel_drive *drive) {
-	if (drive->hasEncoderL) {
-		if (drive->hasEncoderR) {
+	if (drive->leftDrive->hasEncoder) {
+		if (drive->rightDrive->hasEncoder) {
 			drive->encoderConfig = AVERAGE;
 		} else {
 			drive->encoderConfig = LEFT;
@@ -117,20 +101,11 @@ void updateEncoderConfig(parallel_drive *drive) {
 	}
 }
 
-void attachEncoderL(parallel_drive *drive, tSensors encoder, bool reversed=false, float wheelDiameter=3.25, float gearRatio=1) {
-	drive->leftEncoder = encoder;
-	drive->hasEncoderL = true;
-	drive->leftEncCoeff = PI * wheelDiameter * gearRatio * (reversed ? -1 : 1) / 360;
+void attachEncoder(parallel_drive *drive, tSensors encoder, bool left=true, bool reversed=false, float wheelDiameter=3.25, float gearRatio=1) {
+	addSensor((left ? drive->leftDrive : drive->rightDrive), reversed);
+	drive->EncCoeff = PI * wheelDiameter * gearRatio / 360;
 	updateEncoderConfig(drive);
 }
-
-void attachEncoderR(parallel_drive *drive, tSensors encoder, bool reversed=false, float wheelDiameter=3.25, float gearRatio=1) {
-	drive->rightEncoder = encoder;
-	drive->hasEncoderR = true;
-	drive->rightEncCoeff = PI * wheelDiameter * gearRatio * (reversed ? -1 : 1) / 360;
-	updateEncoderConfig(drive);
-}
-
 
 void attachGyro(parallel_drive *drive, tSensors gyro, bool reversed=true, gyroCorrectionType correction=MEDIUM, bool setAbsAngle=true) {
 	drive->gyro = gyro;
@@ -148,20 +123,8 @@ void setEncoderConfig(parallel_drive *drive, encoderConfig config) {
 
 
 //sensor access region
-float encoderVal_L(parallel_drive *drive, bool rawValue=false) {
-	if (drive->hasEncoderL) {
-		return SensorValue[drive->leftEncoder] * (rawValue ? sgn(drive->leftEncCoeff) : drive->leftEncCoeff);
-	} else {
-		return 0;
-	}
-}
-
-float encoderVal_R(parallel_drive *drive, bool rawValue=false) {
-	if (drive->hasEncoderR) {
-		return SensorValue[drive->rightEncoder] * (rawValue ? sgn(drive->rightEncCoeff) : drive->rightEncCoeff);
-	} else {
-		return 0;
-	}
+float driveEncoderVal(parallel_drive *drive, side encSide=CENTER, bool rawValue=false, bool absolute=true) {
+	return encoderVal(left ? drive->leftDrive : drive->rightDrive) * (rawValue ? 1 : drive->EncCoeff);
 }
 
 float encoderVal(parallel_drive *drive, bool rawValue=false, bool absolute=true) {
@@ -181,13 +144,13 @@ float encoderVal(parallel_drive *drive, bool rawValue=false, bool absolute=true)
 }
 
 void resetLeft(parallel_drive *drive, int resetVal=0) {
-	if (drive->hasEncoderL) {
+	if (drive->leftDrive->hasEncoder) {
 		SensorValue[drive->leftEncoder] = resetVal;
 	}
 }
 
 void resetRight(parallel_drive *drive, int resetVal=0) {
-	if (drive->hasEncoderR) {
+	if (drive->rightDrive->hasEncoder) {
 		SensorValue[drive->rightEncoder] = resetVal;
 	}
 }
