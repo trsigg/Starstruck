@@ -28,8 +28,6 @@
 parallel_drive drive;
 motorGroup lift;
 
-int debug[2] = {0, 0};
-
 void pre_auton() {
 	bStopTasksBetweenModes = true;
 
@@ -47,9 +45,6 @@ task autonomous() {
 
 task usercontrol() {
 	while (true) {
-		debug[0] = SensorValue[leftPot];
-		debug[1] = 1 - debug[1];
-
   	driveRuntime(drive);
 
   	takeInput(lift);
