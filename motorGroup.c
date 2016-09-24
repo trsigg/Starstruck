@@ -93,7 +93,7 @@ void addSensor(motorGroup *group, tSensors sensor, bool reversed=false) {
 			group->hasPotentiometer = true;
 			group->potentiometer = sensor;
 			group->potentiometerReversed = reversed;
-		case sensorEncoder:
+		case sensorQuadEncoder:
 			group->hasEncoder = true;
 			group->encoder = sensor;
 			group->encoderReversed = reversed;
@@ -114,6 +114,10 @@ int potentiometerVal(motorGroup *group) {
 	} else {
 		return 0;
 	}
+}
+
+void resetEncoder(motorGroup *group, int resetVal=0) {
+	SensorValue[group->encoder] = resetVal;
 }
 //end sensor region
 

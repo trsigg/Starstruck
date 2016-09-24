@@ -38,7 +38,7 @@
 #include "timer.c"
 #include "motorGroup.c"
 
-enum encoderConfig { NONE, LEFT, RIGHT, AVERAGE };
+enum encoderConfig { UNASSIGNED, LEFT, RIGHT, AVERAGE };
 enum gyroCorrectionType { NONE, MEDIUM, FULL };
 
 typedef struct {
@@ -61,7 +61,7 @@ typedef struct {
 	bool hasGyro;
 	bool gyroReversed;
 	float angleOffset; //amount added to gyro values to obtain absolute angle
-	float leftEncCoeff, rightEncCoeff; //coefficients used to translate encoder values to distance traveled
+	float encCoeff; //coefficients used to translate encoder values to distance traveled
 	tSensors gyro;
 } parallel_drive;
 
@@ -90,8 +90,8 @@ void setRightMotors(parallel_drive *drive, int numMotors, tMotor motor1, tMotor 
 
 //sensor setup region
 void updateEncoderConfig(parallel_drive *drive) {
-	if (drive->leftDrive->hasEncoder) {
-		if (drive->rightDrive->hasEncoder) {
+	if (drive->leftDrive.hasEncoder) {
+		if (drive->rightDrive.hasEncoder) {
 			drive->encoderConfig = AVERAGE;
 		} else {
 			drive->encoderConfig = LEFT;
@@ -102,8 +102,13 @@ void updateEncoderConfig(parallel_drive *drive) {
 }
 
 void attachEncoder(parallel_drive *drive, tSensors encoder, bool left=true, bool reversed=false, float wheelDiameter=3.25, float gearRatio=1) {
-	addSensor((left ? drive->leftDrive : drive->rightDrive), reversed);
-	drive->EncCoeff = PI * wheelDiameter * gearRatio / 360;
+	if (left) {
+		addSensor(drive->leftDrive, encoder, reversed);
+	} else {
+		addSensor(drive->leftDrive, encoder, reversed);
+	}
+
+	drive->encCoeff = PI * wheelDiameter * gearRatio / 360;
 	updateEncoderConfig(drive);
 }
 
@@ -123,59 +128,49 @@ void setEncoderConfig(parallel_drive *drive, encoderConfig config) {
 
 
 //sensor access region
-float driveEncoderVal(parallel_drive *drive, side encSide=CENTER, bool rawValue=false, bool absolute=true) {
-	return encoderVal(left ? drive->leftDrive : drive->rightDrive) * (rawValue ? 1 : drive->EncCoeff);
-}
+float driveEncoderVal(parallel_drive *drive, encoderConfig side=UNASSIGNED, bool rawValue=false, bool absolute=true) {
+	if (side == UNASSIGNED) {
+		side = drive->encoderConfig;
+	}
 
-float encoderVal(parallel_drive *drive, bool rawValue=false, bool absolute=true) {
-	if (drive->encoderConfig==AVERAGE) {
+	if (side == AVERAGE) {
 		if (absolute) {
-			return (abs(encoderVal_L(drive, rawValue)) + abs(encoderVal_R(drive, rawValue))) / 2;
+			return (abs(driveEncoderVal(drive, LEFT, rawValue)) + abs(driveEncoderVal(drive, RIGHT, rawValue))) / 2;
 		} else {
-			return (encoderVal_L(drive, rawValue) + encoderVal_R(drive, rawValue)) / 2;
+			return (driveEncoderVal(drive, LEFT, rawValue) + driveEncoderVal(drive, RIGHT, rawValue)) / 2;
 		}
-	} else if (drive->encoderConfig==LEFT) {
-		return encoderVal_L(drive, rawValue);
-	} else if (drive->encoderConfig==RIGHT) {
-		return encoderVal_R(drive, rawValue);
+	} else if (side == LEFT) {
+		return encoderVal(drive->leftDrive) * (rawValue ? 1 : drive->encCoeff);
+	} else if (side == RIGHT) {
+		return encoderVal(drive->rightDrive) * (rawValue ? 1 : drive->encCoeff);
 	}
 
 	return 0;
 }
 
 void resetLeft(parallel_drive *drive, int resetVal=0) {
-	if (drive->leftDrive->hasEncoder) {
-		SensorValue[drive->leftEncoder] = resetVal;
-	}
+	resetEncoder(drive->leftDrive, resetVal);
 }
 
 void resetRight(parallel_drive *drive, int resetVal=0) {
-	if (drive->rightDrive->hasEncoder) {
-		SensorValue[drive->rightEncoder] = resetVal;
-	}
+	resetEncoder(drive->leftDrive, resetVal);
 }
 
-void resetEncoders(parallel_drive *drive, int resetVal=0) {
+void resetDriveEncoders(parallel_drive *drive, int resetVal=0) {
 	resetLeft(drive, resetVal);
 	resetRight(drive, resetVal);
 }
 
 float gyroVal(parallel_drive *drive, angleType format=DEGREES) {
-	if (drive->hasGyro) {
-		return convertAngle(SensorValue[drive->gyro] * (drive->gyroReversed ? 1 : -1), format);
-	} else {
-		return 0;
-	}
+	return convertAngle(SensorValue[drive->gyro] * (drive->gyroReversed ? 1 : -1), format);
 }
 
 void resetGyro(parallel_drive *drive, float resetVal=0, angleType format=DEGREES, bool setAbsAngle=true) {
-	if (drive->hasGyro) {
-		if (setAbsAngle) drive->angleOffset += gyroVal(drive);
+	if (setAbsAngle) drive->angleOffset += gyroVal(drive);
 
-		SensorValue[drive->gyro] = (int)(convertAngle(resetVal, RAW, format));
+	SensorValue[drive->gyro] = (int)(convertAngle(resetVal, RAW, format));
 
-		if (setAbsAngle) drive->angleOffset -= gyroVal(drive); //I could include this two lines up, except this function doesn't usually work as expected
-	}
+	if (setAbsAngle) drive->angleOffset -= gyroVal(drive); //I could include this two lines up, except this function doesn't usually work as expected
 }
 
 float absAngle(parallel_drive *drive, angleType format=DEGREES) {
@@ -197,12 +192,12 @@ void setRobotPosition(parallel_drive *drive, float x, float y, float theta, bool
 	if (setAbsAngle) resetAbsAngle(drive, theta, RADIANS);
 }
 
-robotPosition *updatePosition(parallel_drive *drive) {
+void updatePosition(parallel_drive *drive) {
 	if (time(drive->posLastUpdated) >= drive->minSampleTime) {
-		float leftDist = encoderVal_L(drive);
-		float rightDist = encoderVal_R(drive);
+		float leftDist = driveEncoderVal(drive, LEFT);
+		float rightDist = driveEncoderVal(drive, RIGHT);
 		float angle = absAngle(drive, RADIANS);
-		resetEncoders(drive);
+		resetDriveEncoders(drive);
 
 		drive->posLastUpdated = resetTimer();
 
@@ -225,8 +220,6 @@ robotPosition *updatePosition(parallel_drive *drive) {
 			drive->position.y += leftDist * sin(drive->position.theta);
 		}
 	}
-
-	return drive->position;
 }
 //end position tracking region
 
@@ -249,7 +242,7 @@ void setDrivePower (parallel_drive *drive, int left, int right) {
 
 //misc
 float calculateWidth(parallel_drive *drive, int duration=10000, int sampleTime=200, int power=80, int reverseDelay=750) {
-	if (drive->hasGyro && drive->encoderConfig != NONE) {
+	if (drive->hasGyro && drive->encoderConfig != UNASSIGNED) {
 		long timer;
 		float totalWidth = 0;
 		int samples = 0;
@@ -260,11 +253,11 @@ float calculateWidth(parallel_drive *drive, int duration=10000, int sampleTime=2
 			timer = resetTimer();
 
 			while (time(timer) < (duration-reverseDelay)/2) {
-				resetEncoders(drive);
+				resetDriveEncoders(drive);
 				resetGyro(drive);
 				wait1Msec(sampleTime);
 
-				totalWidth += encoderVal(drive) * 3600 / (PI * abs(gyroVal(drive, RAW)));
+				totalWidth += driveEncoderVal(drive) * 3600 / (PI * abs(gyroVal(drive, RAW)));
 				samples++;
 			}
 		}
