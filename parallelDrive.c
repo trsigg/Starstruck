@@ -101,8 +101,8 @@ void updateEncoderConfig(parallel_drive *drive) {
 	}
 }
 
-void attachEncoder(parallel_drive *drive, tSensors encoder, bool left=true, bool reversed=false, float wheelDiameter=3.25, float gearRatio=1) {
-	if (left) {
+void attachEncoder(parallel_drive *drive, tSensors encoder, encoderConfig side, bool reversed=false, float wheelDiameter=3.25, float gearRatio=1) {
+	if (side == LEFT) {
 		addSensor(drive->leftDrive, encoder, reversed);
 	} else {
 		addSensor(drive->leftDrive, encoder, reversed);

@@ -167,8 +167,8 @@ void driveStraightRuntime() {
 
 	setDrivePower(autoDrive, slaveCoeff*driveData.direction*power, driveData.direction*power);
 
-	float leftDist = encoderVal_L(autoDrive, driveData.rawValue);
-	float rightDist = encoderVal_R(autoDrive, driveData.rawValue);
+	float leftDist = driveEncoderVal(autoDrive, LEFT, driveData.rawValue);
+	float rightDist = driveEncoderVal(autoDrive, RIGHT, driveData.rawValue);
 
 	//calculate error value
 	if (driveData.correctionType == GYRO) {
@@ -180,8 +180,8 @@ void driveStraightRuntime() {
 	}
 
 	driveData.totalDist += (leftDist + rightDist) / 2;
-	if (encoderVal(autoDrive) > driveData.minSpeed) driveData.timer = resetTimer(); //track timeout state
-	resetEncoders(autoDrive);
+	if (driveEncoderVal(autoDrive) > driveData.minSpeed) driveData.timer = resetTimer(); //track timeout state
+	resetDriveEncoders(autoDrive);
 }
 
 void driveStraightEnd() {
@@ -207,7 +207,7 @@ task driveStraightTask() {
 void setCorrectionType(correctionType type) {
 	if (type==GYRO && autoDrive.hasGyro) {
 		driveData.correctionType = GYRO;
-	} else if (type==ENCODER && autoDrive.hasEncoderL && autoDrive.hasEncoderR) {
+	} else if (type==ENCODER && autoDrive.leftDrive.hasEncoder && autoDrive.rightDrive.hasEncoder) {
 		driveData.correctionType = ENCODER;
 	} else {
 		driveData.correctionType = NONE;
@@ -249,7 +249,7 @@ void _driveStraight_(parallel_drive &drive, float distance, float a, float b, fl
 	}
 
 	//initialize sensors
-	resetEncoders(autoDrive);
+	resetDriveEncoders(autoDrive);
 	resetGyro(autoDrive);
 
 	driveData.timer = resetTimer();

@@ -27,8 +27,8 @@ task main() {
 	setLeftMotors(drive, 2, lfd, lbd);
 	setRightMotors(drive, 2, rfd, rbd);
 	attachGyro(drive, Yaw);
-	attachEncoderL(drive, leftE);
-	attachEncoderR(drive, rightE, true);
+	attachEncoder(drive, leftE, LEFT);
+	attachEncoder(drive, rightE, RIGHT, true);
 
 	initializeGroup(feed, 2, Seymore, FeedMe);
 	configureButtonInput(feed, Btn7U, Btn7D);
