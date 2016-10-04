@@ -16,6 +16,8 @@
 parallel_drive drive;
 motorGroup feed;
 
+float debug[5] = {0, 0, 0, 0, 0};
+
 void autonomous() {
 	driveStraight(drive, 24);
 	turn(drive, -90);
@@ -35,9 +37,15 @@ task main() {
 
 	while (true) {
 		driveRuntime(drive);
-		updatePosition(drive);
+		//updatePosition(drive);
 
 		takeInput(feed);
+
+		debug[0] = driveEncoderVal(drive);
+		debug[1] = driveEncoderVal(drive, LEFT);
+		debug[2] = driveEncoderVal(drive, RIGHT);
+		debug[3] = SensorValue[leftE];
+		debug[4] = SensorValue[rightE];
 
 		if (vexRT[Btn5U] == 1) autonomous();
 
