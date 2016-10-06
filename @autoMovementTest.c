@@ -13,7 +13,6 @@
 #include "pd_autoMove.c"
 #include "motorGroup.c"
 
-parallel_drive drive;
 motorGroup feed;
 
 float debug[5] = {0, 0, 0, 0, 0};
