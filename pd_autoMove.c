@@ -23,6 +23,8 @@
 	Note: the functions _turn_() and _driveStraight_() are much less user friendly, but can be used in place of turn() and driveStraight() to more finely configure robot behavior
 */
 
+#define autoDrive drive
+
 #include "coreIncludes.c"
 #include "parallelDrive.c"
 #include "PID.c"
