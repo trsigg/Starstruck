@@ -28,6 +28,9 @@
 #define liftMax 3000
 #define liftMin 2150
 #define liftAbsMin 1900
+#define liftMiddle 2300
+
+#define stillSpeedMagnitude 10
 
 parallel_drive drive;
 motorGroup lift;
@@ -45,11 +48,11 @@ void pre_auton() {
   setRightMotors(drive, 2, rightFront, rightBack);
 
   initializeGroup(lift, 4, toprightLift, bottomrightLift, topleftLift, bottomleftLift);
-  configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
+  configureButtonInput(lift, liftUpBtn, liftDownBtn, stillSpeedMagnitude, 127, -80);
   attachPotentiometer(lift, liftPot, true);
   createTarget(lift, liftMax, liftTopBtn);
   createTarget(lift, liftMin, liftBottomBtn);
-  setAbsolutes(lift, liftAbsMin);
+  //setAbsolutes(lift, liftAbsMin);
   lift.timeout = 65;
 }
 
@@ -61,6 +64,7 @@ task usercontrol() {
 	while (true) {
     driveRuntime(drive);
 
+    lift.stillSpeed = stillSpeedMagnitude * (potentiometerVal(lift)>liftMiddle ? 1 : -1);
     takeInput(lift);
 
     if (vexRT[openClawBtn] == 1) {
