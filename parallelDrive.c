@@ -105,7 +105,7 @@ void attachEncoder(parallel_drive *drive, tSensors encoder, encoderConfig side, 
 	if (side == LEFT) {
 		addSensor(drive->leftDrive, encoder, reversed);
 	} else {
-		addSensor(drive->leftDrive, encoder, reversed);
+		addSensor(drive->rightDrive, encoder, reversed);
 	}
 
 	drive->encCoeff = PI * wheelDiameter * gearRatio / 360;

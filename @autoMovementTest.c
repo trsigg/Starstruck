@@ -36,7 +36,7 @@ task main() {
 
 	while (true) {
 		driveRuntime(drive);
-		//updatePosition(drive);
+		updatePosition(drive);
 
 		takeInput(feed);
 
