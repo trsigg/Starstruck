@@ -153,7 +153,7 @@ void resetLeft(parallel_drive *drive, int resetVal=0) {
 }
 
 void resetRight(parallel_drive *drive, int resetVal=0) {
-	resetEncoder(drive->leftDrive, resetVal);
+	resetEncoder(drive->rightDrive, resetVal);
 }
 
 void resetDriveEncoders(parallel_drive *drive, int resetVal=0) {
