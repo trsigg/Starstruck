@@ -49,7 +49,7 @@ void pre_auton() {
 
   initializeGroup(lift, 4, toprightLift, bottomrightLift, topleftLift, bottomleftLift);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, stillSpeedMagnitude, 127, -80);
-  attachPotentiometer(lift, liftPot, true);
+  addSensor(lift, liftPot, true);
   createTarget(lift, liftMax, liftTopBtn);
   createTarget(lift, liftMin, liftBottomBtn);
   //setAbsolutes(lift, liftAbsMin);
