@@ -42,8 +42,7 @@ void pre_auton() {
   bStopTasksBetweenModes = true;
 
   initializeDrive(drive);
-  setLeftMotors(drive, 2, lfd, lbd);
-  setRightMotors(drive, 2, rfd, rbd);
+  setDriveMotors(drive, 4, lfd, lbd, rfd, rbd);
   attachEncoder(drive, leftEncoder, LEFT);
   attachEncoder(drive, rightEncoder, RIGHT);
 
