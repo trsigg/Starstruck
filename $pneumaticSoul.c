@@ -24,7 +24,7 @@
 #define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
 
-#define liftMiddle 2300
+#define liftMiddle 1010
 
 #define stillSpeedMagnitude 10
 
@@ -40,7 +40,7 @@ void pre_auton() {
 
   initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, stillSpeedMagnitude);
-  addSensor(lift, liftPot);
+  addSensor(lift, liftPot, true);
 }
 
 task autonomous() {
