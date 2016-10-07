@@ -79,12 +79,13 @@ void initializeDrive(parallel_drive *drive, bool isRamped=false, int maxAcc100ms
 	drive->posLastUpdated = resetTimer();
 }
 
-void setLeftMotors(parallel_drive *drive, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1) {
-	initializeGroup(drive->leftDrive, numMotors, motor1, motor2, motor3, motor4, motor5, motor6);
-}
+void setDriveMotors(parallel_drive *drive, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1, tMotor motor7=port1, tMotor motor8=port1, tMotor motor9=port1, tMotor motor10=port1, tMotor motor11=port1, tMotor motor12=port1) {
+	tMotor motors[12] = { motor1, motor2, motor3, motor4, motor5, motor6, motor7, motor8, motor9, motor10, motor11, motor12 };
 
-void setRightMotors(parallel_drive *drive, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1) {
-	initializeGroup(drive->rightDrive, numMotors, motor1, motor2, motor3, motor4, motor5, motor6);
+	int numSideMotors = numMotors / 2;
+
+	initializeGroup(drive->leftDrive, numSideMotors, motors[0], motors[1], motors[2], motors[3], motors[4], motors[5]);
+	initializeGroup(drive->rightDrive, numSideMotors, motors[numSideMotors], motors[numSideMotors + 1], motors[numSideMotors + 2], motors[numSideMotors + 3], motors[numSideMotors + 4], motors[numSideMotors + 5]);
 }
 
 
