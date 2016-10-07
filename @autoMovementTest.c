@@ -25,8 +25,7 @@ void autonomous() {
 
 task main() {
 	initializeDrive(drive);
-	setLeftMotors(drive, 2, lfd, lbd);
-	setRightMotors(drive, 2, rfd, rbd);
+	setLeftMotors(drive, 4, lfd, lbd, rfd, rbd);
 	attachGyro(drive, Yaw);
 	attachEncoder(drive, leftE, LEFT);
 	attachEncoder(drive, rightE, RIGHT, true);
