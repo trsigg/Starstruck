@@ -1,5 +1,4 @@
 enum angleType { DEGREES, RADIANS, RAW };
-enum side { LEFT, RIGHT };
 
 int limit(int input, int min, int max) {
 	if (input <= max && input >= min) {

@@ -13,8 +13,9 @@
 #include "pd_autoMove.c"
 #include "motorGroup.c"
 
-parallel_drive drive;
 motorGroup feed;
+
+float debug[5] = {0, 0, 0, 0, 0};
 
 void autonomous() {
 	driveStraight(drive, 24);
@@ -27,8 +28,8 @@ task main() {
 	setLeftMotors(drive, 2, lfd, lbd);
 	setRightMotors(drive, 2, rfd, rbd);
 	attachGyro(drive, Yaw);
-	attachEncoderL(drive, leftE);
-	attachEncoderR(drive, rightE, true);
+	attachEncoder(drive, leftE, LEFT);
+	attachEncoder(drive, rightE, RIGHT, true);
 
 	initializeGroup(feed, 2, Seymore, FeedMe);
 	configureButtonInput(feed, Btn7U, Btn7D);
@@ -38,6 +39,12 @@ task main() {
 		updatePosition(drive);
 
 		takeInput(feed);
+
+		debug[0] = driveEncoderVal(drive);
+		debug[1] = driveEncoderVal(drive, LEFT);
+		debug[2] = driveEncoderVal(drive, RIGHT);
+		debug[3] = SensorValue[leftE];
+		debug[4] = SensorValue[rightE];
 
 		if (vexRT[Btn5U] == 1) autonomous();
 

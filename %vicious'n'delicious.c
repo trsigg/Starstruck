@@ -44,12 +44,12 @@ void pre_auton() {
   initializeDrive(drive);
   setLeftMotors(drive, 2, lfd, lbd);
   setRightMotors(drive, 2, rfd, rbd);
-  attachEncoderL(drive, leftEncoder);
-  attachEncoderR(drive, rightEncoder);
+  attachEncoder(drive, leftEncoder, LEFT);
+  attachEncoder(drive, rightEncoder, RIGHT);
 
   initializeGroup(lift, 6, lift1, lift2, lift3, lift4, lift5, lift6);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
-  attachPotentiometer(lift, RightPot);
+  addSensor(lift, RightPot);
   createTarget(lift, liftMax, liftTopBtn);
   createTarget(lift, liftMin, liftBottomBtn);
 }
