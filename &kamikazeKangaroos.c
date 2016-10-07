@@ -44,7 +44,7 @@ void pre_auton() {
   bStopTasksBetweenModes = true;
 
   initializeDrive(drive, false, 20, 10, 1, 120);
-  setLeftMotors(drive, 4, leftFront, leftBack, rightFront, rightBack);
+  setDriveMotors(drive, 4, leftFront, leftBack, rightFront, rightBack);
 
   initializeGroup(lift, 4, toprightLift, bottomrightLift, topleftLift, bottomleftLift);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, stillSpeedMagnitude, 127, -80);
