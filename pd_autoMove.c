@@ -128,7 +128,6 @@ typedef struct {
 	float a, b, c; //constants in equation for determining motor power
 	float totalDist; //distance traveled so far
 	int direction; //sign of distance
-	float error; //calculated from gyro or encoders
 	long timer; //for tracking timeout
 } driveStruct;
 
@@ -139,24 +138,30 @@ bool drivingComplete() {
 }
 
 void driveStraightRuntime() {
+	float leftDist = driveEncoderVal(autoDrive, LEFT, driveData.rawValue);
+	float rightDist = driveEncoderVal(autoDrive, RIGHT, driveData.rawValue);
+	driveData.totalDist += (leftDist + rightDist) / 2;
+
+	//calculate error value and correction coefficient
+	float error;
+
+	switch (driveData.correctionType) {
+		case ENCODER:
+			driveData.error = rightDist - leftDist;
+			break;
+		case GYRO:
+			error = sin(gyroVal(autoDrive, RADIANS)); //not sure if this is the right approach, but...
+			break;
+		default:
+			error = 0;
+	}
+
+	float slaveCoeff = 1 + PID_runtime(driveData.pid, error);
+
 	int power = driveData.a*pow(driveData.totalDist, 2) + driveData.b*driveData.totalDist + driveData.c;
-	float slaveCoeff = 1 + PID_runtime(driveData.pid);
 
 	setDrivePower(autoDrive, slaveCoeff*driveData.direction*power, driveData.direction*power);
 
-	float leftDist = driveEncoderVal(autoDrive, LEFT, driveData.rawValue);
-	float rightDist = driveEncoderVal(autoDrive, RIGHT, driveData.rawValue);
-
-	//calculate error value
-	if (driveData.correctionType == GYRO) {
-		driveData.error = sin(gyroVal(autoDrive, RADIANS));
-	} else if (driveData.correctionType == ENCODER) {
-		driveData.error = rightDist - leftDist;
-	} else {
-		driveData.error = 0;
-	}
-
-	driveData.totalDist += (leftDist + rightDist) / 2;
 	if (driveEncoderVal(autoDrive) > driveData.minSpeed) driveData.timer = resetTimer(); //track timeout state
 	resetDriveEncoders(autoDrive);
 }
