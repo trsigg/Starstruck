@@ -77,10 +77,12 @@ void addSensor(motorGroup *group, tSensors sensor, bool reversed=false) {
 			group->hasPotentiometer = true;
 			group->potentiometer = sensor;
 			group->potentiometerReversed = reversed;
+			break;
 		case sensorQuadEncoder:
 			group->hasEncoder = true;
 			group->encoder = sensor;
 			group->encoderReversed = reversed;
+			break;
 	}
 }
 
