@@ -1,8 +1,12 @@
+//TODO: change ramping to be handled by rampHandler
+//TODO: add #defined constants to defaults lists
+
 #define autoDrive drive
 
 #include "coreIncludes.c"
 #include "parallelDrive.c"
 #include "PID.c"
+#include "rampHandler.c"
 #include "timer.c"
 
 //turn defaults
@@ -26,14 +30,13 @@ float defDriveFloats[4] = { 0.25, 0.25, 0.25, 3 }; //kP, kI, kD, minSpeed
 
 parallel_drive autoDrive;
 
-
 //turning region
 typedef struct {
 	float angle; //positive for clockwise, negative for counterclockwise
+	rampHandler ramper; //used for ramping motor powers
 	int waitAtEnd; //delay after finishing turn (default 100ms for braking)
 	int brakePower; //the motor power while braking
 	bool isTurning; //whether turn is executing (useful for running as task)
-	float a, b, c; //ramping equation constants
 	int direction; //sign of angle
 } turnStruct;
 
@@ -69,26 +72,24 @@ task turnTask() {
 	turnEnd();
 }
 
-void _turn_(parallel_drive &drive, float angle, float a, float b, float c, bool runAsTask=false, int waitAtEnd=100, int brakePower=20) { //Internal function. Use at your own risk.
-	if (drive.hasGyro) {
-		//initialize variables
-		turnData.angle = abs(angle);
-		turnData.a = a;
-		turnData.b = b;
-		turnData.c = c;
-		turnData.direction = sgn(angle);
-		turnData.waitAtEnd = waitAtEnd;
-		turnData.isTurning = true;
+void turn(parallel_drive &drive, float angle, angleType angleType=defAngleType, bool runAsTask=defTurnRunAsTask, int initialPower=defTurnInts[0], int maxPower=defTurnInts[1], int finalPower=defTurnInts[2], int waitAtEnd=defTurnInts[3], int brakePower=defTurnInts[4]) {
+	//initialize variables
+	turnData.angle = abs(angle);
+	turnData.a = a;
+	turnData.b = b;
+	turnData.c = c;
+	turnData.direction = sgn(angle);
+	turnData.waitAtEnd = waitAtEnd;
+	turnData.isTurning = true;
 
-		resetGyro(autoDrive);
+	resetGyro(autoDrive);
 
-		if (runAsTask) {
-			startTask(turnTask);
-		}
-		else {
-			while (!turnIsComplete()) { turnRuntime(); }
-			turnEnd();
-		}
+	if (runAsTask) {
+		startTask(turnTask);
+	}
+	else {
+		while (!turnIsComplete()) { turnRuntime(); }
+		turnEnd();
 	}
 }
 
