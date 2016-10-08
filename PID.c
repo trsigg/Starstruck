@@ -10,7 +10,7 @@ typedef struct {
 		float prevError;
 } PID;
 
-void initializePID(PID *pid, float kP, float kI, float kD, float target, int minSampleTime=30, bool inputUpdated=true, float integralMin=NULL, float integralMax=NULL) {
+void initializePID(PID *pid, float target, float kP, float kI, float kD, int minSampleTime=30, bool inputUpdated=true, float integralMin=NULL, float integralMax=NULL) {
 	pid->kP = kP;
 	pid->kI = kI;
 	pid->kD = kD;

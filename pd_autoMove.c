@@ -72,7 +72,6 @@ task turnTask() {
 void _turn_(parallel_drive &drive, float angle, float a, float b, float c, bool runAsTask=false, int waitAtEnd=100, int brakePower=20) { //Internal function. Use at your own risk.
 	if (drive.hasGyro) {
 		//initialize variables
-		autoDrive = drive;
 		turnData.angle = abs(angle);
 		turnData.a = a;
 		turnData.b = b;
@@ -198,7 +197,6 @@ void setCorrectionType(correctionType type) {
 
 void _driveStraight_(parallel_drive &drive, float distance, float a, float b, float c, bool runAsTask=false, float kP=0.25, float kI=0.25, float kD=0.25, correctionType correctionType=AUTO, bool rawValue=false, float minSpeed=3, int timeout=800, int waitAtEnd=250, int sampleTime=50) {
 	//initialize variables
-	autoDrive = drive;
 	driveData.distance = abs(distance);
 	driveData.a = a;
 	driveData.b = b;
@@ -210,12 +208,7 @@ void _driveStraight_(parallel_drive &drive, float distance, float a, float b, fl
 	driveData.waitAtEnd = waitAtEnd;
 	driveData.sampleTime = sampleTime;
 	driveData.isDriving = true;
-	//configure PID
-	driveData.pid.input = &(driveData.error);
-	driveData.pid.kP = kP;
-	driveData.pid.kI = kI;
-	driveData.pid.kD = kD;
-	driveData.pid.target = 0;
+	initializePID(driveData.pid, 0, kP, kI, kD);
 
 	driveData.totalDist = 0;
 	driveData.error = 0;
