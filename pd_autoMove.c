@@ -12,7 +12,7 @@ bool defTurnRunAsTask = false;
 int defTurnInts[5] = { 40, 100, -100, 100, 20 }; //initialPower, maxPower, finalPower, waitAtEnd, brakePower
 //end turn defaults
 
-typedef enum correctionType { NONE, GYRO, ENCODER, AUTO };
+enum correctionType { NONE, GYRO, ENCODER, AUTO };
 
 //drive defaults
 #define DRIVE_BRAKE_POWER 30 //power used during driveStraight braking

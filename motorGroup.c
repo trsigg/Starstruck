@@ -4,7 +4,7 @@
 
 #define DEFAULT_TIMEOUT 15
 
-typedef enum controlType { NONE, BUTTON, JOYSTICK };
+enum controlType { NONE, BUTTON, JOYSTICK };
 
 typedef struct {
 	tMotor motors[12];
