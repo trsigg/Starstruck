@@ -12,8 +12,7 @@ motorGroup feed;
 
 void setup() {
 	initializeDrive(drive);
-	setLeftMotors(drive, 1, ld);
-	setRightMotors(drive, 1, rd);
+	setDriveMotors(drive, 2, ld, rd);
 
 	initializeGroup(feed, 2, feedMe, seymour);
 	configureButtonInput(feed, Btn6U, Btn6D);

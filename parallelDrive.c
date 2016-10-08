@@ -5,7 +5,7 @@
 	3. To create drive, include the following lines in your code:
 			| parallel_drive driveName;
 			| initializeDrive(driveName);
-			| setLeftMotors(driveName, numLeftMotors, left1, left2, left3, etc.);
+			| setDriveMotors(driveName, numLeftMotors, left1, left2, left3, etc.);
 			| setRightMotors(driveName, numRightMotors, right1, right2, right3, etc.);
 	   Any valid variable name can be substituted for driveName
 	   numLeftMotors and numRightMotors are the number of motors on that side of the drive (Maximum of 6)
