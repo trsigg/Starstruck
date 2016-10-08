@@ -1,39 +1,3 @@
-/*///////////////  INSTRUCTIONS  /////////////////
-	1. Save this file, timer.c, coreIncludes.c, and motorGroup.c in the same directory as your code
-	2. Include this line near the top of your code:
-			| #include "paralleldrive.c"
-	3. To create drive, include the following lines in your code:
-			| parallel_drive driveName;
-			| initializeDrive(driveName);
-			| setDriveMotors(driveName, numLeftMotors, left1, left2, left3, etc.);
-			| setRightMotors(driveName, numRightMotors, right1, right2, right3, etc.);
-	   Any valid variable name can be substituted for driveName
-	   numLeftMotors and numRightMotors are the number of motors on that side of the drive (Maximum of 6)
-	   Motor names (right1, right2, left1, left2, etc...) should correspond to the names assigned in motor setup.
-	   The optional arguments of initializeDrive can be used to further configure the drive
-	   	e.g. a user creating a drive with ramping and quadratic input mapping would substitute the second line of code with:
-	   	| initializeDrive(driveName, true, 20, 10, 2);
-	4. Whenever the drive should be updated (probably once every input cycle) include the following line of code
-			| driveRuntime(driveName);
-		Where driveName is the same as in the previous step
-	5. To explicitly set drive power, use setDrivePower(driveName, leftPower, rightPower), setRightPower(driveName, power), or setLeftPower(driveName, power)
-	6. To attach sensors, call attachGyro(driveName, gyro), attachEncoderL(driveName, leftEncoder), or attachEncoderR(driveName, rightEncoder), where gyro, leftEncoder, and rightEncoder are the names assigned in sensor setup
-		The attachEncoder functions also accept wheelDiameter and gearRatio arguments. These default to 3.25" and 1, and are used to convert encoder values to distance ones.
-	7. To explicitly control how encoders are used for distance measurement, call setEncoderConfig(driveName, config) where config is NONE, LEFT, RIGHT, or AVERAGE
-	8. To access a sensor value, call encoderVal(driveName), encoderVal_L(driveName), encoderVal_R(driveName), gyroVal(driveName), or absAngle(driveName).
-		Encoder values are converted into distance ones unless optional rawValue argument is set to true.
-		The optional angleType argument accepts DEGREES, RADIANS, or RAW, and controls the output format of gyroVal() and absAngle().
-		absAngle() returns the absolute gyro reading, which stays constant even when the gyro is reset.
-	9. To reset a sensor, call resetEncoders(driveName), resetLeft(driveName), resetRight(driveName), resetGyro(driveName), or resetAbsAngle(driveName).
-		To set a sensor to a value other than zero, use the optional resetVal argument. To specify the input format for the gyro, use the angleType argument.
-	10.To set the robot's position, call setRobotPosition(driveName, x, y, theta);
-	11.To have the robot's position automatically updated (very experimental feature), include the following line of code in the main loop
-			| updatePosition(driveName);
-		This function returns a robotPosition object.
-	12.To auto-calculate a drive's width, write a test program creating a parallel drive with a gyro and at least one encoder.
-		The function calculateWidth(driveName) will cause the robot to turn several times, using gyro and encoder values to calculate the width of the drive-> It returns a float.
-*/
-
 #include "coreIncludes.c"
 #include "timer.c"
 #include "motorGroup.c"

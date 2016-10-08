@@ -1,28 +1,3 @@
-/*///////////////  INSTRUCTIONS  /////////////////
-
-
-	1. Save this file as well as coreIncludes.c, parallelDrive.c, PID.c, and timer.c in the same directory as your code
-
-	2. Include this line near the top of your code:
-			| #include "pd_autoMove.c"
-
------------------  FOR TURNING  -----------------
-	1. Call turn(driveName, angle) where driveName is a parallel_drive object with a gyro attached
-	    Optional arguments can be used to configure the angle input type, whether to run as a task or function,
-	    the initial and maximum motor powers during the maneuver, and the duration of the delay at the end of the turn
-
-	2. The variable turnData.isTurning holds the status of the turn (true if turning, false otherwise)
-
------------------  FOR DRIVING  -----------------
-	1. Call driveStraight(driveName, distance) where driveName is a parallel_drive object and distance is in either encoder clicks or inches
-		Optional arguments can be used to configure whether to run as a task or function, the initial and maximum motor powers during the maneuver, PID correction coefficients, sensors used for correction,
-		whether distance is measured in inches or encoder clicks, the minimum speed necessary to avoid a timeout (distance/second), the timeout duration, the delay at the end of a drive maneuver, sample time, and brake power
-
-	2. The variable driveData.isDriving holds the status of the maneuver (true if driving, false otherwise)
-
-	Note: the functions _turn_() and _driveStraight_() are much less user friendly, but can be used in place of turn() and driveStraight() to more finely configure robot behavior
-*/
-
 #define autoDrive drive
 
 #include "coreIncludes.c"

@@ -1,26 +1,3 @@
-/*///////////////  INSTRUCTIONS  /////////////////
-
-
-	1. Save this file in the same directory as your code
-
-	2. Include this line near the top of your code:
-			| #include "PID.c"
-
-	3. To create PID controller, include the following lines in your code:
-			| PID pidName;
-			| initializePID(pidName, &input, kP, kI, kD, target);
-		 Where pidName can be any legal variable name; input is the variable storing the input value; kP, kI, and kD are tuning constants; and target is the target value
-		 To use input as the error value, set target to 0
-		 The optional arguments can be used to configure the minimum sample time and initial state of the inputUpdated variable
-
-	4. Whenever the controller should be updated (probably once every input cycle) include the following line of code:
-			| PID_runtime(pidName);
-	    Where pidName is the same as in the previous step
-
-	5. To change the target value of the PID loop, use
-			| pidName.target = newTarget;
-*/
-
 typedef union {
 	struct {
 		float *input;

@@ -1,19 +1,3 @@
-/*///////////////  INSTRUCTIONS  /////////////////
-	1. Save this file in the same directory as your code
-	2. Include this line near the top of your code:
-			| #include "motorgroup.c"
-	3. To create group, include the following lines in your code:
-			| motorGroup groupName;
-			| initializeGroup(groupName, numMotors, motor1, motor2, motor3, etc.);
-	4. To configure the control scheme, use configureButtonInput(groupName, posBtn, negBtn) or configureJoystickInput(groupName, joystick)
-		The optional arguments for the first can be used to configure the powers associated with the buttons
-		The optional argumetns for the second can be used to configure the deadband, ramping, and equation mapping joystick inputs to motor powers
-	5. To set motor powers based on user input, use takeInput(groupName)
-	6. To directly set motor powers, use setPower(groupName, power)
-	7. To attach a sensor, use attachEncoder(groupName, encodername) or attachPotentiometer(groupName, potentiometerName)
-	8. To access the value of a sensor, use encoderVal(groupName) or potentiometeVal(groupName);
-*/
-
 #define numTargets 4
 
 #include "timer.c"
