@@ -146,7 +146,7 @@ void driveStraightRuntime() {
 
 	switch (driveData.correctionType) {
 		case ENCODER:
-			driveData.error = rightDist - leftDist;
+			error = rightDist - leftDist;
 			break;
 		case GYRO:
 			error = sin(gyroVal(autoDrive, RADIANS)); //not sure if this is the right approach, but...
@@ -211,7 +211,6 @@ void _driveStraight_(parallel_drive &drive, float distance, float a, float b, fl
 	initializePID(driveData.pid, 0, kP, kI, kD);
 
 	driveData.totalDist = 0;
-	driveData.error = 0;
 
 	if (correctionType == AUTO) {
 		setCorrectionType(ENCODER);
