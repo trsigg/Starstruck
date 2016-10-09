@@ -18,11 +18,10 @@ int debug;
 motorGroup feed;
 
 void autonomous() {
-	driveStraight(drive, 24);
-	//debug = gyroVal(drive);
-	turn(drive, -90);
-	debug = gyroVal(drive) ;//- debug;
-	driveStraight(drive, 48);
+	//turn(-45);
+	//driveStraight(3*12*sqrt(2));
+	//turn(-135, DEGREES, defTurnInts[0], defTurnInts[1], -50);
+	driveStraight(3*12);
 }
 
 task main() {
@@ -36,8 +35,8 @@ task main() {
 	configureButtonInput(feed, Btn7U, Btn7D);
 
 	while (true) {
-		driveRuntime(drive);
-		updatePosition(drive);
+		//driveRuntime(drive);
+		//updatePosition(drive);
 
 		takeInput(feed);
 

@@ -22,6 +22,7 @@ void initializePID(PID *pid, float target, float kP, float kI, float kD, int min
 	pid->integralMin = integralMin;
 	pid->integralMax = integralMax;
 	pid->integral = 0;
+	pid->prevError = 0;
 }
 
 float PID_runtime(PID *pid, float input) {
