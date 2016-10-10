@@ -24,7 +24,7 @@ enum correctionType { NONE, GYRO, ENCODER, AUTO };
 correctionType defCorrectionType = AUTO;
 bool defDriveBools[2] = { false, false }; //runAsTask, rawValue
 int defDriveInts[6] = { 40, 120, 0, 1000, 100, 50 }; //initialPower, maxPower/kP, finalPower/kD, timeout, waitAtEnd, sampleTime
-float defDriveFloats[4] = { 0.25, 0.25, 0.25, 3 }; //kP, kI, kD, minSpeed
+float defDriveFloats[4] = { 0, 0, 0, 3 }; //kP, kI, kD, minSpeed
 //end drive defaults
 
 
@@ -71,7 +71,7 @@ task turnTask() {
 	turnEnd();
 }
 
-void turn(float angle, angleType angleType=defAngleType, bool runAsTask=defTurnRunAsTask, int in1=defTurnInts[0], int in2=defTurnInts[1], int in3=defTurnInts[2], int waitAtEnd=defTurnInts[3], int brakePower=defTurnInts[4]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
+void turn(float angle, int in1=defTurnInts[0], int in2=defTurnInts[1], int in3=defTurnInts[2], bool runAsTask=defTurnRunAsTask, angleType angleType=defAngleType, int waitAtEnd=defTurnInts[3], int brakePower=defTurnInts[4]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
 	//initialize variables
 	turnData.angle = abs(angle);
 	initializeRampHandler(turnData.ramper, angle, in1, in2, in3);
