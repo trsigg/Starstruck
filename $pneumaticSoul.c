@@ -1,6 +1,7 @@
 #pragma config(Sensor, in1,    liftPot,        sensorPotentiometer)
-#pragma config(Sensor, dgtl1,  hippo,          sensorDigitalOut)
-#pragma config(Sensor, dgtl2,  hungryHungry,   sensorDigitalOut)
+#pragma config(Sensor, dgtl1,  pneumaticSoul,  sensorDigitalOut)
+#pragma config(Sensor, dgtl2,  leftEnc,        sensorQuadEncoder)
+#pragma config(Sensor, dgtl4,  rightEnc,       sensorQuadEncoder)
 #pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           lbd,           tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           lfd,           tmotorVex393_MC29, openLoop)
@@ -19,6 +20,7 @@
 
 #include "buttonTracker.c"
 #include "parallelDrive.c"
+#include "pd_autoMove.c"
 #include "motorGroup.c"
 
 //buttons
@@ -34,15 +36,23 @@
 //constants
 #define stillSpeedMagnitude 10
 
-parallel_drive drive;
 motorGroup lift;
 motorGroup elevator;
+
+void autoTest() {
+	turn(-45);
+	driveStraight(3*12*sqrt(2));
+	turn(-135, defTurnInts[0], defTurnInts[1], -40);
+	driveStraight(3*12);
+}
 
 void pre_auton() {
 	bStopTasksBetweenModes = true;
 
 	initializeDrive(drive);
   setDriveMotors(drive, 4, lfd, lbd, rfd, rbd);
+  attachEncoder(drive, leftEnc, LEFT);
+  attachEncoder(drive, rightEnc, RIGHT, true, 4);
 
   initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, stillSpeedMagnitude);
@@ -66,7 +76,9 @@ task usercontrol() {
   	takeInput(lift);
 
 		if (newlyPressed(toggleClawBtn)) {
-			SensorValue[hungryHungry] = 1 - SensorValue[hungryHungry];
+			SensorValue[pneumaticSoul] = 1 - SensorValue[pneumaticSoul];
 		}
+
+		if (vexRT[Btn8U] == 1) autoTest();
   }
 }
