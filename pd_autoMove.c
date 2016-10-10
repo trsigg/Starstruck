@@ -140,7 +140,11 @@ void driveStraightRuntime() {
 
 	switch (driveData.correctionType) {
 		case ENCODER:
+<<<<<<< HEAD
 			error = driveData.rightDist - driveData.leftDist;
+=======
+			error = rightDist - leftDist;
+>>>>>>> master
 			break;
 		case GYRO:
 			error = sin(gyroVal(autoDrive, RADIANS)); //not sure if this is the right approach, but...
@@ -187,7 +191,11 @@ void setCorrectionType(correctionType type) {
 	}
 }
 
+<<<<<<< HEAD
 void driveStraight(float distance, bool runAsTask=defDriveBools[0], int in1=defDriveInts[0], int in2=defDriveInts[1], int in3=defDriveInts[2], float kP=defDriveFloats[0], float kI=defDriveFloats[1], float kD=defDriveFloats[2], correctionType correctionType=defCorrectionType, bool rawValue=defDriveBools[1], float minSpeed=defDriveFloats[3], int timeout=defDriveInts[3], int waitAtEnd=defDriveInts[4], int sampleTime=defDriveInts[5]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
+=======
+void _driveStraight_(float distance, float a, float b, float c, bool runAsTask=false, float kP=0.25, float kI=0.25, float kD=0.25, correctionType correctionType=AUTO, bool rawValue=false, float minSpeed=3, int timeout=800, int waitAtEnd=250, int sampleTime=50) {
+>>>>>>> master
 	//initialize variables
 	driveData.distance = abs(distance);
 	initializeRampHandler(driveData.ramper, distance, in1, in2, in3);
@@ -230,6 +238,16 @@ void driveStraight(float distance, bool runAsTask=defDriveBools[0], int in1=defD
 	}
 }
 
+<<<<<<< HEAD
+=======
+void driveStraight(float distance, bool runAsTask=defDriveBools[0], int initialPower=defDriveInts[0], int maxPower=defDriveInts[1], int finalPower=defDriveInts[2], float kP=defDriveFloats[0], float kI=defDriveFloats[1], float kD=defDriveFloats[2], correctionType correctionType=defCorrectionType, bool rawValue=defDriveBools[1], float minSpeed=defDriveFloats[3], int timeout=defDriveInts[3], int waitAtEnd=defDriveInts[4], int sampleTime=defDriveInts[5]) {
+	float a = (pow(distance, 2) * (finalPower+initialPower-2*maxPower) - 2*sqrt(pow(distance, 4) * (finalPower-maxPower) * (initialPower-maxPower))) / pow(distance, 4);
+	float b = ((finalPower-initialPower)/distance - a*distance) * sgn(distance);
+
+	_driveStraight_(distance, a, b, initialPower, runAsTask, kP, kI, kD, correctionType, rawValue, minSpeed, timeout, waitAtEnd, sampleTime);
+}
+
+>>>>>>> master
 void setDriveDefaults(bool runAsTask, int initialPower=defDriveInts[0], int maxPower=defDriveInts[1], int finalPower=defDriveInts[2], float kP=defDriveFloats[0], float kI=defDriveFloats[1], float kD=defDriveFloats[2], correctionType correctionType=defCorrectionType, bool rawValue=defDriveBools[1], float minSpeed=defDriveFloats[3], int timeout=defDriveInts[3], int waitAtEnd=defDriveInts[4], int sampleTime=defDriveInts[5]) {
 	defCorrectionType = correctionType;
 
