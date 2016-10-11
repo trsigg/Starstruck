@@ -13,22 +13,21 @@
 #include "pd_autoMove.c"
 #include "motorGroup.c"
 
-parallel_drive drive;
 motorGroup feed;
 
 void autonomous() {
-	driveStraight(drive, 24);
-	turn(drive, -90);
-	driveStraight(drive, 48);
+	turn(-45);
+	driveStraight(3*12*sqrt(2));
+	turn(-135, defTurnInts[0], defTurnInts[1], -40);
+	driveStraight(3*12);
 }
 
 task main() {
 	initializeDrive(drive);
-	setLeftMotors(drive, 2, lfd, lbd);
-	setRightMotors(drive, 2, rfd, rbd);
+	setDriveMotors(drive, 4, lfd, lbd, rfd, rbd);
 	attachGyro(drive, Yaw);
-	attachEncoderL(drive, leftE);
-	attachEncoderR(drive, rightE, true);
+	attachEncoder(drive, leftE, LEFT);
+	attachEncoder(drive, rightE, RIGHT, true);
 
 	initializeGroup(feed, 2, Seymore, FeedMe);
 	configureButtonInput(feed, Btn7U, Btn7D);

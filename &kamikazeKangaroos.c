@@ -1,10 +1,10 @@
 #pragma config(Sensor, in1,    liftPot,        sensorPotentiometer)
+#pragma config(Sensor, dgtl1,  claw1,          sensorDigitalOut)
+#pragma config(Sensor, dgtl2,  claw2,          sensorDigitalOut)
 #pragma config(Motor,  port1,           rightFront,    tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           rightBack,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           toprightLift,  tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,           bottomrightLift, tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port5,           clawRight,     tmotorVex393_MC29, openLoop, reversed)
-#pragma config(Motor,  port6,           clawLeft,      tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port7,           bottomleftLift, tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port8,           topleftLift,   tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port9,           leftFront,     tmotorVex393_MC29, openLoop, reversed)
@@ -18,42 +18,41 @@
 #include "parallelDrive.c"
 #include "motorGroup.c"
 
-#define clawInBtn Btn6U
-#define clawOutBtn Btn6D
+#define openClawBtn Btn6U
+#define closeClawBtn Btn6D
 #define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
 #define liftTopBtn Btn7U
 #define liftBottomBtn Btn7D
 
 #define liftMax 3000
-#define liftMin 2100
-#define liftAbsMax 800
-#define liftAbsMin 2500
-#define clawStillSpeed 15
+#define liftMin 2150
+#define liftAbsMin 1900
+#define liftMiddle 2300
 
-//debug
-int potpos[2] = {0, 0};
-//debug
+#define stillSpeedMagnitude 10
 
 parallel_drive drive;
 motorGroup lift;
-motorGroup claw;
+
+void setClawState(bool val) {
+	SensorValue[claw1] = val;
+  SensorValue[claw2] = val;
+}
 
 void pre_auton() {
   bStopTasksBetweenModes = true;
 
   initializeDrive(drive, false, 20, 10, 1, 120);
-  setLeftMotors(drive, 2, leftFront, leftBack);
-  setRightMotors(drive, 2, rightFront, rightBack);
+  setDriveMotors(drive, 4, leftFront, leftBack, rightFront, rightBack);
 
   initializeGroup(lift, 4, toprightLift, bottomrightLift, topleftLift, bottomleftLift);
-  configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -80);
-  attachPotentiometer(lift, liftPot, true);
+  configureButtonInput(lift, liftUpBtn, liftDownBtn, stillSpeedMagnitude, 127, -80);
+  addSensor(lift, liftPot, true);
   createTarget(lift, liftMax, liftTopBtn);
   createTarget(lift, liftMin, liftBottomBtn);
+  //setAbsolutes(lift, liftAbsMin);
   lift.timeout = 65;
-
-  initializeGroup(claw, 2, clawLeft, clawRight);
 }
 
 task autonomous() {
@@ -61,37 +60,16 @@ task autonomous() {
 }
 
 task usercontrol() {
-  bool clawClosed = false;
-  //debug
-  bool targeting = false;
-  //end debug
-
-  while (true) {
+	while (true) {
     driveRuntime(drive);
 
+    lift.stillSpeed = stillSpeedMagnitude * (potentiometerVal(lift)>liftMiddle ? 1 : -1);
     takeInput(lift);
 
-    //claw
-    if (vexRT[clawInBtn] == 1) {
-      clawClosed = true;
-      setPower(claw, 127);
-    } else if (vexRT[clawOutBtn] == 1) {
-      clawClosed = false;
-      setPower(claw, -127);
-    } else {
-      setPower(claw, clawClosed ? clawStillSpeed : 0);
+    if (vexRT[openClawBtn] == 1) {
+    	setClawState(1);
+    } else if (vexRT[closeClawBtn] == 1) {
+    	setClawState(0);
     }
-
-    //debug
-    if (lift.targetIndex==-1) {
-    	if (targeting) {
-    		potpos[0] = potentiometerVal(lift);
-    		potpos[1] = SensorValue[liftPot];
-    		targeting = false;
-    	}
-    } else {
-    	targeting = true;
-    }
-    //end debug
   }
 }
