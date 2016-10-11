@@ -3,7 +3,7 @@
 #pragma config(Sensor, dgtl3,  leftEncoder,    sensorQuadEncoder)
 #pragma config(Sensor, dgtl6,  clawPneu1,      sensorDigitalOut)
 #pragma config(Sensor, dgtl7,  clawPneu2,      sensorDigitalOut)
-#pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
+#pragma config(Motor,  port1,           lbd,           tmotorVex393_HBridge, openLoop)
 #pragma config(Motor,  port2,           lfd,           tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           lift1,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port4,           lift2,         tmotorVex393_MC29, openLoop, reversed)
@@ -39,9 +39,9 @@ void pre_auton() {
   bStopTasksBetweenModes = true;
 
   initializeDrive(drive);
-  setMotors(drive, 4, lfd, lbd, rfd, rbd);
-  attachEncoder(drive, leftEncoder);
-  attachEncoder(drive, rightEncoder);
+  setDriveMotors(drive, 4, lfd, lbd, rfd, rbd);
+  attachEncoder(drive, leftEncoder, LEFT, 4);
+  attachEncoder(drive, rightEncoder, RIGHT);
 
   initializeGroup(lift, 6, lift1, lift2, lift3, lift4, lift5, lift6);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -90);
@@ -50,10 +50,10 @@ void pre_auton() {
   createTarget(lift, liftMin, liftBottomBtn);
 }
 
-
-
 task autonomous() {
-  AutonomousCodePlaceholderForTesting();
+	driveStraight(24);
+	turn(-90);
+  //AutonomousCodePlaceholderForTesting();
 }
 
 task usercontrol() {
