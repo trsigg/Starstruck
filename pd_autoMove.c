@@ -10,21 +10,19 @@
 #include "timer.c"
 
 //turn defaults
-#define TURN_BRAKE_DURATION 100 //maximum duration of braking at end of turn
 angleType defAngleType = DEGREES;
-bool defTurnRunAsTask = false;
-int defTurnInts[5] = { 40, 100, -80, 100, 20 }; //initialPower, maxPower/kP, finalPower/kD, waitAtEnd, brakePower
+bool defTurnBools[2] = { false, true }; //runAsTask, useGyro
+int defTurnInts[3] = { 20, 100, 100 }; //brakePower, waitAtEnd, brakeDuration
+float defTurnFloats[3] = { 40, 100, -80 }; //initialPower, maxPower/kP, finalPower/kD
 //end turn defaults
 
 enum correctionType { NONE, GYRO, ENCODER, AUTO };
 
 //drive defaults
-#define DRIVE_BRAKE_POWER 30 //power used during driveStraight braking
-#define DRIVE_BRAKE_DURATION 100 //maximum duration of braking at end of driveStraight
 correctionType defCorrectionType = AUTO;
 bool defDriveBools[2] = { false, false }; //runAsTask, rawValue
-int defDriveInts[6] = { 40, 120, 0, 1000, 100, 50 }; //initialPower, maxPower/kP, finalPower/kD, timeout, waitAtEnd, sampleTime
-float defDriveFloats[4] = { 0, 0, 0, 3 }; //kP, kI, kD, minSpeed
+int defDriveInts[5] = { 1000, 30, 100, 100, 50 }; //timeout, brakePower, waitAtEnd, brakeDuration, sampleTime
+float defDriveFloats[7] = { 120, 0, 3, 0, 0, 0, 40 }; //initialPower, maxPower/kP_r, finalPower/kD_r, kP_c, kI_c, kD_c, minSpeed
 //end drive defaults
 
 
@@ -35,6 +33,7 @@ typedef struct {
 	float angle; //positive for clockwise, negative for counterclockwise
 	rampHandler ramper; //used for ramping motor powers
 	int waitAtEnd; //delay after finishing turn (default 100ms for braking)
+	int brakeDuration; //maximum duration of braking at end of turn
 	int brakePower; //the motor power while braking
 	bool isTurning; //whether turn is executing (useful for running as task)
 	int direction; //sign of angle
@@ -55,11 +54,11 @@ void turnRuntime() {
 void turnEnd() {
 	//brake
 	setDrivePower(autoDrive, -turnData.direction * turnData.brakePower, turnData.direction * turnData.brakePower);
-	int brakeDelay = limit(0, TURN_BRAKE_DURATION, turnData.waitAtEnd);
+	int brakeDelay = limit(0, turnData.brakeDuration, turnData.waitAtEnd);
 	wait1Msec(brakeDelay);
 	setDrivePower(autoDrive, 0, 0);
 
-	wait1Msec(turnData.waitAtEnd>TURN_BRAKE_DURATION ? turnData.waitAtEnd-TURN_BRAKE_DURATION : 0);
+	wait1Msec(turnData.waitAtEnd>turnData.brakeDuration ? turnData.waitAtEnd-turnData.brakeDuration : 0);
 	turnData.isTurning = false;
 }
 
@@ -71,12 +70,13 @@ task turnTask() {
 	turnEnd();
 }
 
-void turn(float angle, int in1=defTurnInts[0], int in2=defTurnInts[1], int in3=defTurnInts[2], bool runAsTask=defTurnRunAsTask, angleType angleType=defAngleType, int waitAtEnd=defTurnInts[3], int brakePower=defTurnInts[4]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
+void turn(float angle, float in1=defTurnFloats[0], float in2=defTurnFloats[1], float in3=defTurnFloats[2], bool runAsTask=defTurnBools[0], angleType angleType=defAngleType, bool useGyro=defTurnBools[1], int brakePower=defTurnInts[0], int waitAtEnd=defTurnInts[1], int brakeDuration=defTurnInts[2]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
 	//initialize variables
 	turnData.angle = abs(angle);
 	initializeRampHandler(turnData.ramper, angle, in1, in2, in3);
 	turnData.direction = sgn(angle);
 	turnData.waitAtEnd = waitAtEnd;
+	turnData.brakeDuration = brakeDuration;
 	turnData.isTurning = true;
 
 	resetGyro(autoDrive);
@@ -90,15 +90,6 @@ void turn(float angle, int in1=defTurnInts[0], int in2=defTurnInts[1], int in3=d
 		turnEnd();
 	}
 }
-
-void setTurnDefaults(angleType angleType, bool runAsTask=defTurnRunAsTask, int initialPower=defTurnInts[0], int maxPower=defTurnInts[1], int finalPower=defTurnInts[2], int waitAtEnd=defTurnInts[3], int brakePower=defTurnInts[4]) {
-	defAngleType = angleType;
-	defTurnRunAsTask = runAsTask;
-
-	int defInts[5] = { initialPower, maxPower, finalPower, waitAtEnd, brakePower };
-
-	defTurnInts = defInts;
-}
 //end turning region
 
 
@@ -110,6 +101,7 @@ typedef struct {
 	int timeout; //amount of time after which a drive action sensing lower speed than minSpeed ceases (ms)
 	int sampleTime; //time between motor power adjustments
 	int waitAtEnd; //duration of pause at end of driving
+	int brakeDuration; //maximum duration of braking at end of turn
 	int brakePower; // motor power during braking
 	correctionType correctionType; //which sensor inputs are used for correction
 	bool isDriving; //whether driving action is being executed (true if driving, false othrewise)
@@ -187,7 +179,7 @@ void setCorrectionType(correctionType type) {
 	}
 }
 
-void driveStraight(float distance, bool runAsTask=defDriveBools[0], int in1=defDriveInts[0], int in2=defDriveInts[1], int in3=defDriveInts[2], float kP=defDriveFloats[0], float kI=defDriveFloats[1], float kD=defDriveFloats[2], correctionType correctionType=defCorrectionType, bool rawValue=defDriveBools[1], float minSpeed=defDriveFloats[3], int timeout=defDriveInts[3], int waitAtEnd=defDriveInts[4], int sampleTime=defDriveInts[5]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
+void driveStraight(float distance, bool runAsTask=defDriveBools[0], float in1=defDriveFloats[0], float in2=defDriveFloats[1], float in3=defDriveFloats[2], float kP=defDriveFloats[3], float kI=defDriveFloats[4], float kD=defDriveFloats[5], correctionType correctionType=defCorrectionType, bool rawValue=defDriveBools[1], float minSpeed=defDriveFloats[3], int timeout=defDriveInts[6], int waitAtEnd=defDriveInts[4], int sampleTime=defDriveInts[5]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
 	//initialize variables
 	driveData.distance = abs(distance);
 	initializeRampHandler(driveData.ramper, distance, in1, in2, in3);
@@ -228,17 +220,5 @@ void driveStraight(float distance, bool runAsTask=defDriveBools[0], int in1=defD
 		}
 		driveStraightEnd();
 	}
-}
-
-void setDriveDefaults(bool runAsTask, int initialPower=defDriveInts[0], int maxPower=defDriveInts[1], int finalPower=defDriveInts[2], float kP=defDriveFloats[0], float kI=defDriveFloats[1], float kD=defDriveFloats[2], correctionType correctionType=defCorrectionType, bool rawValue=defDriveBools[1], float minSpeed=defDriveFloats[3], int timeout=defDriveInts[3], int waitAtEnd=defDriveInts[4], int sampleTime=defDriveInts[5]) {
-	defCorrectionType = correctionType;
-
-	bool defBools[2] = { runAsTask, rawValue };
-	int defInts[6] = { initialPower, maxPower, finalPower, timeout, waitAtEnd, sampleTime };
-	float defFloats[4] = { kP, kI, kD, minSpeed };
-
-	defDriveBools = defBools;
-	defDriveInts = defInts;
-	defDriveFloats = defFloats;
 }
 //end driveStraight region
