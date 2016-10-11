@@ -16,13 +16,13 @@
 #pragma competitionControl(Competition)
 #include "Vex_Competition_Includes.c"
 
-#include "buttonTracker.c"
 #include "parallelDrive.c"
 #include "pd_autoMove.c"
 #include "motorGroup.c"
 
 //buttons
-#define toggleClawBtn Btn6U //claw
+#define openClawBtn Btn6U //claw
+#define closeClawBtn Btn6U
 #define liftUpBtn Btn5U //lift
 #define liftDownBtn Btn5D
 #define elevatorUpBtn Btn7U //elevator
@@ -64,13 +64,13 @@ task usercontrol() {
 	while (true) {
   	driveRuntime(drive);
 
-  	takeInput(elevator);
-
   	lift.stillSpeed = stillSpeedMagnitude * (potentiometerVal(lift)>liftMiddle ? 1 : -1);
   	takeInput(lift);
 
-		if (newlyPressed(toggleClawBtn)) {
-			SensorValue[pneumaticSoul] = 1 - SensorValue[pneumaticSoul];
+		if (vexRT[openClawBtn] == 1) {
+			SensorValue[pneumaticSoul] = 1;
+		} else if (vexRT[closeClawBtn] == 1) {
+			SensorValue[pneumaticSoul] = 0;
 		}
 
 		if (vexRT[Btn8U] == 1) autoTest();
