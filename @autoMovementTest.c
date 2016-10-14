@@ -32,9 +32,6 @@ task main() {
 	initializeGroup(feed, 2, Seymore, FeedMe);
 	configureButtonInput(feed, Btn7U, Btn7D);
 
-	defTurnBools[1] = false;
-	drive.width = 13.5;
-
 	while (true) {
 		driveRuntime(drive);
 		updatePosition(drive);
