@@ -134,73 +134,104 @@ void setPower(motorGroup *group, int power) {
 	}
 }
 
-int takeInput(motorGroup *group, bool setMotors=true) {
+void getTargetInput(motorGroup *group) {
+	for (int i=0; i<numTargets; i++) {
+		if (group->targets[i] == -1) {
+			break;
+		} else if (vexRT[group->targetButtons[i]] == 1) {
+			group->timer = resetTimer();
+			group->targetIndex = i;
+			group->prevPos = potentiometerVal(group);
+		}
+	}
+}
+
+int handleTargets(motorGroup *group) {
 	int power = 0;
 
-	if (group->controlType == BUTTON) {
-		if (vexRT[group->posInput] == 1) {
-			power = group->upPower;
-			group->targetIndex = -1;
-		} else if (vexRT[group->negInput] == 1) {
-			power = group->downPower;
-			group->targetIndex = -1;
-		} else {
-			//check for target input
-			for (int i=0; i<numTargets; i++) {
-				if (group->targets[i] == -1) {
-					break;
-				} else if (vexRT[group->targetButtons[i]] == 1) {
-					group->timer = resetTimer();
-					group->targetIndex = i;
-					group->prevPos = potentiometerVal(group);
-				}
-			}
+	getTargetInput(group);
 
-			if (group->targetIndex == -1) {
-				power = group->stillSpeed;
-			} else {
-				//go to target
-				int newPos = potentiometerVal(group);
-				int target = group->targets[group->targetIndex];
+	if (group->targetIndex == -1) {
+		power = group->stillSpeed;
+	} else {
+		//go to target
+		int newPos = potentiometerVal(group);
+		int target = group->targets[group->targetIndex];
 
-				if (sgn(group->prevPos - target) == sgn(newPos - target)) {
-					power = newPos>target ? -127 : 127;
-					group->prevPos = newPos;
-					group->timer = resetTimer();
-				} else if (time(group->timer) > group->timeout) {
-					group->targetIndex = -1;
-					power = 0;
-				}
-			}
+		if (sgn(group->prevPos - target) == sgn(newPos - target)) {
+			power = newPos>target ? -127 : 127;
+			group->prevPos = newPos;
+			group->timer = resetTimer();
+		} else if (time(group->timer) > group->timeout) {
+			group->targetIndex = -1;
+			power = 0;
 		}
+	}
 
-		if ((potentiometerVal(group) < group->absMin && power<0) || (potentiometerVal(group) > group->absMax && power>0))
-			power = group->stillSpeed;
-	} else if (group->controlType == JOYSTICK) {
-		int input = vexRT[group->posInput];
-		power = sgn(input) * group->coeff * abs(pow(input, group->powMap)) / pow(127, group->powMap-1);
+	return power;
+}
 
-		if (abs(power) < group->deadband) power = 0;
+int handleButtonInput(motorGroup *group) {
+	int power = 0;
 
-		//handle ramping
-		if (group->isRamped) {
-			long now = nPgmTime;
-			int elapsed = now - group->lastUpdated;
-			int currentPower = motor[ group->motors[0] ];
+	if (vexRT[group->posInput] == 1) {
+		power = group->upPower;
+		group->targetIndex = -1;
+	} else if (vexRT[group->negInput] == 1) {
+		power = group->downPower;
+		group->targetIndex = -1;
+	} else {
+		power = handleTargets(group);
+	}
 
-			if (elapsed > group->msPerPowerChange) {
-				int maxDiff = elapsed / group->msPerPowerChange;
+	if ((potentiometerVal(group) < group->absMin && power<0) || (potentiometerVal(group) > group->absMax && power>0))
+		power = group->stillSpeed;
 
-				if (abs(currentPower - power) < maxDiff) {
-					group->lastUpdated = now;
-				} else {
-					power = (power>currentPower ? currentPower+maxDiff : currentPower-maxDiff);
-					group->lastUpdated = now - (elapsed % group->msPerPowerChange);
-				}
+	return power;
+}
+
+int handleJoystickInput(motorGroup *group) {
+	int power = 0;
+
+	int input = vexRT[group->posInput];
+	power = sgn(input) * group->coeff * abs(pow(input, group->powMap)) / pow(127, group->powMap-1);
+
+	if (abs(power) < group->deadband) power = 0;
+
+	//handle ramping
+	if (group->isRamped) {
+		long now = nPgmTime;
+		int elapsed = now - group->lastUpdated;
+		int currentPower = motor[ group->motors[0] ];
+
+		if (elapsed > group->msPerPowerChange) {
+			int maxDiff = elapsed / group->msPerPowerChange;
+
+			if (abs(currentPower - power) < maxDiff) {
+				group->lastUpdated = now;
+			} else {
+				power = (power>currentPower ? currentPower+maxDiff : currentPower-maxDiff);
+				group->lastUpdated = now - (elapsed % group->msPerPowerChange);
 			}
 		}
 	}
 
+	return power;
+}
+
+int takeInput(motorGroup *group, bool setMotors=true) {
+	int power = 0;
+
+	switch (group->controlType) {
+		case BUTTON:
+			power = handleButtonInput(group);
+			break;
+		case JOYSTICK:
+			power = handleJoystickInput(group);
+			break;
+	}
+
 	if (setMotors) setPower(group, power);
+
 	return power;
 }
