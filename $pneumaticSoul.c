@@ -46,13 +46,6 @@ motorGroup highLift;
 motorGroup claw;
 
 //autonomous region
-void autoTest() {
-	turn(-45);
-	driveStraight(3*12*sqrt(2));
-	turn(-135, defTurnInts[0], defTurnInts[1], -40);
-	driveStraight(3*12);
-}
-
 void pre_auton() {
 	bStopTasksBetweenModes = true;
 
@@ -67,13 +60,17 @@ void pre_auton() {
   addSensor(lowLift, lowLiftPot, true);
 
 	initializeGroup(highLift, 2, highLift1, highLift2);
+	configureButtonInput(highLift, Btn7U, Btn7D);
 	addSensor(highLift, highLiftPot);
 
   initializeGroup(claw, 2, claw1, claw2);
 }
 
 task autonomous() {
-  AutonomousCodePlaceholderForTesting();
+  turn(-45);
+	driveStraight(3*12*sqrt(2));
+	turn(-135, defTurnInts[0], defTurnInts[1], -40);
+	driveStraight(3*12);
 }
 //end autonomous region
 
@@ -83,12 +80,15 @@ void liftControl() {
 		fourBar = !fourBar;
 
 	lowLift.stillSpeed = liftStillSpeed * (potentiometerVal(lowLift)>liftMiddle ? 1 : -1);
-	short liftPower = takeInput(lowLift);
+	short lowLiftPower = takeInput(lowLift);
+	short highLiftPower = takeInput(highLift, false);
 
-	if (liftPower == liftStillSpeed) {
+	if (highLiftPower != 0) {
+		setPower(highLift, highLiftPower);
+	}	else if (lowLiftPower == liftStillSpeed) {
 		setPower(highLift, -5);
 	} else {
-		setPower(highLift, (fourBar ? liftPower : -5);
+		setPower(highLift, (fourBar ? lowLiftPower : -5);
 	}
 }
 
