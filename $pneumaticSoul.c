@@ -19,6 +19,8 @@
 #pragma competitionControl(Competition)
 #include "Vex_Competition_Includes.c"
 
+int wristPower = 100; //<--- Change this
+
 #include "buttonTracker.c"
 #include "parallelDrive.c"
 #include "pd_autoMove.c"
@@ -88,7 +90,7 @@ void liftControl() {
 	}	else if (lowLiftPower == liftStillSpeed) {
 		setPower(highLift, 5);
 	} else {
-		setPower(highLift, (fourBar ? -lowLiftPower : 5);
+		setPower(highLift, (fourBar ? lowLiftPower*wristPower/127 : -5);
 	}
 }
 
