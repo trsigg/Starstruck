@@ -134,6 +134,14 @@ void setPower(motorGroup *group, int power) {
 	}
 }
 
+void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {
+	short displacementSign = sgn(position - potentiometerVal(group));
+	setPower(group, displacementSign*maneuverPower);
+	while (sgn(position - potentiometerVal(group)) == displacementSign) {}
+	setPower(group, endPower);
+}
+
+//user input region
 void getTargetInput(motorGroup *group) {
 	for (int i=0; i<numTargets; i++) {
 		if (group->targets[i] == -1) {
@@ -235,3 +243,4 @@ int takeInput(motorGroup *group, bool setMotors=true) {
 
 	return power;
 }
+//end user input region
