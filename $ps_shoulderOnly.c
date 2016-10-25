@@ -31,18 +31,22 @@
 #define liftDownBtn Btn5D
 
 //positions
-#define liftMiddle 1010
+#define liftMiddle 795 //lift
+#define liftVert 3690
+#define clawOpenCutoff 1000 //claw
+#define clawClosedCutoff 200
 
 //constants
 #define liftStillSpeed 10
 #define clawStillSpeed 15
 
+//variables
 short clawSign = 1; //Sign of still speed. Positive if closed, negative if open
+bool clawAvailable = true; //task flags
 
 motorGroup lift;
 motorGroup claw;
 
-//autonomous region
 void pre_auton() {
 	bStopTasksBetweenModes = true;
 
@@ -54,20 +58,44 @@ void pre_auton() {
 
 	initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
-  addSensor(lift, liftPot, true);
+  addSensor(lift, liftPot);
 
   initializeGroup(claw, 2, claw1, claw2);
 }
 
+//autonomous region
+void deployClaw(int waitAtEnd=250) {
+	setDrivePower(drive, 127, 127);
+	wait1Msec(500);
+	setDrivePower(drive, -127, -127);
+	wait1Msec(750);
+	setDrivePower(drive, 0, 0);
+	wait1Msec(waitAtEnd);
+}
+
+task openClaw()
+
 task autonomous() {
+	//deploy stops
+	goToPosition(lift, 725);
+	goToPosition(lift, 525);
+
+  deployClaw();
+
+  driveStraight(5, true);
+  while (
   turn(-45);
-	driveStraight(3*12*sqrt(2));
-	turn(-135, defTurnInts[0], defTurnInts[1], -40);
-	driveStraight(3*12);
+  driveStraight(20);
 }
 //end autonomous region
 
 //user control region
+void liftControl() {
+	short potPos = potentiometerVal(lift);
+	lift.stillSpeed = liftStillSpeed * ((potPos<liftMiddle || potPos>liftVert) ? -1 : 1);
+	takeInput(lift);
+}
+
 void clawControl() {
 	if (vexRT[closeClawBtn] == 1) {
 		setPower(claw, 127);
@@ -84,7 +112,7 @@ task usercontrol() {
 	while (true) {
   	driveRuntime(drive);
 
-  	takeInput(lift);
+  	liftControl();
 
 		clawControl();
   }
