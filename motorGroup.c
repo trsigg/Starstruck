@@ -13,6 +13,8 @@ typedef struct {
 	TVexJoysticks posInput, negInput; //inputs. NegInput only assigned if using button control
 	//button control
 	int upPower, downPower, stillSpeed;
+	//execute maneuver
+	int targetPos, initialSign;
 	//joystick control
 	int deadband; //range of motor values around 0 for which motors are not engaged
 	bool isRamped; //whether group is ramped
@@ -132,6 +134,15 @@ void setPower(motorGroup *group, int power) {
 	for (int i=0; i<group->numMotors; i++) {
 		motor[group->motors[i]] = power;
 	}
+}
+
+void executeManeuver(motorGroup *group, ) {
+	setPower(group,
+}
+
+void createManeuver(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {
+	group.targetPos = position;
+	group.targetPos
 }
 
 void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {

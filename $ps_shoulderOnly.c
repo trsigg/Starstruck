@@ -73,7 +73,9 @@ void deployClaw(int waitAtEnd=250) {
 	wait1Msec(waitAtEnd);
 }
 
-task openClaw()
+void setClawOpen()
+
+void
 
 task autonomous() {
 	//deploy stops
