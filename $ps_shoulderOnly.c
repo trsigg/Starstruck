@@ -33,16 +33,15 @@
 //positions
 #define liftMiddle 795 //lift
 #define liftVert 3690
-#define clawOpenCutoff 1000 //claw
-#define clawClosedCutoff 200
+#define clawOpenPos 1000 //claw
+#define clawClosedPos 200
 
 //constants
 #define liftStillSpeed 10
 #define clawStillSpeed 15
 
 //variables
-short clawSign = 1; //Sign of still speed. Positive if closed, negative if open
-bool clawAvailable = true; //task flags
+short clawOpen = false; //Sign of still speed. Positive if closed, negative if open
 
 motorGroup lift;
 motorGroup claw;
@@ -73,9 +72,15 @@ void deployClaw(int waitAtEnd=250) {
 	wait1Msec(waitAtEnd);
 }
 
-void setClawOpen()
-
-void
+void setClawStateManeuver(bool open = !clawOpen) { //toggles by default
+	if (open) {
+		clawOpen = true;
+		createManeuver(claw, clawOpenPos, clawStillSpeed);
+	} else {
+		clawOpen = false;
+		createManeuver(claw, clawClosedPos, clawStillSpeed);
+	}
+}
 
 task autonomous() {
 	//deploy stops
@@ -84,8 +89,10 @@ task autonomous() {
 
   deployClaw();
 
-  driveStraight(5, true);
-  while (
+  driveStraight(5, true); //drive away from wall
+  createClawStateManeuver(); //open claw
+  while (driveData.isDriving || claw.maneuverExecuting) executeManeuver(claw);
+
   turn(-45);
   driveStraight(20);
 }
@@ -101,12 +108,12 @@ void liftControl() {
 void clawControl() {
 	if (vexRT[closeClawBtn] == 1) {
 		setPower(claw, 127);
-		clawSign = 1;
+		clawOpen = false;
 	} else if (vexRT[openClawBtn] == 1) {
 		setPower(claw, -127);
-		clawSign = -1;
+		clawOpen = true;
 	} else {
-		setPower(claw, clawStillSpeed * clawSign);
+		setPower(claw, clawStillSpeed * (clawOpen ? 1 : -1));
 	}
 }
 
