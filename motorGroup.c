@@ -14,7 +14,8 @@ typedef struct {
 	//button control
 	int upPower, downPower, stillSpeed;
 	//execute maneuver
-	int targetPos, initialSign;
+	int targetPos, endPower, maneuverPower;
+	bool forward, maneuverExecuting; //forward: whether target is forwad from initial group position
 	//joystick control
 	int deadband; //range of motor values around 0 for which motors are not engaged
 	bool isRamped; //whether group is ramped
@@ -137,12 +138,17 @@ void setPower(motorGroup *group, int power) {
 }
 
 void executeManeuver(motorGroup *group, ) {
-	setPower(group,
+	if (group->forward ^ (group->targetPos-potentiometerVal(group) > 0)) { //whether maneuver is finished
+		setPower(group, group->endPower);
+		group->maneuverExecuting = true;
+	} else if (group->maneuverExecuting) {
+		setPower(group, (group->forward ? group->maneuverPower : -group->maneuverPower));
+	}
 }
 
 void createManeuver(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {
-	group.targetPos = position;
-	group.targetPos
+	group->targetPos = position;
+	group->forward = group->targetPos-potentiometerVal(group) > 0;
 }
 
 void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {
