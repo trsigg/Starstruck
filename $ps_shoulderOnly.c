@@ -1,5 +1,6 @@
-#pragma config(Sensor, in1,    hyro,           sensorGyro)
 #pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
+#pragma config(Sensor, in3,    clawPot,        sensorPotentiometer)
+#pragma config(Sensor, in4,    hyro,           sensorGyro)
 #pragma config(Sensor, dgtl1,  leftEnc,        sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  rightEnc,       sensorQuadEncoder)
 #pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
@@ -31,11 +32,11 @@
 #define liftDownBtn Btn5D
 
 //positions
-#define liftBottom 100 //lift
-#define liftMiddle 795
-#define liftVert 3690
-#define clawOpenPos 1000 //claw
-#define clawClosedPos 200
+#define liftBottom 355 //lift
+#define liftMiddle 735
+#define liftVert 3215
+#define clawOpenPos 1130 //claw
+#define clawClosedPos 740
 
 //constants
 #define liftStillSpeed 10
@@ -53,7 +54,7 @@ void pre_auton() {
 	initializeDrive(drive);
   setDriveMotors(drive, 4, lfd, lbd, rfd, rbd);
   attachEncoder(drive, leftEnc, LEFT);
-  attachEncoder(drive, rightEnc, RIGHT, true, 4);
+  attachEncoder(drive, rightEnc, RIGHT, false, 4);
   attachGyro(drive, hyro);
 
 	initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
@@ -64,6 +65,11 @@ void pre_auton() {
 }
 
 //autonomous region
+task maneuvers() {
+	executeManeuver(claw);
+	executeManeuver(lift);
+}
+
 void deployClaw(int waitAtEnd=250) {
 	setDrivePower(drive, 127, 127);
 	wait1Msec(500);
@@ -75,12 +81,12 @@ void deployClaw(int waitAtEnd=250) {
 
 void setClawStateManeuver(bool open = !clawOpen) { //toggles by default
 	if (open) {
-		clawOpen = true;
 		createManeuver(claw, clawOpenPos, clawStillSpeed);
 	} else {
-		clawOpen = false;
-		createManeuver(claw, clawClosedPos, clawStillSpeed);
+		createManeuver(claw, clawClosedPos, -clawStillSpeed);
 	}
+
+	clawOpen = open;
 }
 
 void setLiftStateManeuver(bool top = potentiometerVal(lift)<liftMiddle) { //toggles by default
@@ -92,18 +98,20 @@ void setLiftStateManeuver(bool top = potentiometerVal(lift)<liftMiddle) { //togg
 }
 
 task autonomous() {
+	startTask(maneuvers);
+
 	//deploy stops
 	goToPosition(lift, 725);
-	goToPosition(lift, 525);
+	goToPosition(lift, liftBottom);
 
   deployClaw();
 
-  driveStraight(5, true); //drive away from wall
-  createClawStateManeuver(true); //open claw
-  while (driveData.isDriving || claw.maneuverExecuting) executeManeuver(claw);
+  driveStraight(5); //drive away from wall
+  setClawStateManeuver(true); //open claw
 
   //move toward pillow
-  turn(-45);
+  turn(-45, true);
+  while(turnData.isTurning);
   driveStraight(20);
 
   goToPosition(claw, clawClosedPos); //clamp pillow
@@ -133,7 +141,7 @@ void clawControl() {
 		setPower(claw, -127);
 		clawOpen = true;
 	} else {
-		setPower(claw, clawStillSpeed * (clawOpen ? 1 : -1));
+		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
 	}
 }
 
