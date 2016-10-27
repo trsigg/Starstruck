@@ -33,7 +33,7 @@ float PID_runtime(PID *pid, float input) {
 	if (elapsed > pid->minSampleTime) {
 		float error = (pid->target == 0 ? input : pid->target-input);
 
-		pid->integral += (!pid->hasMin || error>pid->integralMin) && (!pid->hasMax || error>pid->integralMax) ? (error + pid->prevError)*elapsed/2 : 0; //update integral if within bounds of integralMin and integralMax
+		pid->integral += (!pid->hasMin || error>pid->integralMin) && (!pid->hasMax || error>pid->integralMax) ? error : 0; //update integral if within bounds of integralMin and integralMax
 
 		pid->output = pid->kP*error + pid->kI*pid->integral + pid->kD*(error - pid->prevError)/elapsed;
 		pid->prevError = error;
