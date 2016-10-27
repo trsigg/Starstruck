@@ -31,7 +31,8 @@
 #define liftDownBtn Btn5D
 
 //positions
-#define liftMiddle 795 //lift
+#define liftBottom 100 //lift
+#define liftMiddle 795
 #define liftVert 3690
 #define clawOpenPos 1000 //claw
 #define clawClosedPos 200
@@ -41,7 +42,7 @@
 #define clawStillSpeed 15
 
 //variables
-short clawOpen = false; //Sign of still speed. Positive if closed, negative if open
+short clawOpen = false;
 
 motorGroup lift;
 motorGroup claw;
@@ -82,6 +83,14 @@ void setClawStateManeuver(bool open = !clawOpen) { //toggles by default
 	}
 }
 
+void setLiftStateManeuver(bool top = potentiometerVal(lift)<liftMiddle) { //toggles by default
+  if (top) {
+    createManeuver(lift, liftVert, -liftStillSpeed);
+  } else {
+    createManeuver(lift, liftBottom, liftStillSpeed);
+  }
+}
+
 task autonomous() {
 	//deploy stops
 	goToPosition(lift, 725);
@@ -90,11 +99,22 @@ task autonomous() {
   deployClaw();
 
   driveStraight(5, true); //drive away from wall
-  createClawStateManeuver(); //open claw
+  createClawStateManeuver(true); //open claw
   while (driveData.isDriving || claw.maneuverExecuting) executeManeuver(claw);
 
+  //move toward pillow
   turn(-45);
   driveStraight(20);
+
+  goToPosition(claw, clawClosedPos); //clamp pillow
+
+  setLiftStateManeuver(true);
+  turn(-135, true); //turn so back faces fence
+  while (turnData.isTurning || lift.maneuverExecuting) executeManeuver(lift);
+  driveStraight(-20, true); // back up to wall
+  while (driveData.isDriving || lift.maneuverExecuting) executeManeuver(lift);
+
+  goToPosition(claw, clawOpenPos); //release pillow
 }
 //end autonomous region
 
