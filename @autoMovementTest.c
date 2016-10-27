@@ -18,7 +18,7 @@ motorGroup feed;
 void autonomous() {
 	turn(-45);
 	driveStraight(3*12*sqrt(2));
-	turn(-135, defTurnInts[0], defTurnInts[1], -40);
+	turn(-135, 40, 100, -40);
 	driveStraight(3*12);
 }
 
