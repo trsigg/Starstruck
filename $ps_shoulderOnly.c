@@ -99,7 +99,7 @@ task autonomous() {
   deployClaw();
 
   driveStraight(5, true); //drive away from wall
-  createClawStateManeuver(true); //open claw
+  setClawStateManeuver(true); //open claw
   while (driveData.isDriving || claw.maneuverExecuting) executeManeuver(claw);
 
   //move toward pillow

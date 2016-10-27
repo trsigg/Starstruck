@@ -1,6 +1,6 @@
 #pragma config(Sensor, in1,    ClawPot,        sensorNone)
 #pragma config(Sensor, in2,    LeftPot,        sensorPotentiometer)
-#pragma config(Sensor, in3,    SkillsPot,      sensorPotentiometer)
+#pragma config(Sensor, in3,    ModePot,      sensorPotentiometer)
 #pragma config(Sensor, in4,    SidePot,        sensorPotentiometer)
 #pragma config(Sensor, in5,    Gyro,           sensorGyro)
 #pragma config(Sensor, dgtl1,  rightEncoder,   sensorQuadEncoder)
@@ -60,12 +60,112 @@ void pre_auton() {
 
   initializeGroup(claw, 2, claw1, claw2);
 }
+void openclaw (int potValue)
+ {
+   while(SensorValue[clawpot] < potValue)//pot value needs to be when the claw is open
+   {
+     motor[claw1] = 127;
+     motor[claw2] = 127;
+   }
+ }
+ void closeclaw (int potValue)
+ {
+   while(SensorValue[clawpot] > potValue)//pot value needs to be when the claw is closed
+   {
+     motor[claw1] = -127;
+     motor[claw2] = -127;
+   }
+ }
+ void liftUp (int potValue)
+ {
+   while(SensorValue[LeftPot] < potValue)//pot value needs to be when the lift is the height desired
+   {
+     motor[lift1]= 127;
+     motor[lift2]= 127;
+     motor[lift3]= 127;
+     motor[lift4]= 127;
+   }
+ }
+ void liftDown (int potValue)
+ {
+   while(SensorValue[Leftpot] > potValue)//pot value needs to be when the lift is the height desired
+   {
+     motor[lift1]= -127;
+     motor[lift2]= -127;
+     motor[lift3]= -127;
+     motor[lift4]= -127;
+   }
+ }
+task rightcube()//right tile
+{
+	liftUp(5); //deploy the claw
+	liftDown(5);//deploy the claw
+	turn(5);//face the cube
+	driveStraight(5);//go to cube
+	openclaw(5);
+	closeclaw(5);//grab the cube
+	turn(5);//face the fence
+	driveStraight(5);//go to the fence
+	liftUp(5);//get over it
+	openclaw(5);//release the kracken
+	closeclaw(5);//cage the kracken
+	driveStraight(5);//back-up
+	driveStraight(5);//knock over the remainder of the stars on fence
 
+}
+task leftcube()//left tile
+{
+	liftUp(5); //deploy the claw
+	liftDown(5);//deploy the claw
+	turn(5);//face the cube
+	driveStraight(5);//go to the cube
+	openclaw(5);
+	closeclaw(5);//grab the cube
+	turn(5);//face the fence
+	driveStraight(5);//go to the fence
+	liftUp(5);//get over it
+	openclaw(5);//release the kracken
+	closeclaw(5);//cage the kracken
+	driveStraight(5);//back-up
+	driveStraight(5);//knock over the remainder of the stars on fence
+}
+task Rnocube()//in the case teammates auto goes for the cube
+{
+	liftUp(5); //deploy the claw
+	liftDown(5);//deploy the claw
+	turn(5);//turn to get lined up with fence
+	driveStraight(5);//go on the angle provided
+	turn(5);//face the fence
+	driveStraight(5);//ramming speed spock
+	liftUp(5);//size up to the fence
+	openclaw(5);//intimindate
+	driveStraight(5);//push it real good
+}
+task Lnocube()
+{
+	liftUp(5); //deploy the claw
+	liftDown(5);//deploy the claw
+	turn(5);//turn to get lined up with fence
+	driveStraight(5);//go on the angle provided
+	turn(5);//face the fence
+	driveStraight(5);//ramming speed spock
+	liftUp(5);//size up to the fence
+	openclaw(5);//intimindate
+	driveStraight(5);//push it real good
+}
 task autonomous() {
-  turn(-45);
-	driveStraight(3*12*sqrt(2));
-	turn(-135, defTurnInts[0], defTurnInts[1], -40);
-	driveStraight(3*12);
+ if (SensorValue[sidePot] > 7 && SensorValue[modePot] > 8 ){
+		startTask(rightcube);
+	}
+	else if (SensorValue[sidePot] < 9 && SensorValue[modePot] < 10) {
+		startTask(leftcube);
+	}
+	else if (SensorValue[sidePot] > 1 && SensorValue[modePot] < 5) {
+		startTask(Rnocube);
+	}
+	else {
+		startTask(Lnocube);
+	}
 }
 //end autonomous region
 
