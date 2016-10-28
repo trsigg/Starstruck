@@ -139,9 +139,9 @@ void setPower(motorGroup *group, int power) {
 
 void executeManeuver(motorGroup *group) {
 	if (group->maneuverExecuting) {
-		if (group->forward ^ (group->targetPos-potentiometerVal(group) > 0)) { //whether maneuver is finished
+		if (group->forward == (potentiometerVal(group) > group->targetPos)) { //whether maneuver is finished
 			setPower(group, group->endPower);
-			group->maneuverExecuting = true;
+			group->maneuverExecuting = false;
 		} else {
 			setPower(group, (group->forward ? group->maneuverPower : -group->maneuverPower));
 		}
@@ -152,7 +152,7 @@ void createManeuver(motorGroup *group, int position, int endPower=0, int maneuve
 	group->targetPos = position;
 	group->endPower = endPower;
 	group->maneuverPower = maneuverPower;
-	group->forward = group->targetPos-potentiometerVal(group) > 0;
+	group->forward = group->targetPos > potentiometerVal(group);
 	group->maneuverExecuting = true;
 }
 
