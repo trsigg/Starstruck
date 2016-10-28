@@ -1,4 +1,4 @@
-#pragma config(Sensor, in1,    ClawPot,        sensorNone)
+#pragma config(Sensor, in1,    ClawPot,        sensorPotentiometer)
 #pragma config(Sensor, in2,    LeftPot,        sensorPotentiometer)
 #pragma config(Sensor, in3,    ModePot,        sensorPotentiometer)
 #pragma config(Sensor, in4,    SidePot,        sensorPotentiometer)
@@ -28,13 +28,14 @@
 
 //buttons
 #define toggleLiftModeBtn Btn8U
-#define openClawBtn Btn6D //claw
-#define closeClawBtn Btn6U
+#define openClawBtn Btn6U //claw
+#define closeClawBtn Btn6D
 #define liftUpBtn Btn5U //lift
 #define liftDownBtn Btn5D
 
 //positions
-#define liftMiddle 1010
+#define liftMiddle 1239
+#define liftVert 2740
 
 //constants
 #define liftStillSpeed 10
@@ -63,7 +64,7 @@ void pre_auton() {
 }
 void openclaw (int potValue)
  {
-   while(SensorValue[clawpot] < potValue)//pot value needs to be when the claw is open
+   while(SensorValue[ClawPot] < potValue)//pot value needs to be when the claw is open
    {
      motor[claw1] = 127;
      motor[claw2] = 127;
@@ -71,7 +72,7 @@ void openclaw (int potValue)
  }
  void closeclaw (int potValue)
  {
-   while(SensorValue[clawpot] > potValue)//pot value needs to be when the claw is closed
+   while(SensorValue[ClawPot] > potValue)//pot value needs to be when the claw is closed
    {
      motor[claw1] = -127;
      motor[claw2] = -127;
@@ -79,7 +80,7 @@ void openclaw (int potValue)
  }
  void liftUp (int potValue)
  {
-   while(SensorValue[LeftPot] > potValue)//pot value needs to be when the lift is the height desired
+   while(SensorValue[LeftPot] < potValue)//pot value needs to be when the lift is the height desired
    {
      motor[lift1]= 127;
      motor[lift2]= 127;
@@ -99,19 +100,20 @@ void openclaw (int potValue)
  }
 task rightcube()//right tile
 {
-	liftUp(2000); //deploy the claw
-	liftDown(2500);//deploy the claw
-	turn(65);//face the cube
+	liftUp(1500); //deploy the claw
+	wait10Msec(10);
+	liftdown(600);//deploy the claw
+	/*turn(65);//face the cube
 	driveStraight(5);//go to cube
 	openclaw(5);
 	closeclaw(5);//grab the cube
 	turn(5);//face the fence
 	driveStraight(5);//go to the fence
-	liftUp(5);//get over it
+	liftUp(3000);//get over it
 	openclaw(5);//release the kracken
 	closeclaw(5);//cage the kracken
 	driveStraight(5);//back-up
-	driveStraight(5);//knock over the remainder of the stars on fence
+	driveStraight(5);//knock over the remainder of the stars on fence*/
 
 }
 task leftcube()//left tile
@@ -130,7 +132,7 @@ task leftcube()//left tile
 	driveStraight(5);//back-up
 	driveStraight(5);//knock over the remainder of the stars on fence
 }
-task Rnocube()//in the case teammates auto goes for the cube
+task Rnocube()//in the case teammates auto goes for the cube or with E-team
 {
 	liftUp(5); //deploy the claw
 	liftDown(5);//deploy the claw
@@ -140,11 +142,23 @@ task Rnocube()//in the case teammates auto goes for the cube
 	driveStraight(5);//ramming speed spock
 	liftUp(5);//size up to the fence
 	openclaw(5);//intimindate
-	driveStraight(5);//push it real good
+	liftUp(5);//finish the wall
+	driveStraight(5);//backup
+	turn(5);//turn to the back jacks
+	openclaw(5);//get ready for jacks
+	driveStraight(5);//hoard the jacks
+	closeclaw(5);//grab jacks
+	driveStraight(5);//backup
+	turn(5);//face the wall
+	driveStraight(5);//backup to the fence
+	liftUp(5);//ready the jacks to dump
+	openclaw(5);//release jacks
+
+
 }
 task Lnocube()
 {
-	liftUp(5); //deploy the claw
+		liftUp(5); //deploy the claw
 	liftDown(5);//deploy the claw
 	turn(5);//turn to get lined up with fence
 	driveStraight(5);//go on the angle provided
@@ -152,7 +166,18 @@ task Lnocube()
 	driveStraight(5);//ramming speed spock
 	liftUp(5);//size up to the fence
 	openclaw(5);//intimindate
-	driveStraight(5);//push it real good
+	liftUp(5);//finish the wall
+	driveStraight(5);//backup
+	turn(5);//turn to the back jacks
+	openclaw(5);//get ready for jacks
+	driveStraight(5);//hoard the jacks
+	closeclaw(5);//grab jacks
+	driveStraight(5);//backup
+	turn(5);//face the wall
+	driveStraight(5);//backup to the fence
+	liftUp(5);//ready the jacks to dump
+	openclaw(5);//release jacks
+
 }
 task autonomous() {
  if (SensorValue[sidePot] > 7 && SensorValue[modePot] > 8 ){
@@ -182,12 +207,17 @@ void clawControl() {
 		setPower(claw, clawStillSpeed * clawSign);
 	}
 }
+void liftControl() {
+	short potPos = potentiometerVal(lift);
+	lift.stillSpeed = liftStillSpeed * ((potPos<liftMiddle || potPos>liftVert) ? -1 : 1);
+	takeInput(lift);
+}
 
 task usercontrol() {
 	while (true) {
   	driveRuntime(drive);
 
-  	takeInput(lift);
+  	liftControl();
 
 		clawControl();
   }
