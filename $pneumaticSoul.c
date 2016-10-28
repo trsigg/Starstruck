@@ -38,8 +38,8 @@
 #define liftTop 1450
 #define liftMiddle 735
 #define liftVert 3215
-#define clawOpen 1130 //claw
-#define clawClosed 750
+#define clawOpenPos 1130 //claw
+#define clawClosedPos 750
 #define clawMax 1620
 
 //constants
@@ -89,12 +89,24 @@ void deployClaw(int waitAtEnd=250) {
 
 void setClawStateManeuver(bool open = !clawOpen) { //toggles by default
 	if (open) {
-		createManeuver(claw, clawOpen, clawStillSpeed);
+		createManeuver(claw, clawOpenPos, clawStillSpeed);
 	} else {
-		createManeuver(claw, clawClosed, -clawStillSpeed);
+		createManeuver(claw, clawClosedPos, -clawStillSpeed);
 	}
 
 	clawOpen = open;
+}
+
+void openClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0));
+}
+
+void closeClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawClosedPos, (stillSpeed ? -clawStillSpeed : 0));
+}
+
+void hyperExtendClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawMax, (stillSpeed ? clawStillSpeed : 0));
 }
 
 void setLiftStateManeuver(bool top = potentiometerVal(lift)<liftMiddle) { //toggles by default
@@ -115,26 +127,43 @@ task pillowAuton() {
   while(turnData.isTurning || claw.maneuverExecuting);
   driveStraight(12);
 
-  goToPosition(claw, clawClosed, clawStillSpeed); //clamp pillow
+  closeClaw(); //clamp pillow
 
   setLiftStateManeuver(true);
   driveStraight(15, true);
   while (driveData.isDriving);
-  turn(37, true, 40, 80, -20); //turn to face fence
+  turn(30, true, 40, 80, -20); //turn to face fence
   while (turnData.isTurning);
   driveStraight(20, true); // drive up to wall
   while (driveData.isDriving || lift.maneuverExecuting);
 
-  goToPosition(claw, clawOpen); //release pillow
-  goToPosition(claw, clawClosed); //close claw
+  openClaw(); //release pillow
+  closeClaw();
   driveStraight(-5); //back up
-  goToPosition(claw, 1620, clawStillSpeed); //hyperextend claw
+  hyperExtendClaw();
 
   //push jacks over
  	driveStraight(10);
  	goToPosition(claw, 900);
 
- 	goToPosition
+ 	createManeuver(claw, clawMax, clawStillSpeed); //hyperextend claw
+
+ 	//drive to other wall and lift down
+ 	driveStraight(-5, true);
+ 	while (driveData.isDriving);
+ 	turn(60, true);
+ 	while (turnData.isTurning || claw.maneuverExecuting);
+ 	createManeuver(lift, 1500, liftStillSpeed);
+ 	driveStraight(40, true);
+ 	while (driveData.isDriving || lift.maneuverExecuting);
+ 	turn(-95);
+ 	driveStraight(9);
+
+ 	goToPosition(lift, 2435); //push jacks over
+}
+
+task oneSideAuton() {
+
 }
 
 task autonomous() {
@@ -149,12 +178,10 @@ task autonomous() {
   autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
 
   //start appropriate autonomous task
-  if (SensorValue[modePot] > 2540) {
+  if (SensorValue[modePot] > 1870) {
   	startTask(pillowAuton);
-  } else if (SensorValue[modePot] > 1320) {
-
   } else {
-
+  	startTask(oneSideAuton);
   }
 }
 //end autonomous region
