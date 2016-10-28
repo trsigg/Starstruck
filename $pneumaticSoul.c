@@ -1,6 +1,8 @@
 #pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
 #pragma config(Sensor, in3,    clawPot,        sensorPotentiometer)
 #pragma config(Sensor, in4,    hyro,           sensorGyro)
+#pragma config(Sensor, in5,    modePot,        sensorPotentiometer)
+#pragma config(Sensor, in6,    sidePot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  leftEnc,        sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  rightEnc,       sensorQuadEncoder)
 #pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
@@ -20,9 +22,9 @@
 #include "Vex_Competition_Includes.c"
 
 #include "buttonTracker.c"
+#include "motorGroup.c"
 #include "parallelDrive.c"
 #include "pd_autoMove.c"
-#include "motorGroup.c"
 
 //buttons
 #define toggleLiftModeBtn Btn8U
@@ -33,17 +35,20 @@
 
 //positions
 #define liftBottom 355 //lift
+#define liftTop 1450
 #define liftMiddle 735
 #define liftVert 3215
-#define clawOpenPos 1130 //claw
-#define clawClosedPos 740
+#define clawOpen 1130 //claw
+#define clawClosed 750
+#define clawMax 1620
 
 //constants
 #define liftStillSpeed 10
 #define clawStillSpeed 15
 
 //variables
-short clawOpen = false;
+bool clawOpen = false;
+short autoSign; //for autonomous, positive if robot is on on the blue side by the pole or the symmetric tile of red side
 
 motorGroup lift;
 motorGroup claw;
@@ -62,12 +67,15 @@ void pre_auton() {
   addSensor(lift, liftPot);
 
   initializeGroup(claw, 2, claw1, claw2);
+  addSensor(claw, clawPot);
 }
 
 //autonomous region
 task maneuvers() {
-	executeManeuver(claw);
-	executeManeuver(lift);
+	while (true) {
+		executeManeuver(claw);
+		executeManeuver(lift);
+	}
 }
 
 void deployClaw(int waitAtEnd=250) {
@@ -81,9 +89,9 @@ void deployClaw(int waitAtEnd=250) {
 
 void setClawStateManeuver(bool open = !clawOpen) { //toggles by default
 	if (open) {
-		createManeuver(claw, clawOpenPos, clawStillSpeed);
+		createManeuver(claw, clawOpen, clawStillSpeed);
 	} else {
-		createManeuver(claw, clawClosedPos, -clawStillSpeed);
+		createManeuver(claw, clawClosed, -clawStillSpeed);
 	}
 
 	clawOpen = open;
@@ -91,10 +99,42 @@ void setClawStateManeuver(bool open = !clawOpen) { //toggles by default
 
 void setLiftStateManeuver(bool top = potentiometerVal(lift)<liftMiddle) { //toggles by default
   if (top) {
-    createManeuver(lift, liftVert, -liftStillSpeed);
+    createManeuver(lift, liftTop, liftStillSpeed);
   } else {
     createManeuver(lift, liftBottom, liftStillSpeed);
   }
+}
+
+task pillowAuton() {
+	setClawStateManeuver(true); //open claw
+  driveStraight(5, true); //drive away from wall
+  while(driveData.isDriving);
+
+  //move toward pillow
+  turn(-55, true);
+  while(turnData.isTurning || claw.maneuverExecuting);
+  driveStraight(12);
+
+  goToPosition(claw, clawClosed, clawStillSpeed); //clamp pillow
+
+  setLiftStateManeuver(true);
+  driveStraight(15, true);
+  while (driveData.isDriving);
+  turn(37, true, 40, 80, -20); //turn to face fence
+  while (turnData.isTurning);
+  driveStraight(20, true); // drive up to wall
+  while (driveData.isDriving || lift.maneuverExecuting);
+
+  goToPosition(claw, clawOpen); //release pillow
+  goToPosition(claw, clawClosed); //close claw
+  driveStraight(-5); //back up
+  goToPosition(claw, 1620, clawStillSpeed); //hyperextend claw
+
+  //push jacks over
+ 	driveStraight(10);
+ 	goToPosition(claw, 900);
+
+ 	goToPosition
 }
 
 task autonomous() {
@@ -106,23 +146,16 @@ task autonomous() {
 
   deployClaw();
 
-  driveStraight(5); //drive away from wall
-  setClawStateManeuver(true); //open claw
+  autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
 
-  //move toward pillow
-  turn(-45, true);
-  while(turnData.isTurning);
-  driveStraight(20);
+  //start appropriate autonomous task
+  if (SensorValue[modePot] > 2540) {
+  	startTask(pillowAuton);
+  } else if (SensorValue[modePot] > 1320) {
 
-  goToPosition(claw, clawClosedPos); //clamp pillow
+  } else {
 
-  setLiftStateManeuver(true);
-  turn(-135, true); //turn so back faces fence
-  while (turnData.isTurning || lift.maneuverExecuting) executeManeuver(lift);
-  driveStraight(-20, true); // back up to wall
-  while (driveData.isDriving || lift.maneuverExecuting) executeManeuver(lift);
-
-  goToPosition(claw, clawOpenPos); //release pillow
+  }
 }
 //end autonomous region
 
