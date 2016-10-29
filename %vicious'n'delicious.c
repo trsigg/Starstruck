@@ -52,62 +52,102 @@ void pre_auton() {
 
 	initializeDrive(drive);
   setDriveMotors(drive, 4, lfd, lbd, rfd, rbd);
-  attachEncoder(drive, leftEncoder, LEFT);
+  attachEncoder(drive, leftEncoder, LEFT, true);
   attachEncoder(drive, rightEncoder, RIGHT, true, 4);
   attachGyro(drive, Gyro);
 
 	initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
-  addSensor(lift, LeftPot, true);
+  addSensor(lift, LeftPot);
 
   initializeGroup(claw, 2, claw1, claw2);
 }
-void openclaw (int potValue)
+void openclaw (int time)
  {
-   while(SensorValue[ClawPot] < potValue)//pot value needs to be when the claw is open
+   clearTimer(T1);
+
+	while(time1(T1) < time)//pot value needs to be when the claw is open
    {
      motor[claw1] = 127;
      motor[claw2] = 127;
    }
+   motor[claw1] = 0;
+     motor[claw2] = 0;
  }
- void closeclaw (int potValue)
+ void closeclaw (int time)
  {
-   while(SensorValue[ClawPot] > potValue)//pot value needs to be when the claw is closed
+   clearTimer(T1);
+
+	while(time1(T1) < time)//pot value needs to be when the claw is closed
    {
      motor[claw1] = -127;
      motor[claw2] = -127;
    }
+   motor[claw1] = 0;
+     motor[claw2] = 0;
  }
- void liftUp (int potValue)
+ void liftUp (int time)
  {
-   while(SensorValue[LeftPot] < potValue)//pot value needs to be when the lift is the height desired
+   clearTimer(T1);
+
+	while(time1(T1) < time)//pot value needs to be when the lift is the height desired
    {
      motor[lift1]= 127;
      motor[lift2]= 127;
      motor[lift3]= 127;
      motor[lift4]= 127;
    }
+   setPower(lift, 0);
  }
- void liftDown (int potValue)
+ void liftDown (int time)
  {
-   while(SensorValue[Leftpot] < potValue)//pot value needs to be when the lift is the height desired
+   time1(T1) = 0;
+
+	while(time1(T1) < time)//pot value needs to be when the lift is the height desired
    {
      motor[lift1]= -127;
      motor[lift2]= -127;
      motor[lift3]= -127;
      motor[lift4]= -127;
    }
+   setPower(lift, 0);
+ }
+ void Driveforward (int time)
+ {
+   time1(T1) = 0;
+
+   while(time1(T1) < time)
+   {
+     setDrivePower(drive, 127, 127);
+   }
+
+   setDrivePower(drive, 0, 0);
+ }
+
+ void Driveback (int time)
+ {
+   time1(T1) = 0;
+
+   while(time1(T1) < time)
+   {
+     setDrivePower(drive, -127, -127);
+   }
+
+   setDrivePower(drive, 0, 0);
  }
 task rightcube()//right tile
 {
-	liftUp(1500); //deploy the claw
-	wait10Msec(10);
-	liftdown(600);//deploy the claw
-	/*turn(65);//face the cube
-	driveStraight(5);//go to cube
-	openclaw(5);
-	closeclaw(5);//grab the cube
-	turn(5);//face the fence
+
+	liftUp(750);
+	liftDown(600);
+	Driveforward(500);
+	Driveback(500);
+	turn(55);//face the cube
+	Driveforward(600);//go to cube
+	openclaw(800);
+	wait10Msec(500);
+	closeclaw(300);//grab the cube
+	/*turn(125);//face the fence
 	driveStraight(5);//go to the fence
 	liftUp(3000);//get over it
 	openclaw(5);//release the kracken
@@ -180,7 +220,8 @@ task Lnocube()
 
 }
 task autonomous() {
- if (SensorValue[sidePot] > 7 && SensorValue[modePot] > 8 ){
+
+	if (SensorValue[sidePot] > 7 && SensorValue[modePot] > 8 ){
 		startTask(rightcube);
 	}
 	else if (SensorValue[sidePot] < 9 && SensorValue[modePot] < 10) {
