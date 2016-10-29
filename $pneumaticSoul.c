@@ -123,7 +123,7 @@ task pillowAuton() {
   while(driveData.isDriving);
 
   //move toward pillow
-  turn(-55, true);
+  turn(-52, true);
   while(turnData.isTurning || claw.maneuverExecuting);
   driveStraight(12);
 
@@ -132,9 +132,9 @@ task pillowAuton() {
   setLiftStateManeuver(true);
   driveStraight(15, true);
   while (driveData.isDriving);
-  turn(30, true, 40, 80, -20); //turn to face fence
+  turn(33, true, 40, 80, -20); //turn to face fence
   while (turnData.isTurning);
-  driveStraight(20, true); // drive up to wall
+  driveStraight(17, true); // drive up to wall
   while (driveData.isDriving || lift.maneuverExecuting);
 
   openClaw(); //release pillow
@@ -151,22 +151,39 @@ task pillowAuton() {
  	//drive to other wall and lift down
  	driveStraight(-5, true);
  	while (driveData.isDriving);
- 	turn(60, true);
+ 	turn(63, true);
  	while (turnData.isTurning || claw.maneuverExecuting);
  	createManeuver(lift, 1500, liftStillSpeed);
  	driveStraight(40, true);
  	while (driveData.isDriving || lift.maneuverExecuting);
  	turn(-95);
- 	driveStraight(9);
+ 	driveStraight(6);
 
  	goToPosition(lift, 2435); //push jacks over
 }
 
 task oneSideAuton() {
+	createManeuver(claw, clawMax, clawStillSpeed); //open claw
+	createManeuver(lift, liftTop-400, liftStillSpeed); //lift to near top
+  driveStraight(5, true); //drive away from wall
+  while(driveData.isDriving);
 
+  turn(30, true);
+  while (turnData.isTurning || claw.maneuverExecuting);
+
+  driveStraight(10);
+  while (driveData.isDriving);
+
+  turn(-27, true); //turn toward wall
+  while (turnData.isTurning || lift.maneuverExecuting);
+
+  driveStraight(30);
+  goToPosition(lift, 2435);
 }
 
 task autonomous() {
+	lift.maneuverExecuting = false;
+	claw.maneuverExecuting = false;
 	startTask(maneuvers);
 
 	//deploy stops
@@ -178,9 +195,9 @@ task autonomous() {
   autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
 
   //start appropriate autonomous task
-  if (SensorValue[modePot] > 1870) {
+  if (SensorValue[modePot] > 2540) {
   	startTask(pillowAuton);
-  } else {
+  } else if (SensorValue[modePot] > 1320) {
   	startTask(oneSideAuton);
   }
 }
