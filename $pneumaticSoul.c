@@ -21,21 +21,20 @@
 #pragma competitionControl(Competition)
 #include "Vex_Competition_Includes.c"
 
-#include "buttonTracker.c"
 #include "motorGroup.c"
 #include "parallelDrive.c"
 #include "pd_autoMove.c"
 
 //buttons
-#define toggleLiftModeBtn Btn8U
+#define deployBtn Btn8U
 #define openClawBtn Btn6D //claw
 #define closeClawBtn Btn6U
 #define liftUpBtn Btn5U //lift
 #define liftDownBtn Btn5D
 
 //positions
-#define liftBottom 355 //lift
-#define liftTop 1450
+#define liftBottom 930 //lift
+#define liftTop 2050
 #define liftMiddle 735
 #define liftVert 3215
 #define clawOpenPos 1130 //claw
@@ -78,7 +77,12 @@ task maneuvers() {
 	}
 }
 
-void deployClaw(int waitAtEnd=250) {
+void deploy(int waitAtEnd=250) {
+	//deploy stops
+	goToPosition(lift, 1200);
+	goToPosition(lift, liftBottom);
+
+	//deploy claw
 	setDrivePower(drive, 127, 127);
 	wait1Msec(500);
 	setDrivePower(drive, -127, -127);
@@ -130,7 +134,7 @@ task pillowAuton() {
   closeClaw(); //clamp pillow
 
   setLiftStateManeuver(true);
-  driveStraight(15, true);
+  driveStraight(13, true);
   while (driveData.isDriving);
   turn(33, true, 40, 80, -20); //turn to face fence
   while (turnData.isTurning);
@@ -154,10 +158,10 @@ task pillowAuton() {
  	turn(63, true);
  	while (turnData.isTurning || claw.maneuverExecuting);
  	createManeuver(lift, 1500, liftStillSpeed);
- 	driveStraight(40, true);
+ 	driveStraight(43, true);
  	while (driveData.isDriving || lift.maneuverExecuting);
- 	turn(-95);
- 	driveStraight(6);
+ 	turn(-80, false, 40, 120, -40);
+ 	driveStraight(7);
 
  	goToPosition(lift, 2435); //push jacks over
 }
@@ -174,10 +178,10 @@ task oneSideAuton() {
   driveStraight(10);
   while (driveData.isDriving);
 
-  turn(-27, true); //turn toward wall
+  turn(-40, true); //turn toward wall
   while (turnData.isTurning || lift.maneuverExecuting);
 
-  driveStraight(30);
+  driveStraight(25);
   goToPosition(lift, 2435);
 }
 
@@ -186,11 +190,7 @@ task autonomous() {
 	claw.maneuverExecuting = false;
 	startTask(maneuvers);
 
-	//deploy stops
-	goToPosition(lift, 725);
-	goToPosition(lift, liftBottom);
-
-  deployClaw();
+  deploy();
 
   autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
 
@@ -229,6 +229,8 @@ task usercontrol() {
   	liftControl();
 
 		clawControl();
+
+		if (vexRT[deployBtn] == 1) deploy();
   }
 }
 //end user control region

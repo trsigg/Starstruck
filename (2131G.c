@@ -4,6 +4,8 @@
 #pragma config(Motor,  port2,           rfd,           tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port3,           lift1,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port4,           lift2,         tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port5,           claw1,         tmotorVex393_MC29, openLoop, reversed)
+#pragma config(Motor,  port6,           claw2,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port7,           lift3,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port8,           lift4,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port9,           lfd,           tmotorVex393_MC29, openLoop)
@@ -22,13 +24,13 @@
 #define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
 
+#define clawStillSpeed 10
+
 parallel_drive drive;
 motorGroup lift;
+motorGroup claw;
 
-void setClawState(bool val) {
-	SensorValue[claw1] = val;
-  SensorValue[claw2] = val;
-}
+bool clawOpen = true;
 
 void pre_auton() {
   bStopTasksBetweenModes = true;
@@ -38,10 +40,24 @@ void pre_auton() {
 
   initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -100);
+
+  initializeGroup(claw, 2, claw1, claw2);
 }
 
 task autonomous() {
   AutonomousCodePlaceholderForTesting();
+}
+
+void clawControl() {
+	if (vexRT[closeClawBtn] == 1) {
+		setPower(claw, 127);
+		clawOpen = false;
+	} else if (vexRT[openClawBtn] == 1) {
+		setPower(claw, -127);
+		clawOpen = true;
+	} else {
+		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
+	}
 }
 
 task usercontrol() {
@@ -50,10 +66,6 @@ task usercontrol() {
 
     takeInput(lift);
 
-    if (vexRT[openClawBtn] == 1) {
-    	setClawState(1);
-    } else if (vexRT[closeClawBtn] == 1) {
-    	setClawState(0);
-    }
+    clawControl();
   }
 }
