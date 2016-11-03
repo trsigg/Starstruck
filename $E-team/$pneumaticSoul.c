@@ -28,12 +28,12 @@
 #include "..\Includes\pd_autoMove.c"
 
 //buttons
-#define toggleLiftModeBtn Btn8D
 #define openClawBtn Btn6D //claw
 #define closeClawBtn Btn6U
-#define liftUpBtn Btn5U //lift -- shoulder/4-bar
+#define toggleLiftModeBtn Btn8U //lift
+#define liftUpBtn Btn5U //         -- shoulder/4-bar
 #define liftDownBtn Btn5D
-#define wristUpBtn Btn7U //    -- wrist
+#define wristUpBtn Btn7U //        -- wrist
 #define wristDownBtn Btn7D
 
 //positions
