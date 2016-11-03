@@ -128,8 +128,8 @@ bool drivingComplete() {
 }
 
 void driveStraightRuntime() {
-	driveData.leftDist += driveEncoderVal(autoDrive, LEFT, driveData.rawValue);
-	driveData.rightDist += driveEncoderVal(autoDrive, RIGHT, driveData.rawValue);
+	driveData.leftDist += abs(driveEncoderVal(autoDrive, LEFT, driveData.rawValue));
+	driveData.rightDist += abs(driveEncoderVal(autoDrive, RIGHT, driveData.rawValue));
 	driveData.totalDist = (driveData.leftDist + driveData.rightDist) / 2;
 
 	if (driveEncoderVal(autoDrive) > driveData.minSpeed) driveData.timer = resetTimer(); //track timeout state
@@ -149,11 +149,18 @@ void driveStraightRuntime() {
 			error = 0;
 	}
 
-	float slaveCoeff = 1 + PID_runtime(driveData.pid, error);
-
 	int power = rampRuntime(driveData.ramper, driveData.totalDist);
 
-	setDrivePower(autoDrive, slaveCoeff*driveData.direction*power, driveData.direction*power);
+	float correctionPercent = 1 + PID_runtime(driveData.pid, error);
+	float rightPower = power * correctionPercent;
+	float leftPower = power;
+
+	if (rightPower > 127) {
+		rightPower = 127;
+		leftPower = 127 / (correctionPercent);
+	}
+
+	setDrivePower(autoDrive, driveData.direction*leftPower, driveData.direction*rightPower);
 }
 
 void driveStraightEnd() {

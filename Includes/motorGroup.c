@@ -137,18 +137,27 @@ void setPower(motorGroup *group, int power) {
 	}
 }
 
-void executeManeuver(motorGroup *group, ) {
-	if (group->forward ^ (group->targetPos-potentiometerVal(group) > 0)) { //whether maneuver is finished
-		setPower(group, group->endPower);
-		group->maneuverExecuting = true;
-	} else if (group->maneuverExecuting) {
-		setPower(group, (group->forward ? group->maneuverPower : -group->maneuverPower));
+void moveTowardPosition(motorGroup *group, int position, int power=127) {
+	setPower(group, power * sgn(potentiometerVal(group) - position));
+}
+
+void executeManeuver(motorGroup *group) {
+	if (group->maneuverExecuting) {
+		if (group->forward == (potentiometerVal(group) > group->targetPos)) { //whether maneuver is finished
+			setPower(group, group->endPower);
+			group->maneuverExecuting = false;
+		} else {
+			setPower(group, (group->forward ? group->maneuverPower : -group->maneuverPower));
+		}
 	}
 }
 
 void createManeuver(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {
 	group->targetPos = position;
-	group->forward = group->targetPos-potentiometerVal(group) > 0;
+	group->endPower = endPower;
+	group->maneuverPower = maneuverPower;
+	group->forward = group->targetPos > potentiometerVal(group);
+	group->maneuverExecuting = true;
 }
 
 void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {

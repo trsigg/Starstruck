@@ -16,8 +16,8 @@
 #pragma competitionControl(Competition)
 #include "Vex_Competition_Includes.c"
 
-#include "parallelDrive.c"
-#include "motorGroup.c"
+#include "..\Includes\parallelDrive.c"
+#include "..\Includes\motorGroup.c"
 
 #define openClawBtn Btn6U
 #define closeClawBtn Btn6D
@@ -31,10 +31,7 @@ parallel_drive drive;
 motorGroup lift;
 motorGroup claw;
 
-void setClawState(bool val) {
-	SensorValue[claw1] = val;
-  SensorValue[claw2] = val;
-}
+bool clawOpen = true;
 
 void pre_auton() {
   bStopTasksBetweenModes = true;

@@ -12,8 +12,8 @@
 #pragma competitionControl(Competition)
 #include "Vex_Competition_Includes.c"
 
-#include "parallelDrive.c"
-#include "motorGroup.c"
+#include "..\Includes\parallelDrive.c"
+#include "..\Includes\motorGroup.c"
 
 #define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
