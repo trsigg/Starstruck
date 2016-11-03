@@ -21,10 +21,10 @@
 #pragma competitionControl(Competition)
 #include "Vex_Competition_Includes.c"
 
-#include "buttonTracker.c"
-#include "parallelDrive.c"
-#include "pd_autoMove.c"
-#include "motorGroup.c"
+#include "..\Includes\buttonTracker.c"
+#include "..\Includes\parallelDrive.c"
+#include "..\Includes\pd_autoMove.c"
+#include "..\Includes\motorGroup.c"
 
 //buttons
 #define toggleLiftModeBtn Btn8U
