@@ -46,6 +46,7 @@
 #define clawMax 1620
 
 //constants
+#define fourBarDeadband 50 //allowable deviation from totalTargetPos
 #define shoulderFourBarPower 90
 #define shoulderStillSpeed 10 //still speeds
 #define wristStillSpeed 10
@@ -54,7 +55,7 @@
 //variables
 bool fourBar = false;
 bool clawOpen = false;
-int posTotalTarget; //the target sum of the shoulder and wrist pot values in 4-bar mode
+int totalTargetPos; //the target sum of the shoulder and wrist pot values in 4-bar mode
 short autoSign; //for autonomous, positive if robot is left of pillow
 
 motorGroup shoulder;
@@ -194,11 +195,15 @@ task autonomous() {
 //end autonomous region
 
 //user control region
+int totalLiftPotVal() {
+	return potentiometerVal(wrist) + potentiometerVal(shoulder);
+}
+
 void toggleLiftMode() {
 	fourBar = !fourBar;
 
 	if (fourBar) {
-		posTotalTarget = potentiometerVal(wrist) + potentiometerVal(shoulder);
+		totalTargetPos = totalLiftPotVal();
 		shoulder.upPower = shoulderFourBarPower;
 		shoulder.downPower = shoulderFourBarPower;
 	} else {
@@ -217,13 +222,15 @@ void liftControl() {
 	short shoulderPower = takeInput(shoulder);
 	short wristPower = takeInput(wrist, false);
 
+	int totalPos = totalLiftPotVal();
+
 	if (wristPower != 0) {
 		setPower(wrist, wristPower);
-		posTotalTarget = potentiometerVal(wrist) + potentiometerVal(shoulder);
-	}	else if (shoulderPower == shoulderStillSpeed) {
-		setPower(wrist, wristStillSpeed);
+		totalTargetPos = totalPos;
+	}	else if (fourBar && (abs(totalTargetPos - totalPos) > fourBarDeadband)) {
+		setPower();
 	} else {
-		setPower(wrist, (fourBar ? shoulderPower*wristPower/127 : -5));
+		setPower(wrist, wristStillSpeed);
 	}
 }
 
