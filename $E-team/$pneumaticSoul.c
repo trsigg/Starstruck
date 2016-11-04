@@ -52,7 +52,7 @@
 #define clawStillSpeed 15
 
 //variables
-bool fourBar = true;
+bool fourBar = false;
 bool clawOpen = false;
 int posTotalTarget; //the target sum of the shoulder and wrist pot values in 4-bar mode
 short autoSign; //for autonomous, positive if robot is left of pillow
@@ -194,9 +194,22 @@ task autonomous() {
 //end autonomous region
 
 //user control region
+void toggleLiftMode() {
+	fourBar = !fourBar;
+
+	if (fourBar) {
+		posTotalTarget = potentiometerVal(wrist) + potentiometerVal(shoulder);
+		shoulder.upPower = shoulderFourBarPower;
+		shoulder.downPower = shoulderFourBarPower;
+	} else {
+		shoulder.upPower = 127;
+		shoulder.downPower = 127;
+	}
+}
+
 void liftControl() {
 	if (newlyPressed(toggleLiftModeBtn))
-		fourBar = !fourBar;
+		toggleLiftMode();
 
 	short shoulderPos = potentiometerVal(shoulder);
 
@@ -206,6 +219,7 @@ void liftControl() {
 
 	if (wristPower != 0) {
 		setPower(wrist, wristPower);
+		posTotalTarget = potentiometerVal(wrist) + potentiometerVal(shoulder);
 	}	else if (shoulderPower == shoulderStillSpeed) {
 		setPower(wrist, wristStillSpeed);
 	} else {
