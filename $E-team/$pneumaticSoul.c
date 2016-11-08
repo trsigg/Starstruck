@@ -63,6 +63,7 @@ bool fourBar = false;
 bool clawOpen = false;
 int totalTargetPos; //the target sum of the shoulder and wrist pot values in 4-bar mode
 short autoSign; //for autonomous, positive if robot is left of pillow
+short clawCounter, driveCounter, liftCounter; //store the progress of each robot component during autonomous
 
 motorGroup shoulder;
 motorGroup wrist;
@@ -93,6 +94,12 @@ void pre_auton() {
 }
 
 //autonomous region
+void stopManeuvers() {
+	claw.maneuverExecuting = false;
+	lift.maneuverExecuting = false;
+	wrist.maneuverExecuting = false;
+}
+
 void deploy(int waitAtEnd=250) {
 	//deploy stops
 	goToPosition(shoulder, 1200);
@@ -121,7 +128,16 @@ void hyperExtendClaw(bool stillSpeed=true) {
 	goToPosition(claw, clawMax, (stillSpeed ? clawStillSpeed : 0));
 }
 
-task pillowAuton() {
+	//pillowAuton subregion
+task pillowAutonClaw() {
+
+}
+
+task pillowAutonLift() {
+
+}
+
+task pillowAutonDrive() {
 	setClawStateManeuver(true); //open claw
   driveStraight(5, true); //drive away from wall
   while(driveData.isDriving);
@@ -166,7 +182,15 @@ task pillowAuton() {
  	goToPosition(shoulder, 2435); //push jacks over
 }
 
-task oneSideAuton() {
+void pillowAuton() {
+	startTask(pillowAutonDrive);
+	startTask(pillowAutonLift);
+	startTask(pillowAutonClaw);
+}
+	//end pillowAuton subregion
+
+	//oneSideAuton subregion
+task oneSideAutonDrive() {
 	createManeuver(claw, clawMax, clawStillSpeed); //open claw
 	createManeuver(shoulder, shoulderTop-400, shoulderStillSpeed); //lift to near top
   driveStraight(5, true); //drive away from wall
@@ -185,10 +209,23 @@ task oneSideAuton() {
   goToPosition(shoulder, 2435);
 }
 
+task oneSideAutonLift() {
+
+}
+
+task oneSideAutonClaw() {
+
+}
+
+void oneSideAuton() {
+	startTask(oneSideAutonDrive);
+	startTask(oneSideAutonLift);
+	startTask(oneSideAutonClaw);
+}
+	//end oneSideAuton subregion
+
 task autonomous() {
-	shoulder.maneuverExecuting = false;
-	claw.maneuverExecuting = false;
-	//startTask(maneuvers);
+	stopManeuvers();
 
   deploy();
 
@@ -196,7 +233,7 @@ task autonomous() {
 
   //start appropriate autonomous task
   if (SensorValue[modePot] > 2540) {
-  	startTask(pillowAuton);
+  	pillowAuton();
   } else if (SensorValue[modePot] > 1320) {
   	startTask(oneSideAuton);
   }
