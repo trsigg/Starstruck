@@ -26,6 +26,7 @@
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\parallelDrive.c"
 #include "..\Includes\pd_autoMove.c"
+#include "..\Includes\logisticRamp.c"
 
 //buttons
 #define openClawBtn Btn6D //claw
@@ -45,12 +46,17 @@
 #define clawClosedPos 750
 #define clawMax 1620
 
-//constants
+//constants -- lift
 #define fourBarDeadband 50 //allowable deviation from totalTargetPos
 #define shoulderFourBarPower 90
 #define shoulderStillSpeed 10 //still speeds
 #define wristStillSpeed 10
 #define clawStillSpeed 15
+#define logistic_k 0.0005 //wrist pos-matching logistic constants
+#define logisticM 127
+#define logistic_i 10
+#define logistic_s -log((2*logisticM/(logisticM+logistic_i) - 1) / (2*logisticM/logistic_i - 1)) / (2*logistic_k*logisticM) //Shifts logistic function over so f(0) = logistic_i. It's ugly. I know.
+
 
 //variables
 bool fourBar = false;
@@ -61,6 +67,7 @@ short autoSign; //for autonomous, positive if robot is left of pillow
 motorGroup shoulder;
 motorGroup wrist;
 motorGroup claw;
+logisticRamper wristRamp;
 
 void pre_auton() {
 	bStopTasksBetweenModes = true;
@@ -81,6 +88,8 @@ void pre_auton() {
 
   initializeGroup(claw, 2, claw1, claw2);
   addSensor(claw, clawPot);
+
+	initializeLogisticRamp(wristRamp, logistic_k, 2*logisticM, logistic_i);
 }
 
 //autonomous region
@@ -228,7 +237,7 @@ void liftControl() {
 		setPower(wrist, wristPower);
 		totalTargetPos = totalPos;
 	}	else if (fourBar && (abs(totalTargetPos - totalPos) > fourBarDeadband)) {
-		setPower();
+		setPower(wrist, logisticRampRuntime(wristRamp, totalTargetPos - totalPos + logistic_s)); //moves wrist toward shoulder position
 	} else {
 		setPower(wrist, wristStillSpeed);
 	}
