@@ -54,11 +54,6 @@
 #define shoulderStillSpeed 10 //still speeds
 #define wristStillSpeed 10
 #define clawStillSpeed 15
-#define logistic_k 0.0005 //wrist pos-matching logistic constants
-#define logisticM 127
-#define logistic_i 10
-#define logistic_s -log((2*logisticM/(logisticM+logistic_i) - 1) / (2*logisticM/logistic_i - 1)) / (2*logistic_k*logisticM) //Shifts logistic function over so f(0) = logistic_i. It's ugly. I know.
-
 
 //variables
 bool fourBar = false;
@@ -71,7 +66,6 @@ motorGroup shoulder;
 motorGroup wrist;
 motorGroup claw;
 motorGroup wheelieWinch;
-logisticRamper wristRamp;
 
 void pre_auton() {
 	bStopTasksBetweenModes = true;
@@ -100,8 +94,6 @@ void pre_auton() {
 	//configure claw
   initializeGroup(claw, 2, claw1, claw2);
   addSensor(claw, clawPot);
-
-	initializeLogisticRamp(wristRamp, logistic_k, 2*logisticM, logistic_i); //used for position matching between lift components
 }
 
 //autonomous region
@@ -285,7 +277,7 @@ void liftControl() {
 		setPower(wrist, wristPower);
 		totalTargetPos = totalPos;
 	}	else if (fourBar && (abs(totalTargetPos - totalPos) > fourBarDeadband)) {
-		setPower(wrist, logisticRampRuntime(wristRamp, totalTargetPos - totalPos + logistic_s)); //moves wrist toward shoulder position
+		moveTowardPosition(wrist, totalTargetPos - shoulderPos);
 	} else {
 		setPower(wrist, wristStillSpeed);
 	}
