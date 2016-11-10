@@ -96,20 +96,21 @@ void pre_auton() {
   addSensor(claw, clawPot);
 }
 
-//autonomous region
-void stopManeuvers() {
-	claw.maneuverExecuting = false;
-	shoulder.maneuverExecuting = false;
-	wrist.maneuverExecuting = false;
+//claw region
+void clawControl() {
+	if (vexRT[closeClawBtn] == 1) {
+		setPower(claw, 127);
+		clawOpen = false;
+	} else if (vexRT[openClawBtn] == 1) {
+		setPower(claw, -127);
+		clawOpen = true;
+	} else {
+		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
+	}
 }
 
-void deploy(int waitAtEnd=250) {
-	//deploy stops
-	goToPosition(shoulder, 1200);
-	goToPosition(shoulder, shoulderBottom);
-}
-
-void setClawStateManeuver(bool open = !clawOpen) { //toggles by default
+//	autonomous subregion
+void setClawStateManeuver(bool open) {
 	if (open) {
 		createManeuver(claw, clawOpenPos, clawStillSpeed);
 	} else {
@@ -130,8 +131,64 @@ void closeClaw(bool stillSpeed=true) {
 void hyperExtendClaw(bool stillSpeed=true) {
 	goToPosition(claw, clawMax, (stillSpeed ? clawStillSpeed : 0));
 }
+//	end autonomous subregion
+//end claw region
 
-	//pillowAuton subregion
+//lift region
+int totalLiftPotVal() {
+	return potentiometerVal(wrist) + potentiometerVal(shoulder);
+}
+
+void toggleLiftMode() {
+	fourBar = !fourBar;
+
+	if (fourBar) {
+		totalTargetPos = totalLiftPotVal();
+		shoulder.upPower = shoulderFourBarPower;
+		shoulder.downPower = -shoulderFourBarPower;
+	} else {
+		shoulder.upPower = 127;
+		shoulder.downPower = -127;
+	}
+}
+
+void liftControl() {
+	if (newlyPressed(toggleLiftModeBtn))
+		toggleLiftMode();
+
+	short shoulderPos = potentiometerVal(shoulder);
+
+	shoulder.stillSpeed = shoulderStillSpeed * ((shoulderPos<shoulderMiddle || shoulderPos>shoulderVert) ? 1 : -1);
+	short shoulderPower = takeInput(shoulder);
+	short wristPower = takeInput(wrist, false);
+
+	int totalPos = totalLiftPotVal();
+
+	if (wristPower != 0) {
+		setPower(wrist, wristPower);
+		totalTargetPos = totalPos;
+	}	else if (fourBar && (abs(totalTargetPos - totalPos) > fourBarDeadband)) {
+		moveTowardPosition(wrist, totalTargetPos - shoulderPos);
+	} else {
+		setPower(wrist, wristStillSpeed);
+	}
+}
+//end lift region
+
+//autonomous region
+void stopManeuvers() {
+	claw.maneuverExecuting = false;
+	shoulder.maneuverExecuting = false;
+	wrist.maneuverExecuting = false;
+}
+
+void deploy(int waitAtEnd=250) {
+	//deploy stops
+	goToPosition(shoulder, 1200);
+	goToPosition(shoulder, shoulderBottom);
+}
+
+//	pillowAuton subregion
 task pillowAutonClaw() {
 
 }
@@ -190,9 +247,9 @@ void pillowAuton() {
 	startTask(pillowAutonLift);
 	startTask(pillowAutonClaw);
 }
-	//end pillowAuton subregion
+//	end pillowAuton subregion
 
-	//oneSideAuton subregion
+//	oneSideAuton subregion
 task oneSideAutonDrive() {
 	createManeuver(claw, clawMax, clawStillSpeed); //open claw
 	createManeuver(shoulder, shoulderTop-400, shoulderStillSpeed); //lift to near top
@@ -225,7 +282,7 @@ void oneSideAuton() {
 	startTask(oneSideAutonLift);
 	startTask(oneSideAutonClaw);
 }
-	//end oneSideAuton subregion
+// end oneSideAuton subregion
 
 task autonomous() {
 	stopManeuvers();
@@ -243,58 +300,6 @@ task autonomous() {
 }
 //end autonomous region
 
-//user control region
-int totalLiftPotVal() {
-	return potentiometerVal(wrist) + potentiometerVal(shoulder);
-}
-
-void toggleLiftMode() {
-	fourBar = !fourBar;
-
-	if (fourBar) {
-		totalTargetPos = totalLiftPotVal();
-		shoulder.upPower = shoulderFourBarPower;
-		shoulder.downPower = -shoulderFourBarPower;
-	} else {
-		shoulder.upPower = 127;
-		shoulder.downPower = -127;
-	}
-}
-
-void liftControl() {
-	if (newlyPressed(toggleLiftModeBtn))
-		toggleLiftMode();
-
-	short shoulderPos = potentiometerVal(shoulder);
-
-	shoulder.stillSpeed = shoulderStillSpeed * ((shoulderPos<shoulderMiddle || shoulderPos>shoulderVert) ? 1 : -1);
-	short shoulderPower = takeInput(shoulder);
-	short wristPower = takeInput(wrist, false);
-
-	int totalPos = totalLiftPotVal();
-
-	if (wristPower != 0) {
-		setPower(wrist, wristPower);
-		totalTargetPos = totalPos;
-	}	else if (fourBar && (abs(totalTargetPos - totalPos) > fourBarDeadband)) {
-		moveTowardPosition(wrist, totalTargetPos - shoulderPos);
-	} else {
-		setPower(wrist, wristStillSpeed);
-	}
-}
-
-void clawControl() {
-	if (vexRT[closeClawBtn] == 1) {
-		setPower(claw, 127);
-		clawOpen = false;
-	} else if (vexRT[openClawBtn] == 1) {
-		setPower(claw, -127);
-		clawOpen = true;
-	} else {
-		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
-	}
-}
-
 task usercontrol() {
 	while (true) {
   	driveRuntime(drive);
@@ -306,4 +311,3 @@ task usercontrol() {
 		liftControl();
   }
 }
-//end user control region
