@@ -138,7 +138,7 @@ void setPower(motorGroup *group, int power) {
 }
 
 void moveTowardPosition(motorGroup *group, int position, int power=127) {
-	setPower(group, power * sgn(potentiometerVal(group) - position));
+	setPower(group, power * sgn(position - potentiometerVal(group)));
 }
 
 void executeManeuver(motorGroup *group) {
