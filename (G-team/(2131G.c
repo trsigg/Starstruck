@@ -1,8 +1,8 @@
-#pragma config(Sensor, in1,    ,               sensorGyro)
-#pragma config(Sensor, in2,    ,               sensorPotentiometer)
-#pragma config(Sensor, in3,    ,               sensorPotentiometer)
-#pragma config(Sensor, dgtl1,  claw1,          sensorDigitalOut)
-#pragma config(Sensor, dgtl2,  claw2,          sensorDigitalOut)
+#pragma config(Sensor, in1,    gyro,           sensorGyro)
+#pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
+#pragma config(Sensor, in3,    clawPot,        sensorPotentiometer)
+#pragma config(Sensor, dgtl1,  leftEnc,        sensorQuadEncoder)
+#pragma config(Sensor, dgtl3,  rightEnc,       sensorQuadEncoder)
 #pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           rfd,           tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port3,           lift1,         tmotorVex393_MC29, openLoop, reversed)
@@ -23,47 +23,194 @@
 
 #include "..\Includes\parallelDrive.c"
 #include "..\Includes\motorGroup.c"
+#include "..\Includes\pd_autoMove.c"
+#include "..\Includes\buttonTracker.c"
 
+//Buttons
 #define openClawBtn Btn6U
 #define closeClawBtn Btn6D
 #define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
 
-#define clawStillSpeed 15
-short clawSign = 1;
+//Positions
+#define liftBottom 346
+#define liftMax 2310
+#define liftTop 1820
+#define liftPush 1462
+#define clawClosedPos 4096-3595
+#define clawOpenPos 4096-2595
+#define clawMax 4096-1200
 
-parallel_drive drive;
+//Constants
+#define liftStillSpeed 10
+#define clawStillSpeed 15
+
+//Varibles
+bool clawOpen = false;
+//short autoSign;
+
 motorGroup lift;
 motorGroup claw;
 
-bool clawOpen = true;
+
 
 void pre_auton() {
   bStopTasksBetweenModes = true;
 
   initializeDrive(drive);
   setDriveMotors(drive, 4, lfd, lbd, rfd, rbd);
+  attachEncoder(drive, leftEnc, LEFT);
+  attachEncoder(drive, rightEnc, RIGHT, false, 4);
+  attachGyro(drive, gyro);
 
   initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -100);
+  setAbsolutes(lift, liftBottom);
+  addSensor(lift, liftPot);
+
   initializeGroup(claw, 2, claw1, claw2);
+  addSensor(claw, clawPot, true);
+
 }
+
+//BEGIN AUTON TAKEN FROM E
+//autonomous region
+void deploy(int waitAtEnd=250) {
+	//deploy stops
+	goToPosition(lift, liftMax);
+	goToPosition(claw, clawMax, clawStillSpeed);
+	goToPosition(lift, liftBottom + 500);
+	goToPosition(claw, clawOpenPos);
+}
+
+void setClawStateManeuver(bool open = !clawOpen) { //toggles by default
+	if (open) {
+		createManeuver(claw, clawOpenPos, clawStillSpeed);
+	} else {
+		createManeuver(claw, clawClosedPos, -clawStillSpeed);
+	}
+
+	clawOpen = open;
+}
+
+void openClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0));
+}
+
+void closeClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawClosedPos, (stillSpeed ? -clawStillSpeed : 0));
+}
+
+void hyperExtendClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawMax, (stillSpeed ? clawStillSpeed : 0));
+}
+
+task pillowAuton() { //Put true to run 2 things at once
+	setClawStateManeuver(true); //open claw
+  //goToPosition(claw, clawOpenPos);
+	openClaw();
+  driveStraight(10); //drive away from wall
+  //while(driveData.isDriving);
+
+  //move toward pillow
+  turn(-0.95);
+  //while(turnData.isTurning || claw.maneuverExecuting);
+  driveStraight(8);
+
+  //goToPosition(claw, clawClosedPos, ); //clamp pillow
+  closeClaw();
+
+  turn(0.6);
+  //while(turnData.isTurning);
+  goToPosition(lift, liftTop);
+
+  //--lift up--//
+  driveStraight(6);
+  //while (driveData.isDriving);
+  turn(33, true, 40, 80, -20); //turn to face fence
+  //while (turnData.isTurning);
+  driveStraight(17, true); // drive up to wall
+  //while (driveData.isDriving || lift.maneuverExecuting); //Changed shoulder to lift; WORK?
+
+  openClaw(); //release pillow
+  closeClaw();
+  driveStraight(-5); //back up
+  hyperExtendClaw();
+
+  //push jacks over
+ 	driveStraight(10);
+ 	goToPosition(claw, 900);
+
+ 	createManeuver(claw, clawMax, clawStillSpeed); //hyperextend claw
+
+ 	//drive to other wall and lift down
+ 	driveStraight(-5); //Put True if you want to perform two tasks at once
+ 	//while (driveData.isDriving);
+ 	turn(63);
+ 	//while (turnData.isTurning || claw.maneuverExecuting);
+ 	createManeuver(lift, liftMax, liftStillSpeed);
+ 	driveStraight(43);
+ 	//while (driveData.isDriving || lift.maneuverExecuting);
+ 	turn(-80, false, 40, 120, -40);
+ 	driveStraight(7);
+
+ 	goToPosition(lift, liftPush); //push jacks over
+}
+
+/*task oneSideAuton() {
+	createManeuver(claw, clawOpen, clawStillSpeed); //open claw   CHANGED TO CLAW OPEN
+	createManeuver(lift, liftTop, liftStillSpeed); //lift to near top
+  driveStraight(5, true); //drive away from wall
+  while(driveData.isDriving);
+
+  turn(30, true);
+  while (turnData.isTurning || claw.maneuverExecuting);
+
+  driveStraight(10);
+  while (driveData.isDriving);
+
+  turn(-40, true); //turn toward wall
+  while (turnData.isTurning || lift.maneuverExecuting);  //CHANGED SHOULDER TO LIFT; WORK?
+
+  driveStraight(25);
+  goToPosition(lift, 2100); //CHANGED TO OUR VALUES?
+} */
+
+task autonomous() {
+	lift.maneuverExecuting = false;
+	claw.maneuverExecuting = false;
+	//startTask(maneuvers);
+
+  deploy();
+
+  //autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
+
+  //start appropriate autonomous task
+  //if (SensorValue[modePot] > 2540) {
+  	startTask(pillowAuton);
+  //} else if (SensorValue[modePot] > 1320) {
+  //	startTask(oneSideAuton);
+  }
+//}
+//end autonomous region
 
 void clawControl() {
 	if (vexRT[closeClawBtn] == 1) {
 		setPower(claw, 127);
-		clawSign = 1;
+		clawOpen = false;
 	} else if (vexRT[openClawBtn] == 1) {
 		setPower(claw, -127);
-		clawSign = -1;
+		clawOpen = true;
 	} else {
-		setPower(claw, clawStillSpeed * clawSign);
+		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
 	}
 }
+//END OF AUTON TAKEN FROM E
 
-task autonomous() {
+/*task autonomous() {
   AutonomousCodePlaceholderForTesting();
 }
+*/
 
 task usercontrol() {
 	while (true) {
