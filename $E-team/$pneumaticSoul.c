@@ -182,7 +182,7 @@ void liftControl() {
 	if (wristPower != 0) {
 		setPower(wrist, wristPower);
 		totalTargetPos = totalPos;
-	}	else if (fourBar && (abs(error) > fourBarDeadband) && (sgn(error)==minSign || sgn(error)==maxSign)) { //only moves toward target if in four bar mode, outside of deadband, and doesn't move past bounds
+	}	else if (fourBar && (abs(error) > fourBarDeadband)) { //only moves toward target if in four bar mode, outside of deadband, and doesn't move past bounds
 		moveTowardPosition(wrist, totalTargetPos - shoulderPos);
 	} else {
 		setPower(wrist, wristStillSpeed);
