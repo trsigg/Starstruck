@@ -24,6 +24,7 @@ typedef struct {
 	float coeff; //factor by which motor powers are multiplied
 	long lastUpdated; //ramping
 	int absMin, absMax; //extreme potentiometer positions of motorGroup
+	int maxPowerAtAbs, defPowerAtAbs; //maximum power at absolute position (pushing down from minimum or up from maximum) and default power if this is exceeded
 	//sensors
 	bool hasEncoder, hasPotentiometer;
 	bool encoderReversed, potentiometerReversed;
@@ -111,9 +112,11 @@ void resetEncoder(motorGroup *group, int resetVal=0) {
 //end sensor region
 
 //position limiting region
-void setAbsolutes(motorGroup *group, int min, int max=4097) {
+void setAbsolutes(motorGroup *group, int min, int max=4097, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
 	group->absMin = min;
 	group->absMax = max;
+	group->maxPowerAtAbs = maxPowerAtAbs;
+	group->defPowerAtAbs = defPowerAtAbs;
 }
 //end position limiting region
 
@@ -131,10 +134,12 @@ void createTarget(motorGroup *group, int position, TVexJoysticks btn) {
 }
 //end motor targets region
 
-void setPower(motorGroup *group, int power) {
-	for (int i=0; i<group->numMotors; i++) {
+void setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
+	if (((potentiometerVal(group) <= group->absMin && power < -group->maxPowerAtAbs) || (potentiometerVal(group) >= group->absMax && power > group->maxPowerAtAbs) && !overrideAbsolutes)) //moving below absMin or above absMax and overrideAbsolutes is false TODO: make more efficient (a la wrist code)
+		power = group->defPowerAtAbs * sgn(power);
+
+	for (int i=0; i<group->numMotors; i++) //set motors
 		motor[group->motors[i]] = power;
-	}
 }
 
 void moveTowardPosition(motorGroup *group, int position, int power=127) {
