@@ -27,12 +27,11 @@
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\parallelDrive.c"
 #include "..\Includes\pd_autoMove.c"
-#include "..\Includes\logisticRamp.c"
 //#endregion
 
 //#region buttons
-#define openClawBtn Btn6D //claw
-#define closeClawBtn Btn6U
+#define openClawBtn Btn6U //claw
+#define closeClawBtn Btn6D
 #define wheelieOutBtn Btn7U //wheelie bars
 #define wheelieInBtn Btn7D
 #define toggleLiftModeBtn Btn8L //lift
@@ -57,7 +56,8 @@
 //#region constants
 //lift
 #define fourBarDeadband 100 //allowable deviation from totalTargetPos
-#define shoulderFourBarPower 70
+#define shoulderFBUpPower 100 //four bar shoulder powers
+#define shoulderFBDownPower 60
 #define shoulderStillSpeed 10 //still speeds
 #define wristStillSpeed 10
 #define clawStillSpeed 15
@@ -154,8 +154,8 @@ void toggleLiftMode() {
 
 	if (fourBar) {
 		totalTargetPos = totalLiftPotVal();
-		shoulder.upPower = shoulderFourBarPower;
-		shoulder.downPower = -shoulderFourBarPower;
+		shoulder.upPower = shoulderFBUpPower;
+		shoulder.downPower = -shoulderFBDownPower;
 	} else {
 		shoulder.upPower = 127;
 		shoulder.downPower = -127;
@@ -167,21 +167,17 @@ void liftControl() {
 		toggleLiftMode();
 
 	short shoulderPos = potentiometerVal(shoulder);
-	short wristPos = potentiometerVal(wrist);
 
 	shoulder.stillSpeed = shoulderStillSpeed * ((shoulderPos<shoulderMiddle || shoulderPos>shoulderVert) ? -1 : 1);
-	int shoulderPower = takeInput(shoulder);
+	takeInput(shoulder);
 	int wristPower = takeInput(wrist, false);
 
 	int totalPos = totalLiftPotVal();
-	int error = totalTargetPos - totalPos;
-	int minSign = sgn(wristMin - wristPos);
-	int maxSign = sgn(wristMax - wristPos);
 
 	if (wristPower != 0) {
 		setPower(wrist, wristPower);
 		totalTargetPos = totalPos;
-	}	else if (fourBar && (abs(error) > fourBarDeadband)) { //only moves toward target if in four bar mode, outside of deadband, and doesn't move past bounds
+	}	else if (fourBar && (abs(totalTargetPos - totalPos) > fourBarDeadband)) { //only moves toward target if in four bar mode, outside of deadband, and doesn't move past bounds
 		moveTowardPosition(wrist, totalTargetPos - shoulderPos);
 	} else {
 		setPower(wrist, wristStillSpeed);
