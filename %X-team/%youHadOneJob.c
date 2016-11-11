@@ -1,16 +1,16 @@
-#pragma config(Sensor, in1,    ClawPot,        sensorPotentiometer)
-#pragma config(Sensor, in2,    LeftPot,        sensorPotentiometer)
-#pragma config(Sensor, in3,    ModePot,        sensorPotentiometer)
-#pragma config(Sensor, in4,    SidePot,        sensorPotentiometer)
-#pragma config(Sensor, in5,    Gyro,           sensorGyro)
-#pragma config(Sensor, dgtl1,  rightEncoder,   sensorQuadEncoder)
-#pragma config(Sensor, dgtl3,  leftEncoder,    sensorQuadEncoder)
+#pragma config(Sensor, in1,    clawPot,        sensorPotentiometer)
+#pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
+#pragma config(Sensor, in3,    modePot,        sensorPotentiometer)
+#pragma config(Sensor, in4,    sidePot,        sensorPotentiometer)
+#pragma config(Sensor, in5,    hyro,           sensorGyro)
+#pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
+#pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           lbd,           tmotorVex393_HBridge, openLoop)
 #pragma config(Motor,  port2,           lfd,           tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           lift1,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,           lift2,         tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port5,           claw1,         tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port6,           claw2,         tmotorVex393_MC29, openLoop, reversed)
+#pragma config(Motor,  port5,           claw1,         tmotorVex393_MC29, openLoop, reversed)
+#pragma config(Motor,  port6,           claw2,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port7,           lift3,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port8,           lift4,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port9,           rfd,           tmotorVex393_MC29, openLoop, reversed)
@@ -21,241 +21,198 @@
 #pragma competitionControl(Competition)
 #include "Vex_Competition_Includes.c"
 
-#include "..\Includes\buttonTracker.c"
-#include "..\Includes\parallelDrive.c"
-#include "..\Includes\pd_autoMove.c"
-#include "..\Includes\motorGroup.c"
+#include "../Includes/buttonTracker.c"
+#include "../Includes/motorGroup.c"
+#include "../Includes/parallelDrive.c"
+#include "../Includes/pd_autoMove.c"
 
 //buttons
 #define toggleLiftModeBtn Btn8U
-#define openClawBtn Btn6U //claw
-#define closeClawBtn Btn6D
+#define openClawBtn Btn6D //claw
+#define closeClawBtn Btn6U
 #define liftUpBtn Btn5U //lift
 #define liftDownBtn Btn5D
 
 //positions
-#define liftMiddle 1239
-#define liftVert 2740
+#define liftBottom 553//lift
+#define liftTop 1350
+#define liftMiddle 1167
+#define liftVert 2710
+#define clawOpenPos 1011 //claw
+#define clawClosedPos 1570
+#define clawMax 100
 
 //constants
 #define liftStillSpeed 10
 #define clawStillSpeed 15
 
-short clawSign = 1; //Sign of still speed. Positive if closed, negative if open
+//variables
+bool clawOpen = false;
+short autoSign; //for autonomous, positive if robot is on on the blue side by the pole or the symmetric tile of red side
 
 motorGroup lift;
 motorGroup claw;
 
-//autonomous region
 void pre_auton() {
 	bStopTasksBetweenModes = true;
 
 	initializeDrive(drive);
   setDriveMotors(drive, 4, lfd, lbd, rfd, rbd);
-  attachEncoder(drive, leftEncoder, LEFT, true);
-  attachEncoder(drive, rightEncoder, RIGHT, true, 4);
-  attachGyro(drive, Gyro);
+  attachEncoder(drive, leftEnc, LEFT, true);
+  attachEncoder(drive, rightEnc, RIGHT, true, 4);
+  attachGyro(drive, hyro);
 
 	initializeGroup(lift, 4, lift1, lift2, lift3, lift4);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
-  addSensor(lift, LeftPot);
+  addSensor(lift, liftPot);
 
   initializeGroup(claw, 2, claw1, claw2);
+  addSensor(claw, clawPot);
 }
-void openclaw (int time)
- {
-   clearTimer(T1);
 
-	while(time1(T1) < time)//pot value needs to be when the claw is open
-   {
-     motor[claw1] = 127;
-     motor[claw2] = 127;
-   }
-   motor[claw1] = 0;
-     motor[claw2] = 0;
- }
- void closeclaw (int time)
- {
-   clearTimer(T1);
+//autonomous region
+task maneuvers() {
+	while (true) {
+		executeManeuver(claw);
+		executeManeuver(lift);
+	}
+}
 
-	while(time1(T1) < time)//pot value needs to be when the claw is closed
-   {
-     motor[claw1] = -127;
-     motor[claw2] = -127;
-   }
-   motor[claw1] = 0;
-     motor[claw2] = 0;
- }
- void liftUp (int time)
- {
-   clearTimer(T1);
+void deployClaw(int waitAtEnd=250) {
+	setDrivePower(drive, 127, 127);
+	wait1Msec(500);
+	setDrivePower(drive, -127, -127);
+	wait1Msec(750);
+	setDrivePower(drive, 0, 0);
+	wait1Msec(waitAtEnd);
+}
 
-	while(time1(T1) < time)//pot value needs to be when the lift is the height desired
-   {
-     motor[lift1]= 127;
-     motor[lift2]= 127;
-     motor[lift3]= 127;
-     motor[lift4]= 127;
-   }
-   setPower(lift, 0);
- }
- void liftDown (int time)
- {
-   time1(T1) = 0;
+void setClawStateManeuver(bool open = !clawOpen) { //toggles by default
+	if (open) {
+		createManeuver(claw, clawOpenPos, -clawStillSpeed);
+	} else {
+		createManeuver(claw, clawClosedPos, clawStillSpeed);
+	}
 
-	while(time1(T1) < time)//pot value needs to be when the lift is the height desired
-   {
-     motor[lift1]= -127;
-     motor[lift2]= -127;
-     motor[lift3]= -127;
-     motor[lift4]= -127;
-   }
-   setPower(lift, 0);
- }
- void Driveforward (int time)
- {
-   time1(T1) = 0;
+	clawOpen = open;
+}
 
-   while(time1(T1) < time)
-   {
-     setDrivePower(drive, 127, 127);
-   }
+void openClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0));
+}
 
-   setDrivePower(drive, 0, 0);
- }
+void closeClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawClosedPos, (stillSpeed ? -clawStillSpeed : 0));
+}
 
- void Driveback (int time)
- {
-   time1(T1) = 0;
+void hyperExtendClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawMax, (stillSpeed ? clawStillSpeed : 0));
+}
 
-   while(time1(T1) < time)
-   {
-     setDrivePower(drive, -127, -127);
-   }
+void setLiftStateManeuver(bool top = potentiometerVal(lift)<liftMiddle) { //toggles by default
+  if (top) {
+    createManeuver(lift, liftTop, liftStillSpeed);
+  } else {
+    createManeuver(lift, liftBottom, liftStillSpeed);
+  }
+}
 
-   setDrivePower(drive, 0, 0);
- }
-task rightcube()//right tile
-{
+task pillowAuton() {
+	setClawStateManeuver(true); //open claw
+  driveStraight(5, true); //drive away from wall
+  while(driveData.isDriving);
 
-	liftUp(750);
-	liftDown(600);
-	Driveforward(500);
-	Driveback(500);
-	turn(55);//face the cube
-	Driveforward(600);//go to cube
-	openclaw(800);
-	wait10Msec(500);
-	closeclaw(300);//grab the cube
-	/*turn(125);//face the fence
-	driveStraight(5);//go to the fence
-	liftUp(3000);//get over it
-	openclaw(5);//release the kracken
-	closeclaw(5);//cage the kracken
-	driveStraight(5);//back-up
-	driveStraight(5);//knock over the remainder of the stars on fence*/
+  //move toward pillow
+  turn(55, true);
+  while(turnData.isTurning || claw.maneuverExecuting);
+  driveStraight(8);
+
+  closeClaw(); //clamp pillow
+
+  setLiftStateManeuver(true);
+  driveStraight(15, true);
+  while (driveData.isDriving);
+  turn(-40, true, 40, 80, -20); //turn to face fence
+  while (turnData.isTurning);
+  driveStraight(20, true); // drive up to wall
+  while (driveData.isDriving || lift.maneuverExecuting);
+
+  openClaw(); //release pillow
+  closeClaw();
+  driveStraight(-5); //back up
+  hyperExtendClaw();
+
+  //push jacks over
+ 	driveStraight(10);
+ 	goToPosition(claw, 850);
+ 	driveStraight(-7);
+ 	goToPosition(claw, 700);
 
 }
-task leftcube()//left tile
-{
-	liftUp(5); //deploy the claw
-	liftDown(5);//deploy the claw
-	turn(5);//face the cube
-	driveStraight(5);//go to the cube
-	openclaw(5);
-	closeclaw(5);//grab the cube
-	turn(5);//face the fence
-	driveStraight(5);//go to the fence
-	liftUp(5);//get over it
-	openclaw(5);//release the kracken
-	closeclaw(5);//cage the kracken
-	driveStraight(5);//back-up
-	driveStraight(5);//knock over the remainder of the stars on fence
-}
-task Rnocube()//in the case teammates auto goes for the cube or with E-team
-{
-	liftUp(5); //deploy the claw
-	liftDown(5);//deploy the claw
-	turn(5);//turn to get lined up with fence
-	driveStraight(5);//go on the angle provided
-	turn(5);//face the fence
-	driveStraight(5);//ramming speed spock
-	liftUp(5);//size up to the fence
-	openclaw(5);//intimindate
-	liftUp(5);//finish the wall
-	driveStraight(5);//backup
-	turn(5);//turn to the back jacks
-	openclaw(5);//get ready for jacks
-	driveStraight(5);//hoard the jacks
-	closeclaw(5);//grab jacks
-	driveStraight(5);//backup
-	turn(5);//face the wall
-	driveStraight(5);//backup to the fence
-	liftUp(5);//ready the jacks to dump
-	openclaw(5);//release jacks
 
+task oneSideAuton() {
+	createManeuver(claw, clawMax, -clawStillSpeed); //open claw
+	createManeuver(lift, liftTop-400, liftStillSpeed); //lift to near top
+  driveStraight(5, true); //drive away from wall
+  while(driveData.isDriving);
 
-}
-task Lnocube()
-{
-		liftUp(5); //deploy the claw
-	liftDown(5);//deploy the claw
-	turn(5);//turn to get lined up with fence
-	driveStraight(5);//go on the angle provided
-	turn(5);//face the fence
-	driveStraight(5);//ramming speed spock
-	liftUp(5);//size up to the fence
-	openclaw(5);//intimindate
-	liftUp(5);//finish the wall
-	driveStraight(5);//backup
-	turn(5);//turn to the back jacks
-	openclaw(5);//get ready for jacks
-	driveStraight(5);//hoard the jacks
-	closeclaw(5);//grab jacks
-	driveStraight(5);//backup
-	turn(5);//face the wall
-	driveStraight(5);//backup to the fence
-	liftUp(5);//ready the jacks to dump
-	openclaw(5);//release jacks
+  turn(-30, true);
+  while (turnData.isTurning || claw.maneuverExecuting);
 
+  driveStraight(10);
+  while (driveData.isDriving);
+
+  turn(25, true); //turn toward wall
+  while (turnData.isTurning || lift.maneuverExecuting);
+
+  driveStraight(25);
+  goToPosition(lift, 1995);
 }
+
 task autonomous() {
+	lift.maneuverExecuting = false;
+	claw.maneuverExecuting = false;
+	startTask(maneuvers);
 
-	if (SensorValue[sidePot] > 7 && SensorValue[modePot] > 8 ){
-		startTask(rightcube);
-	}
-	else if (SensorValue[sidePot] < 9 && SensorValue[modePot] < 10) {
-		startTask(leftcube);
-	}
-	else if (SensorValue[sidePot] > 1 && SensorValue[modePot] < 5) {
-		startTask(Rnocube);
-	}
-	else {
-		startTask(Lnocube);
-	}
+	//deploy stops
+	goToPosition(lift, liftMiddle);
+	goToPosition(lift, liftBottom);
+
+  deployClaw();
+
+  autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
+
+  //start appropriate autonomous task
+  if (SensorValue[modePot] > 1870) {
+  	startTask(pillowAuton);
+  } else {
+  	startTask(oneSideAuton);
+  }
 }
 //end autonomous region
 
 //user control region
-void clawControl() {
-	if (vexRT[closeClawBtn] == 1) {
-		setPower(claw, 127);
-		clawSign = 1;
-	} else if (vexRT[openClawBtn] == 1) {
-		setPower(claw, -127);
-		clawSign = -1;
-	} else {
-		setPower(claw, clawStillSpeed * clawSign);
-	}
-}
 void liftControl() {
 	short potPos = potentiometerVal(lift);
 	lift.stillSpeed = liftStillSpeed * ((potPos<liftMiddle || potPos>liftVert) ? -1 : 1);
 	takeInput(lift);
 }
 
+void clawControl() {
+	if (vexRT[closeClawBtn] == 1) {
+		setPower(claw, 127);
+		clawOpen = false;
+	} else if (vexRT[openClawBtn] == 1) {
+		setPower(claw, -127);
+		clawOpen = true;
+	} else {
+		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
+	}
+}
+
 task usercontrol() {
 	while (true) {
+
   	driveRuntime(drive);
 
   	liftControl();
