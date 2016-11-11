@@ -38,6 +38,7 @@ typedef struct {
 	long timer;
 } motorGroup;
 
+//#region initialization
 void initializeGroup(motorGroup *group, int numMotors, tMotor motor1, tMotor motor2=port1, tMotor motor3=port1, tMotor motor4=port1, tMotor motor5=port1, tMotor motor6=port1, tMotor motor7=port1, tMotor motor8=port1, tMotor motor9=port1, tMotor motor10=port1, tMotor motor11=port1, tMotor motor12=port1) { //look, I know this is stupid.  But arrays in ROBOTC */really/* suck
 	tMotor motors[12] = { motor1, motor2, motor3, motor4, motor5, motor6, motor7, motor8, motor9, motor10, motor11, motor12 };
 	for (int i=0; i<numMotors; i++)
@@ -73,8 +74,9 @@ void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadb
 	group->coeff = maxPow /  127.0;
 	group->lastUpdated = nPgmTime;
 }
+//#endregion
 
-//sensor region
+//#region sensors
 void addSensor(motorGroup *group, tSensors sensor, bool reversed=false) {
 	switch (SensorType[sensor]) {
 		case sensorPotentiometer:
@@ -109,18 +111,18 @@ int potentiometerVal(motorGroup *group) {
 void resetEncoder(motorGroup *group, int resetVal=0) {
 	SensorValue[group->encoder] = resetVal;
 }
-//end sensor region
+//#endregion
 
-//position limiting region
+//#region position limiting
 void setAbsolutes(motorGroup *group, int min, int max=4097, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
 	group->absMin = min;
 	group->absMax = max;
 	group->maxPowerAtAbs = maxPowerAtAbs;
 	group->defPowerAtAbs = defPowerAtAbs;
 }
-//end position limiting region
+//#endregion
 
-//motor targets region
+//#region motor targets
 void createTarget(motorGroup *group, int position, TVexJoysticks btn) {
 	if (group->hasPotentiometer) {
 		for (int i=0; i<numTargets; i++) {
@@ -132,7 +134,7 @@ void createTarget(motorGroup *group, int position, TVexJoysticks btn) {
 		}
 	}
 }
-//end motor targets region
+//#endregion
 
 void setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
 	if (((potentiometerVal(group) <= group->absMin && power < -group->maxPowerAtAbs) || (potentiometerVal(group) >= group->absMax && power > group->maxPowerAtAbs) && !overrideAbsolutes)) //moving below absMin or above absMax and overrideAbsolutes is false TODO: make more efficient (a la wrist code)
@@ -142,6 +144,7 @@ void setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
 		motor[group->motors[i]] = power;
 }
 
+//#region position movement
 void moveTowardPosition(motorGroup *group, int position, int power=127) {
 	setPower(group, power * sgn(position - potentiometerVal(group)));
 }
@@ -171,8 +174,9 @@ void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverP
 	while (sgn(position - potentiometerVal(group)) == displacementSign) {}
 	setPower(group, endPower);
 }
+//#endregion
 
-//user input region
+//#region user input
 void getTargetInput(motorGroup *group) {
 	for (int i=0; i<numTargets; i++) {
 		if (group->targets[i] == -1) {
@@ -274,4 +278,4 @@ int takeInput(motorGroup *group, bool setMotors=true) {
 
 	return power;
 }
-//end user input region
+//#endregion
