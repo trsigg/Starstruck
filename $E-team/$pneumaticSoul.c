@@ -22,6 +22,9 @@
 #pragma competitionControl(Competition)
 #include "Vex_Competition_Includes.c"
 
+int debug[3] = { 0, 0, 0 };
+bool correctingDebug;
+
 #include "..\Includes\buttonTracker.c"
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\parallelDrive.c"
@@ -40,17 +43,19 @@
 #define wristDownBtn Btn8D
 
 //positions
-#define shoulderBottom 930 //shoulder
-#define shoulderTop 2050
-#define shoulderMiddle 735
-#define shoulderVert 3215
+#define shoulderBottom 680 //shoulder
+#define shoulderTop 2280
+#define shoulderMiddle 800
+#define shoulderVert 2763
+#define wristMax 2500 //wrist
+#define wristMin 1150
 #define clawOpenPos 1130 //claw
 #define clawClosedPos 750
 #define clawMax 1620
 
 //constants -- lift
-#define fourBarDeadband 50 //allowable deviation from totalTargetPos
-#define shoulderFourBarPower 90
+#define fourBarDeadband 100 //allowable deviation from totalTargetPos
+#define shoulderFourBarPower 70
 #define shoulderStillSpeed 10 //still speeds
 #define wristStillSpeed 10
 #define clawStillSpeed 15
@@ -86,6 +91,7 @@ void pre_auton() {
 	initializeGroup(wrist, 1, wristMotor);
 	configureButtonInput(wrist, wristUpBtn, wristDownBtn);
 	addSensor(wrist, wristPot);
+	setAbsolutes(wrist, wristMin, wristMax);
 
 	//configure wheelie winch
 	initializeGroup(wheelieWinch, 1, wheelieMotor);
@@ -157,17 +163,26 @@ void liftControl() {
 		toggleLiftMode();
 
 	short shoulderPos = potentiometerVal(shoulder);
+	short wristPos = potentiometerVal(wrist);
 
-	shoulder.stillSpeed = shoulderStillSpeed * ((shoulderPos<shoulderMiddle || shoulderPos>shoulderVert) ? 1 : -1);
-	short shoulderPower = takeInput(shoulder);
-	short wristPower = takeInput(wrist, false);
+	shoulder.stillSpeed = shoulderStillSpeed * ((shoulderPos<shoulderMiddle || shoulderPos>shoulderVert) ? -1 : 1);
+	int shoulderPower = takeInput(shoulder);
+	int wristPower = takeInput(wrist, false);
 
 	int totalPos = totalLiftPotVal();
+	int error = totalTargetPos - totalPos;
+	int minSign = sgn(wristMin - wristPos);
+	int maxSign = sgn(wristMax - wristPos);
+
+	debug[0] = sgn(error);
+	debug[1] = minSign;
+	debug[2] = maxSign;
+	correctingDebug = fourBar && (abs(error) > fourBarDeadband) && (sgn(error)==minSign || sgn(error)==maxSign);
 
 	if (wristPower != 0) {
 		setPower(wrist, wristPower);
 		totalTargetPos = totalPos;
-	}	else if (fourBar && (abs(totalTargetPos - totalPos) > fourBarDeadband)) {
+	}	else if (fourBar && (abs(error) > fourBarDeadband) && (sgn(error)==minSign || sgn(error)==maxSign)) { //only moves toward target if in four bar mode, outside of deadband, and doesn't move past bounds
 		moveTowardPosition(wrist, totalTargetPos - shoulderPos);
 	} else {
 		setPower(wrist, wristStillSpeed);
