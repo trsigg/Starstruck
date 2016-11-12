@@ -192,7 +192,7 @@ void hyperExtendClaw(bool stillSpeed=true) {
 	goToPosition(claw, clawMax, (stillSpeed ? -clawStillSpeed : 0));
 }
 
-void setShoulderStateManeuver(bool top = potentiometerVal(shoulder)<shoulderMiddle) { //toggles by default
+void setShoulderStateManeuver(bool top) {
   if (top) {
     createManeuver(shoulder, shoulderTop, shoulderStillSpeed);
   } else {
@@ -204,11 +204,37 @@ task skillz() {
 	setClawStateManeuver(true);
 	setPower(wheelieWinch, 127); //deploy bars
 	driveStraight(-20, true); //drive back
-	wait1Msec(500);
+	wait1Msec(750); //wait for wheelie bars to deploy
 	setPower(wheelieWinch, 0);
 	while (driveData.isDriving || claw.maneuverExecuting);
-	wait1Msec(1000);
-	closeClaw();
+
+	for (int i=1; i<=3; i++) {
+		wait1Msec(500); //wait for pillow to be dropped
+		closeClaw(); //grab pillow
+		createManeuver(shoulder, shoulderVert, -shoulderStillSpeed);
+		driveStraight(-40, true);
+		while (driveData.isDriving || shoulder.maneuverExecuting);
+		openClaw(); //release pillow
+
+		if (i < 3) {
+			goToPosition(shoulder, shoulderBottom, -shoulderStillSpeed);
+			driveStraight(39);
+		}
+	}
+
+	setShoulderStateManeuver(false);
+	createManeuver(claw, clawOpenPos-500, -clawStillSpeed);
+	while (shoulder.maneuverExecuting || claw.maneuverExecuting);
+	turn(-45, false, 40, 127, -10);
+	driveStraight(20);
+	closeClaw(); //grab pillow
+
+	createManeuver(shoulder, shoulderVert, -shoulderStillSpeed);
+	turn(45, true);
+	while (turnData.isTurning);
+	driveStraight(-10, true);
+	while (driveData.isDriving || shoulder.maneuverExecuting);
+	openClaw();
 }
 
 task pillowAuton() {
@@ -288,6 +314,8 @@ task autonomous() {
 	shoulder.maneuverExecuting = false;
 	claw.maneuverExecuting = false;
 	startTask(maneuvers);
+
+	setPower(wrist, wristStillSpeed);
 
   autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
 
