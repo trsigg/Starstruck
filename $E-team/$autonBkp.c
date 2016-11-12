@@ -68,7 +68,7 @@ bool fourBar = false;
 bool clawOpen = false;
 int totalTargetPos; //the target sum of the shoulder and wrist pot values in 4-bar mode
 short autoSign; //for autonomous, positive if robot is left of pillow
-string clawProgress, driveProgress, liftProgress; //what point in auto routine robot has reached
+short clawCounter, driveCounter, liftCounter; //store the progress of each robot component during autonomous
 
 motorGroup shoulder;
 motorGroup wrist;
@@ -193,10 +193,8 @@ void stopManeuvers() {
 	wrist.maneuverExecuting = false;
 }
 
-void resetProgress() {
-	sprintf(clawProgress, "");
-	sprintf(liftProgress, "");
-	sprintf(driveProgress, "");
+task maneuvers() {
+
 }
 
 void deploy(int waitAtEnd=250) {
@@ -208,17 +206,7 @@ void deploy(int waitAtEnd=250) {
 
 	//#subregion pillowAuton
 task pillowAutonClaw() {
-	//open claw
 	setClawStateManeuver(true);
-	while (claw.maneuverExecuting) {
-		executeManeuver(claw);
-		EndTimeSlice();
-	}
-	sprintf(clawProgress, "ready for pillow");
-
-	while (!strCmp(driveProgress, "at pillow")) { EndTimeSlice(); } //wait until robot has driven to pillow
-
-
 }
 
 task pillowAutonLift() {
@@ -226,18 +214,14 @@ task pillowAutonLift() {
 }
 
 task pillowAutonDrive() {
-	//drive away from wall
-  driveStraight(5, true);
-  while(driveData.isDriving) EndTimeSlice();
+	setClawStateManeuver(true); //open claw
+  driveStraight(5, true); //drive away from wall
+  while(driveData.isDriving);
 
-  //turn toward pillow
+  //move toward pillow
   turn(-52, true);
-  while(turnData.isTurning) EndTimeSlice();
-
-	//drive to pillow
-  driveStraight(12, true);
-	while(driveData.isDriving) EndTimeSlice();
-	sprintf(driveProgress, "at pillow");
+  while(turnData.isTurning || claw.maneuverExecuting);
+  driveStraight(12);
 
   closeClaw(); //clamp pillow
 
@@ -318,7 +302,6 @@ void oneSideAuton() {
 
 task autonomous() {
 	stopManeuvers();
-	resetProgress();
 
   deploy();
 

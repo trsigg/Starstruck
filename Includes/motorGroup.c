@@ -169,9 +169,9 @@ void createManeuver(motorGroup *group, int position, int endPower=0, int maneuve
 }
 
 void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {
-	short displacementSign = sgn(position - potentiometerVal(group));
+	int displacementSign = sgn(position - potentiometerVal(group));
 	setPower(group, displacementSign*maneuverPower);
-	while (sgn(position - potentiometerVal(group)) == displacementSign) {}
+	while (sgn(position - potentiometerVal(group)) == displacementSign);
 	setPower(group, endPower);
 }
 //#endregion
