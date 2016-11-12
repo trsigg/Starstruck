@@ -13,7 +13,7 @@
 angleType defAngleType = DEGREES;
 bool defTurnBools[2] = { false, true }; //runAsTask, useGyro
 int defTurnInts[3] = { 20, 100, 100 }; //brakePower, waitAtEnd, brakeDuration
-float defTurnFloats[3] = { 40, 100, -50 }; //initialPower, maxPower/kP, finalPower/kD
+float defTurnFloats[3] = { 40, 100, -40 }; //initialPower, maxPower/kP, finalPower/kD
 //end turn defaults
 
 enum correctionType { NONE, GYRO, ENCODER, AUTO };
