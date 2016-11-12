@@ -42,15 +42,15 @@
 //#endregion
 
 //#region positions
-#define shoulderBottom 320 //shoulder
-#define shoulderTop 1300
-#define shoulderMiddle 460
-#define shoulderVert 2040
+#define shoulderBottom 75 //shoulder
+#define shoulderTop 1100
+#define shoulderMiddle 285
+#define shoulderVert 1822
 #define wristMax 2088 //wrist
 #define wristMin 1150
 #define clawOpenPos 2890 //claw
 #define clawClosedPos 3475
-#define clawMax 2130
+#define clawMax 2180
 //#endregion
 
 //#region constants
@@ -200,32 +200,40 @@ void setShoulderStateManeuver(bool top) {
   }
 }
 
+void grabNdump(int delayDuration) {
+	wait1Msec(delayDuration); //wait for pillow to be dropped
+	closeClaw(); //grab pillow
+	createManeuver(shoulder, shoulderVert, -shoulderStillSpeed);
+	driveStraight(-40, true);
+	while (driveData.isDriving || shoulder.maneuverExecuting);
+	openClaw(); //release pillow
+}
+
+void driveToWall() {
+	goToPosition(shoulder, shoulderBottom, -shoulderStillSpeed);
+	driveStraight(39);
+}
+
 task skillz() {
 	setClawStateManeuver(true);
-	setPower(wheelieWinch, 127); //deploy bars
+	//setPower(wheelieWinch, 127); //deploy bars
 	driveStraight(-20, true); //drive back
 	wait1Msec(750); //wait for wheelie bars to deploy
 	setPower(wheelieWinch, 0);
 	while (driveData.isDriving || claw.maneuverExecuting);
 
 	for (int i=1; i<=3; i++) {
-		wait1Msec(500); //wait for pillow to be dropped
-		closeClaw(); //grab pillow
-		createManeuver(shoulder, shoulderVert, -shoulderStillSpeed);
-		driveStraight(-40, true);
-		while (driveData.isDriving || shoulder.maneuverExecuting);
-		openClaw(); //release pillow
+		grabNdump(500);
 
 		if (i < 3) {
-			goToPosition(shoulder, shoulderBottom, -shoulderStillSpeed);
-			driveStraight(39);
+			driveToWall();
 		}
 	}
 
 	setShoulderStateManeuver(false);
-	createManeuver(claw, clawOpenPos-500, -clawStillSpeed);
+	createManeuver(claw, clawOpenPos-200, -clawStillSpeed);
 	while (shoulder.maneuverExecuting || claw.maneuverExecuting);
-	turn(-45, false, 40, 127, -10);
+	turn(-38, false, 40, 127, -10);
 	driveStraight(20);
 	closeClaw(); //grab pillow
 
@@ -235,18 +243,22 @@ task skillz() {
 	driveStraight(-10, true);
 	while (driveData.isDriving || shoulder.maneuverExecuting);
 	openClaw();
+
+	driveToWall();
+	grabNdump(0);
+	goToPosition(shoulder, shoulderBottom);
 }
 
 task pillowAuton() {
 	setClawStateManeuver(true); //open claw
-	createManeuver(shoulder, 350, shoulderStillSpeed, 35);
+	createManeuver(shoulder, 100, shoulderStillSpeed, 35);
 	setPower(wheelieWinch, 127); //start deploying wheelie bars
-  driveStraight(5, true); //drive away from wall
+  driveStraight(10, true); //drive away from wall
   while(driveData.isDriving);
   setPower(wheelieWinch, 0);
 
   //move toward pillow
-  turn(-50, true);
+  turn(-53, true);
   while(turnData.isTurning || claw.maneuverExecuting || shoulder.maneuverExecuting);
   driveStraight(20);
 
@@ -256,9 +268,9 @@ task pillowAuton() {
   //goToPosition(wrist, 1200, wristStillSpeed);
   driveStraight(24, true);
   while (driveData.isDriving);
-  turn(60, true, 40, 80, -10); //turn to face fence
+  turn(63, true, 40, 80, -10); //turn to face fence
   while (turnData.isTurning);
-  driveStraight(40, true); // drive up to wall
+  driveStraight(36, true); // drive up to wall
   while (driveData.isDriving || shoulder.maneuverExecuting);
 
   openClaw(); //release pillow
@@ -276,38 +288,60 @@ task pillowAuton() {
  	//drive to other wall and lift down
  	driveStraight(-15, true);
  	while (driveData.isDriving);
- 	turn(75, true, 40, 127, -20);
+ 	turn(77, true, 40, 127, -20);
  	while (turnData.isTurning || claw.maneuverExecuting);
- 	createManeuver(shoulder, 985, shoulderStillSpeed);
+ 	createManeuver(shoulder, 761, shoulderStillSpeed);
  	driveStraight(55, true);
  	while (driveData.isDriving || shoulder.maneuverExecuting);
- 	turn(-80, false, 40, 120, -40);
- 	driveStraight(18);
+ 	turn(-77, false, 40, 120, -40);
+ 	driveStraight(10);
 
  	goToPosition(shoulder, 1466); //push jacks over
- 	driveStraight(11);
+ 	driveStraight(12.5);
  	closeClaw();
 }
 
 task oneSideAuton() {
 	createManeuver(claw, clawMax, -clawStillSpeed); //open claw
-	createManeuver(shoulder, shoulderTop-400, shoulderStillSpeed); //lift to near top
+	createManeuver(shoulder, shoulderTop-450, shoulderStillSpeed); //lift to near top
 	setPower(wheelieWinch, 127);
   driveStraight(5, true); //drive away from wall
   while(driveData.isDriving);
   setPower(wheelieWinch, 0);
 
-  turn(30, true);
-  while (turnData.isTurning || claw.maneuverExecuting);
+  turn(-30, true);
+  while (turnData.isTurning);
 
-  driveStraight(18);
-  while (driveData.isDriving);
+  driveStraight(18, true);
+  while (driveData.isDriving || claw.maneuverExecuting);
 
-  turn(-28, true); //turn toward wall
+  turn(37, true); //turn toward wall
   while (turnData.isTurning || shoulder.maneuverExecuting);
 
-  driveStraight(38);
-  goToPosition(shoulder, 1466);
+  //knock off jacks
+  driveStraight(42);
+  goToPosition(shoulder, 1250, shoulderStillSpeed);
+  closeClaw();
+  wait1Msec(2500);
+
+  //go to back jacks
+ 	setClawStateManeuver(true);
+ 	turn(120, true, 40, 127, -10);
+ 	while (turnData.isTurning);
+ 	setShoulderStateManeuver(false);
+ 	driveStraight(46, true);
+ 	while (driveData.isDriving || shoulder.maneuverExecuting || claw.maneuverExecuting);
+ 	closeClaw();
+ 	wait1Msec(3500);
+
+ 	//dump
+ 	createManeuver(shoulder, shoulderVert, -shoulderStillSpeed);
+ 	turn(50, true);
+ 	while (turnData.isTurning);
+ 	driveStraight(-30, true);
+ 	while(driveData.isDriving || shoulder.maneuverExecuting);
+ 	openClaw();
+ 	goToPosition(shoulder, shoulderBottom);
 }
 
 task autonomous() {
