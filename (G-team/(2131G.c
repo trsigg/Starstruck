@@ -37,11 +37,13 @@
 #define liftBottom 346
 #define liftMax 2310
 #define liftTop 1820
-#define liftPush 1495+260
+#define liftPush 1495+250
+#define liftPushTop 1495+250
 #define clawClosedPos 4096-3250 //3595
 #define clawOpenPos 4096-2595
 #define clawMax 4096-1200
 #define clawPush 4096-1860
+#define clawClosedPosPillow 4096-3180
 
 //Constants
 #define liftStillSpeed 10
@@ -117,16 +119,16 @@ task pillowAutonRight() { //Put true to run 2 things at once
 	setClawStateManeuver(true); //open claw
   //goToPosition(claw, clawOpenPos);
 	openClaw();
-  driveStraight(7); //drive away from wall
+  driveStraight(1); //drive away from wall
   //while(driveData.isDriving);
 
   //move toward pillow
-  turn(-45.5, false, 40, 120, -40);
+  turn(-50.5, false, 40, 120, -40);
   //while(turnData.isTurning || claw.maneuverExecuting);
-  driveStraight(18);
+  driveStraight(14);
 
-  //goToPosition(claw, clawClosedPos, ); //clamp pillow
-  closeClaw();
+  goToPosition(claw, clawClosedPosPillow); //clamp pillow
+  //closeClaw();
 
   goToPosition(lift, liftTop);
 
@@ -151,13 +153,14 @@ task pillowAutonRight() { //Put true to run 2 things at once
 
   //push jacks over
  	driveStraight(13);
- 	driveStraight(-15);
+ 	driveStraight(-14);
  	//goToPosition(claw, 900);
 
  	//Push off Stars
- 	turn(-30.5, false, 40, 120, -10);
- 	driveStraight(15);
+ 	goToPosition(lift, liftPushTop);
  	turn(30.5, false, 40, 120, -10);
+ 	driveStraight(15);
+ 	turn(-30.5, false, 40, 120, -10);
  	driveStraight(15);
 
  	closeClaw();
@@ -186,12 +189,12 @@ task pillowAutonLeft() { //Put true to run 2 things at once
   //while(driveData.isDriving);
 
   //move toward pillow
-  turn(45.5, false, 40, 120, -40);
+  turn(50.5, false, 40, 120, -40);
   //while(turnData.isTurning || claw.maneuverExecuting);
   driveStraight(18);
 
-  //goToPosition(claw, clawClosedPos, ); //clamp pillow
-  closeClaw();
+  goToPosition(claw, clawClosedPosPillow); //clamp pillow
+  //closeClaw();
 
   goToPosition(lift, liftTop);
 
@@ -220,6 +223,7 @@ task pillowAutonLeft() { //Put true to run 2 things at once
  	//goToPosition(claw, 900);
 
  	//Push off Stars
+ 	goToPosition(lift, liftPushTop);
  	turn(-30.5, false, 40, 120, -10);
  	driveStraight(15);
  	turn(30.5, false, 40, 120, -10);
@@ -265,7 +269,7 @@ task pillowAutonLeft() { //Put true to run 2 things at once
   driveStraight(7); //drive away from wall
 
   //move toward pillow
-  turn(-45.5, false, 40, 120, -40);
+  turn(-50.5, false, 40, 120, -40);
   driveStraight(18);
 
   closeClaw(); //Grab Pillow
@@ -290,12 +294,13 @@ task pillowAutonLeft() { //Put true to run 2 things at once
  	driveStraight(-20); //reverse from wall to turn
 
  	//Continue to Push off Stars
+ 	goToPosition(lift, liftPushTop);
  	turn(-30.5, false, 40, 120, -10);
  	driveStraight(15);
  	turn(30.5, false, 40, 120, -10);
  	driveStraight(15);
 
- 	driveStraight(-20); //reverse from wall to turn again
+ 	driveStraight(-10); //reverse from wall to turn again
 
  	//Another Round Of Pushing Off Stars
  	turn(-30.5, false, 40, 120, -10);
@@ -304,13 +309,13 @@ task pillowAutonLeft() { //Put true to run 2 things at once
  	driveStraight(15);
 
  	//Reverse To Try and Grab The Pillow and Drop It ****** NEEDS TUNING
- 	driveStraight(-15);
- 	turn(95.5, false, 40, 120, -10);
+ 	driveStraight(-5);
+ 	turn(175.5, false, 40, 120, -10);
  	goToPosition(lift, liftBottom);
  	driveStraight(13);
  	goToPosition(claw, clawClosedPos);
- 	driveStraight(-15);
- 	turn(90, false, 40, 120, -10);
+ 	driveStraight(-5);
+ 	turn(-90, false, 40, 120, -10);
  	goToPosition(lift, liftTop);
  	driveStraight(30);
  	goToPosition(claw, clawOpenPos);
@@ -328,11 +333,11 @@ task autonomous() {
   //autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
 
   //start appropriate autonomous task
-  if (SensorValue[modePot] >= 0 && SensorValue[modePot] < 9) {
+  if (SensorValue[modePot] < 4095 && SensorValue[modePot] > 2700) {
   	startTask(pillowAutonLeft);
-  } else if (SensorValue[modePot] > 10 && (SensorValue[modePot] < 30)) {
+  } else if (SensorValue[modePot] < 2699 && (SensorValue[modePot] > 2000)) {
   	startTask(programmingSkills);
-  } else if (SensorValue[modePot] > 35) {
+  } else if (SensorValue[modePot] < 1850) {
   	startTask(pillowAutonRight);
   }
 }
