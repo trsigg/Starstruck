@@ -1,6 +1,6 @@
-#pragma config(Sensor, in2,    wristPot,       sensorPotentiometer)
+#pragma config(Sensor, in2,    hyro,           sensorGyro)
 #pragma config(Sensor, in3,    clawPot,        sensorPotentiometer)
-#pragma config(Sensor, in4,    hyro,           sensorGyro)
+#pragma config(Sensor, in4,    wristPot,       sensorPotentiometer)
 #pragma config(Sensor, in5,    shoulderPot,    sensorPotentiometer)
 #pragma config(Sensor, in6,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, in7,    sidePot,        sensorPotentiometer)
@@ -42,15 +42,15 @@
 //#endregion
 
 //#region positions
-#define shoulderBottom 680 //shoulder
-#define shoulderTop 2280
-#define shoulderMiddle 800
-#define shoulderVert 2763
-#define wristMax 2500 //wrist
+#define shoulderBottom 75 //shoulder
+#define shoulderTop 1100
+#define shoulderMiddle 285
+#define shoulderVert 1822
+#define wristMax 2088 //wrist
 #define wristMin 1150
-#define clawOpenPos 1130 //claw
-#define clawClosedPos 750
-#define clawMax 1620
+#define clawOpenPos 2890 //claw
+#define clawClosedPos 3475
+#define clawMax 2180
 //#endregion
 
 //#region constants
@@ -68,7 +68,7 @@ bool fourBar = false;
 bool clawOpen = false;
 int totalTargetPos; //the target sum of the shoulder and wrist pot values in 4-bar mode
 short autoSign; //for autonomous, positive if robot is left of pillow
-string clawProgress, driveProgress, liftProgress; //what point in auto routine robot has reached
+short clawCounter, driveCounter, liftCounter; //store the progress of each robot component during autonomous
 
 motorGroup shoulder;
 motorGroup wrist;
@@ -89,7 +89,7 @@ void pre_auton() {
   //configure shoulder
 	initializeGroup(shoulder, 3, shoulder1, shoulder2, shoulder3);
   configureButtonInput(shoulder, liftUpBtn, liftDownBtn, shoulderStillSpeed);
-  addSensor(shoulder, shoulderPot, true);
+  addSensor(shoulder, shoulderPot);
 
   //configure wrist
 	initializeGroup(wrist, 1, wristMotor);
@@ -118,30 +118,6 @@ void clawControl() {
 		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
 	}
 }
-
-	//#subregion autonomous
-void setClawStateManeuver(bool open) {
-	if (open) {
-		createManeuver(claw, clawOpenPos, clawStillSpeed);
-	} else {
-		createManeuver(claw, clawClosedPos, -clawStillSpeed);
-	}
-
-	clawOpen = open;
-}
-
-void openClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0));
-}
-
-void closeClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawClosedPos, (stillSpeed ? -clawStillSpeed : 0));
-}
-
-void hyperExtendClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawMax, (stillSpeed ? clawStillSpeed : 0));
-}
-	//#endsubregion
 //#endregion
 
 //#region lift
@@ -186,149 +162,204 @@ void liftControl() {
 //#endregion
 
 //#region autonomous
-	//#subregion supportingAutonFunctions
-void stopManeuvers() {
-	claw.maneuverExecuting = false;
-	shoulder.maneuverExecuting = false;
-	wrist.maneuverExecuting = false;
+task maneuvers() {
+	while (true) {
+		executeManeuver(claw);
+		executeManeuver(shoulder);
+		executeManeuver(wrist);
+	}
 }
 
-void resetProgress() {
-	sprintf(clawProgress, "");
-	sprintf(liftProgress, "");
-	sprintf(driveProgress, "");
+void setClawStateManeuver(bool open) { //toggles by default
+	if (open) {
+		createManeuver(claw, clawOpenPos, -clawStillSpeed);
+	} else {
+		createManeuver(claw, clawClosedPos, clawStillSpeed);
+	}
+
+	clawOpen = open;
 }
 
-void deploy(int waitAtEnd=250) {
-	//deploy stops
-	goToPosition(shoulder, 1200);
+void openClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawOpenPos, (stillSpeed ? -clawStillSpeed : 0));
+}
+
+void closeClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawClosedPos, (stillSpeed ? clawStillSpeed : 0));
+}
+
+void hyperExtendClaw(bool stillSpeed=true) {
+	goToPosition(claw, clawMax, (stillSpeed ? -clawStillSpeed : 0));
+}
+
+void setShoulderStateManeuver(bool top) {
+  if (top) {
+    createManeuver(shoulder, shoulderTop, shoulderStillSpeed);
+  } else {
+    createManeuver(shoulder, shoulderBottom, shoulderStillSpeed);
+  }
+}
+
+void grabNdump(int delayDuration) {
+	wait1Msec(delayDuration); //wait for pillow to be dropped
+	closeClaw(); //grab pillow
+	createManeuver(shoulder, shoulderVert, -shoulderStillSpeed);
+	driveStraight(-40, true);
+	while (driveData.isDriving || shoulder.maneuverExecuting);
+	openClaw(); //release pillow
+}
+
+void driveToWall() {
+	goToPosition(shoulder, shoulderBottom, -shoulderStillSpeed);
+	driveStraight(39);
+}
+
+task skillz() {
+	setClawStateManeuver(true);
+	//setPower(wheelieWinch, 127); //deploy bars
+	driveStraight(-20, true); //drive back
+	wait1Msec(750); //wait for wheelie bars to deploy
+	setPower(wheelieWinch, 0);
+	while (driveData.isDriving || claw.maneuverExecuting);
+
+	for (int i=1; i<=3; i++) {
+		grabNdump(500);
+
+		if (i < 3) {
+			driveToWall();
+		}
+	}
+
+	setShoulderStateManeuver(false);
+	createManeuver(claw, clawOpenPos-200, -clawStillSpeed);
+	while (shoulder.maneuverExecuting || claw.maneuverExecuting);
+	turn(-38, false, 40, 127, -10);
+	driveStraight(20);
+	closeClaw(); //grab pillow
+
+	createManeuver(shoulder, shoulderVert, -shoulderStillSpeed);
+	turn(45, true);
+	while (turnData.isTurning);
+	driveStraight(-10, true);
+	while (driveData.isDriving || shoulder.maneuverExecuting);
+	openClaw();
+
+	driveToWall();
+	grabNdump(0);
 	goToPosition(shoulder, shoulderBottom);
 }
-	//#endsubregion
 
-	//#subregion pillowAuton
-task pillowAutonClaw() {
-	//open claw
-	setClawStateManeuver(true);
-	while (claw.maneuverExecuting) {
-		executeManeuver(claw);
-		EndTimeSlice();
-	}
-	sprintf(clawProgress, "ready for pillow");
+task pillowAuton() {
+	setClawStateManeuver(true); //open claw
+	createManeuver(shoulder, 100, shoulderStillSpeed, 35);
+	setPower(wheelieWinch, 127); //start deploying wheelie bars
+  driveStraight(10, true); //drive away from wall
+  while(driveData.isDriving);
+  setPower(wheelieWinch, 0);
 
-	while (!strCmp(driveProgress, "at pillow")) { EndTimeSlice(); } //wait until robot has driven to pillow
-
-
-}
-
-task pillowAutonLift() {
-
-}
-
-task pillowAutonDrive() {
-	//drive away from wall
-  driveStraight(5, true);
-  while(driveData.isDriving) EndTimeSlice();
-
-  //turn toward pillow
-  turn(-52, true);
-  while(turnData.isTurning) EndTimeSlice();
-
-	//drive to pillow
-  driveStraight(12, true);
-	while(driveData.isDriving) EndTimeSlice();
-	sprintf(driveProgress, "at pillow");
+  //move toward pillow
+  turn(-53, true);
+  while(turnData.isTurning || claw.maneuverExecuting || shoulder.maneuverExecuting);
+  driveStraight(20);
 
   closeClaw(); //clamp pillow
 
-  //--lift up--//
-  driveStraight(13, true);
+  setShoulderStateManeuver(true);
+  //goToPosition(wrist, 1200, wristStillSpeed);
+  driveStraight(24, true);
   while (driveData.isDriving);
-  turn(33, true, 40, 80, -20); //turn to face fence
+  turn(63, true, 40, 80, -10); //turn to face fence
   while (turnData.isTurning);
-  driveStraight(17, true); // drive up to wall
+  driveStraight(36, true); // drive up to wall
   while (driveData.isDriving || shoulder.maneuverExecuting);
 
   openClaw(); //release pillow
+  wait1Msec(600); //wait for pillow to fall
   closeClaw();
-  driveStraight(-5); //back up
+  driveStraight(-10); //back up
   hyperExtendClaw();
 
   //push jacks over
  	driveStraight(10);
- 	goToPosition(claw, 900);
+ 	closeClaw();
 
- 	createManeuver(claw, clawMax, clawStillSpeed); //hyperextend claw
+ 	createManeuver(claw, clawMax, -clawStillSpeed);
 
  	//drive to other wall and lift down
- 	driveStraight(-5, true);
+ 	driveStraight(-15, true);
  	while (driveData.isDriving);
- 	turn(63, true);
+ 	turn(77, true, 40, 127, -20);
  	while (turnData.isTurning || claw.maneuverExecuting);
- 	createManeuver(shoulder, 1500, shoulderStillSpeed);
- 	driveStraight(43, true);
+ 	createManeuver(shoulder, 761, shoulderStillSpeed);
+ 	driveStraight(55, true);
  	while (driveData.isDriving || shoulder.maneuverExecuting);
- 	turn(-80, false, 40, 120, -40);
- 	driveStraight(7);
+ 	turn(-77, false, 40, 120, -40);
+ 	driveStraight(10);
 
- 	goToPosition(shoulder, 2435); //push jacks over
+ 	goToPosition(shoulder, 1466); //push jacks over
+ 	driveStraight(12.5);
+ 	closeClaw();
 }
 
-void pillowAuton() {
-	startTask(pillowAutonDrive);
-	startTask(pillowAutonLift);
-	startTask(pillowAutonClaw);
-}
-	//#endsubregion
-
-	//#subregion oneSideAuton
-task oneSideAutonDrive() {
-	createManeuver(claw, clawMax, clawStillSpeed); //open claw
-	createManeuver(shoulder, shoulderTop-400, shoulderStillSpeed); //lift to near top
+task oneSideAuton() {
+	createManeuver(claw, clawMax, -clawStillSpeed); //open claw
+	createManeuver(shoulder, shoulderTop-450, shoulderStillSpeed); //lift to near top
+	setPower(wheelieWinch, 127);
   driveStraight(5, true); //drive away from wall
   while(driveData.isDriving);
+  setPower(wheelieWinch, 0);
 
-  turn(30, true);
-  while (turnData.isTurning || claw.maneuverExecuting);
+  turn(-30, true);
+  while (turnData.isTurning);
 
-  driveStraight(10);
-  while (driveData.isDriving);
+  driveStraight(18, true);
+  while (driveData.isDriving || claw.maneuverExecuting);
 
-  turn(-40, true); //turn toward wall
+  turn(37, true); //turn toward wall
   while (turnData.isTurning || shoulder.maneuverExecuting);
 
-  driveStraight(25);
-  goToPosition(shoulder, 2435);
+  //knock off jacks
+  driveStraight(42);
+  goToPosition(shoulder, 1250, shoulderStillSpeed);
+  closeClaw();
+  wait1Msec(2500);
+
+  //go to back jacks
+ 	setClawStateManeuver(true);
+ 	turn(120, true, 40, 127, -10);
+ 	while (turnData.isTurning);
+ 	setShoulderStateManeuver(false);
+ 	driveStraight(46, true);
+ 	while (driveData.isDriving || shoulder.maneuverExecuting || claw.maneuverExecuting);
+ 	closeClaw();
+ 	wait1Msec(3500);
+
+ 	//dump
+ 	createManeuver(shoulder, shoulderVert, -shoulderStillSpeed);
+ 	turn(50, true);
+ 	while (turnData.isTurning);
+ 	driveStraight(-30, true);
+ 	while(driveData.isDriving || shoulder.maneuverExecuting);
+ 	openClaw();
+ 	goToPosition(shoulder, shoulderBottom);
 }
-
-task oneSideAutonLift() {
-
-}
-
-task oneSideAutonClaw() {
-
-}
-
-void oneSideAuton() {
-	startTask(oneSideAutonDrive);
-	startTask(oneSideAutonLift);
-	startTask(oneSideAutonClaw);
-}
-	//#endsubregion
 
 task autonomous() {
-	stopManeuvers();
-	resetProgress();
+	shoulder.maneuverExecuting = false;
+	claw.maneuverExecuting = false;
+	startTask(maneuvers);
 
-  deploy();
+	setPower(wrist, wristStillSpeed);
 
   autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
 
   //start appropriate autonomous task
-  if (SensorValue[modePot] > 2540) {
-  	pillowAuton();
-  } else if (SensorValue[modePot] > 1320) {
-  	oneSideAuton();
+  if (SensorValue[sidePot] > 1575) {
+  	startTask(skillz);
+  } else if (SensorValue[modePot] > 2670) {
+  	startTask(pillowAuton);
+  } else if (SensorValue[modePot] > 1275) {
+  	startTask(oneSideAuton);
   }
 }
 //#endregion
