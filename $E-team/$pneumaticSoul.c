@@ -68,7 +68,7 @@ void pre_auton() {
   attachGyro(drive, hyro);
 
   //configure lift
-	initializeGroup(lift, lift1, lift2, lift3, lift4, lift5);
+	initializeGroup(lift, 5, lift1, lift2, lift3, lift4, lift5);
   configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
   addSensor(lift, liftPot);
 
