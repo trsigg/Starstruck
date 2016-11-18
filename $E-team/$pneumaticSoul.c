@@ -22,7 +22,6 @@
 #include "Vex_Competition_Includes.c"
 
 //#region includes
-#include "..\Includes\buttonTracker.c"
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\parallelDrive.c"
 #include "..\Includes\pd_autoMove.c"
@@ -31,8 +30,6 @@
 //#region buttons
 #define openClawBtn Btn6U //claw
 #define closeClawBtn Btn6D
-#define wheelieOutBtn Btn7U //wheelie bars
-#define wheelieInBtn Btn7D
 #define liftUpBtn Btn5U //lift
 #define liftDownBtn Btn5D
 //#endregion
@@ -133,12 +130,12 @@ void setLiftStateManeuver(bool top) {
 }
 
 void grabNdump(int delayDuration) {
-	wait1Msec(delayDuration); //wait for pillow to be dropped
-	closeClaw(); //grab pillow
-	createManeuver(lift, liftVert, -liftStillSpeed);
-	driveStraight(-40, true);
+	wait1Msec(delayDuration); //wait for objects to be dropped
+	closeClaw();
+	createManeuver(lift, liftVert, -liftStillSpeed); //lift to top
+	driveStraight(-40, true); //drive to fence
 	while (driveData.isDriving || lift.maneuverExecuting);
-	openClaw(); //release pillow
+	openClaw();
 }
 
 void driveToWall() {
@@ -149,10 +146,9 @@ void driveToWall() {
 task skillz() {
 	setClawStateManeuver(true);
 	driveStraight(-20, true); //drive back
-	wait1Msec(750); //wait for wheelie bars to deploy
 	while (driveData.isDriving || claw.maneuverExecuting);
 
-	for (int i=1; i<=3; i++) {
+	for (int i=1; i<=3; i++) { //throw all preloads
 		grabNdump(500);
 
 		if (i < 3) {
@@ -160,6 +156,7 @@ task skillz() {
 		}
 	}
 
+	//get pillow in center of field
 	setLiftStateManeuver(false);
 	createManeuver(claw, clawOpenPos-200, -clawStillSpeed);
 	while (lift.maneuverExecuting || claw.maneuverExecuting);
@@ -167,6 +164,7 @@ task skillz() {
 	driveStraight(20);
 	closeClaw(); //grab pillow
 
+	//dump pillow
 	createManeuver(lift, liftVert, -liftStillSpeed);
 	turn(45, true);
 	while (turnData.isTurning);
@@ -174,26 +172,28 @@ task skillz() {
 	while (driveData.isDriving || lift.maneuverExecuting);
 	openClaw();
 
+	//grab and dump jacks
 	driveToWall();
 	grabNdump(0);
 	goToPosition(lift, liftBottom);
 }
 
 task pillowAuton() {
-	setClawStateManeuver(true); //open claw
+	//open claw, drive away from wall, and lift up a little bit
+	setClawStateManeuver(true);
 	createManeuver(lift, 100, liftStillSpeed, 35);
-  driveStraight(10, true); //drive away from wall
-  while(driveData.isDriving);
+  driveStraight(10, true);
+  while(driveData.isDriving || lift.maneuverExecuting);
 
-  //move toward pillow
+  //drive to central pillow
   turn(-53, true);
-  while(turnData.isTurning || claw.maneuverExecuting || lift.maneuverExecuting);
+  while(turnData.isTurning || claw.maneuverExecuting);
   driveStraight(20);
 
   closeClaw(); //clamp pillow
 
+	//go to fence and lift up
   setLiftStateManeuver(true);
-  //goToPosition(wrist, 1200, wristStillSpeed);
   driveStraight(24, true);
   while (driveData.isDriving);
   turn(63, true, 40, 80, -10); //turn to face fence
