@@ -43,16 +43,16 @@ typedef struct {
 
 turnStruct turnData;
 
+float turnProgress() {
+	return turnData.usingGyro ? gyroVal(autoDrive, DEGREES) : driveEncoderVal(autoDrive)
+}
+
 bool turnIsComplete() {
-	if (turnData.usingGyro) {
-		return abs(gyroVal(autoDrive, DEGREES)) >= turnData.angle;
-	} else {
-		return abs(driveEncoderVal(autoDrive)) >= turnData.angle;
-	}
+	return abs(turnProgress()) >= turnData.angle;
 }
 
 void turnRuntime() {
-	int power = rampRuntime( turnData.ramper, abs(gyroVal(autoDrive, DEGREES)) );
+	int power = rampRuntime(turnData.ramper, abs(turnProgress()));
 
 	setDrivePower(autoDrive, turnData.direction*power, -turnData.direction*power);
 }
