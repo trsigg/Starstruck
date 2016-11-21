@@ -45,6 +45,8 @@
 //#endregion
 
 //#region constants
+#define liftUpPower 127 //lift
+#define liftDownPower -60
 #define liftStillSpeed 10 //still speeds
 #define clawStillSpeed 15
 //#endregion
@@ -69,7 +71,7 @@ void pre_auton() {
 
   //configure lift
 	initializeGroup(lift, 5, lift1, lift2, lift3, lift4, lift5);
-  configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
+  configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed, liftUpPower, liftDownPower);
   addSensor(lift, liftPot);
 
 	//configure claw
