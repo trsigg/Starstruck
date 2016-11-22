@@ -22,6 +22,7 @@
 #include "Vex_Competition_Includes.c"
 
 //#region includes
+#include "..\Includes\buttonTracker.c"
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\parallelDrive.c"
 #include "..\Includes\pd_autoMove.c"
@@ -30,7 +31,8 @@
 //#region buttons
 #define openClawBtn Btn6U //claw
 #define closeClawBtn Btn6D
-#define liftUpBtn Btn5U //lift
+#define toggleHangBtn Btn8D //lift
+#define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
 //#endregion
 
@@ -78,6 +80,15 @@ void pre_auton() {
   initializeGroup(claw, 1, clawMotor);
   addSensor(claw, clawPot);
 }
+
+//#region lift
+void liftControl() {
+	takeInput(lift);
+
+	if (newlyPressed(toggleHangBtn))
+		lift.downPower = (lift.downPower==liftDownPower ? -127 : liftDownPower);
+}
+//#endregion
 
 //#region claw
 void clawControl() {
@@ -294,7 +305,7 @@ task usercontrol() {
 	while (true) {
   	driveRuntime(drive);
 
-  	takeInput(lift);
+  	liftControl();
 
 		clawControl();
   }
