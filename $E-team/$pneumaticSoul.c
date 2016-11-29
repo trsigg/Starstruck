@@ -10,7 +10,7 @@
 #pragma config(Motor,  port3,           lift1,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,           lift2,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port5,           lift3,         tmotorVex393_MC29, openLoop, reversed)
-#pragma config(Motor,  port6,           clawMotor,     tmotorVex393_MC29, openLoop, reversed)
+#pragma config(Motor,  port6,           clawMotor,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port7,           lift4,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port8,           lift5,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port9,           ld1,           tmotorVex393_MC29, openLoop)
@@ -93,16 +93,16 @@ void liftControl() {
 //#region claw
 void clawControl() {
 	if (potentiometerVal(lift)>liftThrowPos && potentiometerVal(claw)<clawOpenPos && autoDumping) {
-		setPower(claw, -127);
+		setPower(claw, 127);
 		clawOpen = true;
 	} else	if (vexRT[openClawBtn] == 1) {
-		setPower(claw, -127);
+		setPower(claw, 127);
 		clawOpen = true;
 	} else if (vexRT[closeClawBtn] == 1) {
-		setPower(claw, 127);
+		setPower(claw, -127);
 		clawOpen = false;
 	} else {
-		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
+		setPower(claw, clawStillSpeed * (clawOpen ? 1 : -1));
 	}
 
 	if (vexRT[autoDumpOnBtn] == 1)
@@ -122,24 +122,30 @@ task maneuvers() {
 
 void setClawStateManeuver(bool open) { //toggles by default
 	if (open) {
-		createManeuver(claw, clawOpenPos, -clawStillSpeed);
+		createManeuver(claw, clawOpenPos, clawStillSpeed);
 	} else {
-		createManeuver(claw, clawClosedPos, clawStillSpeed);
+		createManeuver(claw, clawClosedPos, -clawStillSpeed);
 	}
 
 	clawOpen = open;
 }
 
 void openClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawOpenPos, (stillSpeed ? -clawStillSpeed : 0));
+	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0));
+
+	clawOpen = true;
 }
 
 void closeClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawClosedPos, (stillSpeed ? clawStillSpeed : 0));
+	goToPosition(claw, clawClosedPos, (stillSpeed ? -clawStillSpeed : 0));
+
+	clawOpen = false;
 }
 
 void hyperExtendClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawMax, (stillSpeed ? -clawStillSpeed : 0));
+	goToPosition(claw, clawMax, (stillSpeed ? clawStillSpeed : 0));
+
+	clawOpen = true;
 }
 
 void setLiftStateManeuver(bool top) {
@@ -179,7 +185,7 @@ task skillz() {
 
 	//get pillow in center of field
 	setLiftStateManeuver(false);
-	createManeuver(claw, clawOpenPos-200, -clawStillSpeed);
+	createManeuver(claw, clawOpenPos-200, clawStillSpeed);
 	while (lift.maneuverExecuting || claw.maneuverExecuting);
 	turn(-38, false, 40, 127, -10);
 	driveStraight(20);
@@ -232,7 +238,7 @@ task pillowAuton() {
  	driveStraight(10);
  	closeClaw();
 
- 	createManeuver(claw, clawMax, -clawStillSpeed);
+ 	createManeuver(claw, clawMax, clawStillSpeed);
 
  	//drive to other wall and lift down
  	driveStraight(-15, true);
@@ -251,7 +257,7 @@ task pillowAuton() {
 }
 
 task oneSideAuton() {
-	createManeuver(claw, clawMax, -clawStillSpeed); //open claw
+	createManeuver(claw, clawMax, clawStillSpeed); //open claw
 	createManeuver(lift, liftTop-450, liftStillSpeed); //lift to near top
   driveStraight(5, true); //drive away from wall
   while(driveData.isDriving);
