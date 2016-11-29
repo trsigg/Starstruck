@@ -129,12 +129,11 @@ void resetDriveEncoders(parallel_drive *drive, int resetVal=0) {
 float gyroVal(parallel_drive *drive, angleType format=DEGREES) {
 	return convertAngle(SensorValue[drive->gyro] * (drive->gyroReversed ? 1 : -1), format);
 }
-int debug=0;
+
 void resetGyro(parallel_drive *drive, float resetVal=0, angleType format=DEGREES, bool setAbsAngle=true) {
 	if (setAbsAngle) drive->angleOffset += gyroVal(drive);
 
 	SensorValue[drive->gyro] = (int)(convertAngle(resetVal, RAW, format));
-	debug++;
 
 	if (setAbsAngle) drive->angleOffset -= gyroVal(drive); //I could include this two lines up, except this function doesn't usually work as expected
 }

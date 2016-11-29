@@ -22,39 +22,39 @@
 #include "Vex_Competition_Includes.c"
 
 //#region includes
-#include "..\Includes\buttonTracker.c"
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\parallelDrive.c"
 #include "..\Includes\pd_autoMove.c"
 //#endregion
 
 //#region buttons
-#define openClawBtn Btn6U //claw
+#define autoDumpOnBtn Btn8U //claw
+#define autoDumpOffBtn Btn8D
+#define openClawBtn Btn6U
 #define closeClawBtn Btn6D
-#define toggleHangBtn Btn8D //lift
-#define liftUpBtn Btn5U
+#define liftUpBtn Btn5U //lift
 #define liftDownBtn Btn5D
 //#endregion
 
 //#region positions
-#define liftBottom 75 //lift
-#define liftTop 1100
-#define liftMiddle 285
-#define liftVert 1822
-#define clawOpenPos 2890 //claw
-#define clawClosedPos 3475
-#define clawMax 2180
+#define liftBottom 1190 //lift
+#define liftMiddle 1420
+#define liftTop 2000
+#define liftThrowPos 2260
+#define liftMax 3000
+#define clawClosedPos 1400 //claw
+#define clawOpenPos 1780
+#define clawMax 2590
 //#endregion
 
 //#region constants
-#define liftUpPower 127 //lift
-#define liftDownPower -60
 #define liftStillSpeed 10 //still speeds
 #define clawStillSpeed 15
 //#endregion
 
 //#region globals
 bool clawOpen = false;
+bool autoDumping = true;
 short autoSign; //for autonomous, positive if robot is left of pillow
 
 motorGroup lift;
@@ -73,7 +73,7 @@ void pre_auton() {
 
   //configure lift
 	initializeGroup(lift, 5, lift1, lift2, lift3, lift4, lift5);
-  configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed, liftUpPower, liftDownPower);
+  configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
   addSensor(lift, liftPot);
 
 	//configure claw
@@ -83,24 +83,32 @@ void pre_auton() {
 
 //#region lift
 void liftControl() {
-	takeInput(lift);
+	int liftPos = potentiometerVal(lift);
 
-	if (newlyPressed(toggleHangBtn))
-		lift.downPower = (lift.downPower==liftDownPower ? -127 : liftDownPower);
+	lift.stillSpeed = liftStillSpeed * (liftPos<liftMiddle ? -1 : 1);
+	takeInput(lift);
 }
 //#endregion
 
 //#region claw
 void clawControl() {
-	if (vexRT[closeClawBtn] == 1) {
-		setPower(claw, 127);
-		clawOpen = false;
-	} else if (vexRT[openClawBtn] == 1) {
+	if (potentiometerVal(lift)>liftThrowPos && potentiometerVal(claw)<clawOpenPos && autoDumping) {
 		setPower(claw, -127);
 		clawOpen = true;
+	} else	if (vexRT[openClawBtn] == 1) {
+		setPower(claw, -127);
+		clawOpen = true;
+	} else if (vexRT[closeClawBtn] == 1) {
+		setPower(claw, 127);
+		clawOpen = false;
 	} else {
 		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
 	}
+
+	if (vexRT[autoDumpOnBtn] == 1)
+		autoDumping = true;
+	else if (vexRT[autoDumpOffBtn] == 1)
+		autoDumping = false;
 }
 //#endregion
 
@@ -145,7 +153,7 @@ void setLiftStateManeuver(bool top) {
 void grabNdump(int delayDuration) {
 	wait1Msec(delayDuration); //wait for objects to be dropped
 	closeClaw();
-	createManeuver(lift, liftVert, -liftStillSpeed); //lift to top
+	createManeuver(lift, liftMax, -liftStillSpeed); //lift to top
 	driveStraight(-40, true); //drive to fence
 	while (driveData.isDriving || lift.maneuverExecuting);
 	openClaw();
@@ -178,7 +186,7 @@ task skillz() {
 	closeClaw(); //grab pillow
 
 	//dump pillow
-	createManeuver(lift, liftVert, -liftStillSpeed);
+	createManeuver(lift, liftMax, -liftStillSpeed);
 	turn(45, true);
 	while (turnData.isTurning);
 	driveStraight(-10, true);
@@ -274,7 +282,7 @@ task oneSideAuton() {
  	wait1Msec(3500);
 
  	//dump
- 	createManeuver(lift, liftVert, -liftStillSpeed);
+ 	createManeuver(lift, liftMax, -liftStillSpeed);
  	turn(50, true);
  	while (turnData.isTurning);
  	driveStraight(-30, true);
