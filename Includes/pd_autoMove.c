@@ -79,7 +79,7 @@ task turnTask() {
 void turn(float angle, bool runAsTask=defTurnBools[0], float in1=defTurnFloats[0], float in2=defTurnFloats[1], float in3=defTurnFloats[2], angleType angleType=defAngleType, bool useGyro=defTurnBools[1], int brakePower=defTurnInts[0], int waitAtEnd=defTurnInts[1], int brakeDuration=defTurnInts[2]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
 	//initialize variables
 	float formattedAngle = convertAngle(abs(angle), DEGREES, angleType);
-	turnData.angle = (useGyro ? formattedAngle : 2*PI*autoDrive.width*formattedAngle/360.);
+	turnData.angle = (useGyro ? formattedAngle : PI*autoDrive.width*formattedAngle/360.);
 	initializeRampHandler(turnData.ramper, angle, in1, in2, in3);
 	turnData.direction = sgn(angle);
 	turnData.waitAtEnd = waitAtEnd;
