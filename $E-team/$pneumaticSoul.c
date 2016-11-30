@@ -10,7 +10,7 @@
 #pragma config(Motor,  port3,           lift1,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,           lift2,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port5,           lift3,         tmotorVex393_MC29, openLoop, reversed)
-#pragma config(Motor,  port6,           clawMotor,     tmotorVex393_MC29, openLoop, reversed)
+#pragma config(Motor,  port6,           clawMotor,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port7,           lift4,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port8,           lift5,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port9,           ld1,           tmotorVex393_MC29, openLoop)
@@ -22,39 +22,39 @@
 #include "Vex_Competition_Includes.c"
 
 //#region includes
-#include "..\Includes\buttonTracker.c"
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\parallelDrive.c"
 #include "..\Includes\pd_autoMove.c"
 //#endregion
 
 //#region buttons
-#define openClawBtn Btn6U //claw
+#define autoDumpOnBtn Btn8U //claw
+#define autoDumpOffBtn Btn8D
+#define openClawBtn Btn6U
 #define closeClawBtn Btn6D
-#define toggleHangBtn Btn8D //lift
-#define liftUpBtn Btn5U
+#define liftUpBtn Btn5U //lift
 #define liftDownBtn Btn5D
 //#endregion
 
 //#region positions
-#define liftBottom 75 //lift
-#define liftTop 1100
-#define liftMiddle 285
-#define liftVert 1822
-#define clawOpenPos 2890 //claw
-#define clawClosedPos 3475
-#define clawMax 2180
+#define liftBottom 1190 //lift
+#define liftMiddle 1420
+#define liftTop 2000
+#define liftThrowPos 2260
+#define liftMax 3000
+#define clawClosedPos 1400 //claw
+#define clawOpenPos 1780
+#define clawMax 2590
 //#endregion
 
 //#region constants
-#define liftUpPower 127 //lift
-#define liftDownPower -60
 #define liftStillSpeed 10 //still speeds
 #define clawStillSpeed 15
 //#endregion
 
 //#region globals
 bool clawOpen = false;
+bool autoDumping = true;
 short autoSign; //for autonomous, positive if robot is left of pillow
 
 motorGroup lift;
@@ -73,7 +73,7 @@ void pre_auton() {
 
   //configure lift
 	initializeGroup(lift, 5, lift1, lift2, lift3, lift4, lift5);
-  configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed, liftUpPower, liftDownPower);
+  configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
   addSensor(lift, liftPot);
 
 	//configure claw
@@ -83,24 +83,32 @@ void pre_auton() {
 
 //#region lift
 void liftControl() {
-	takeInput(lift);
+	int liftPos = potentiometerVal(lift);
 
-	if (newlyPressed(toggleHangBtn))
-		lift.downPower = (lift.downPower==liftDownPower ? -127 : liftDownPower);
+	lift.stillSpeed = liftStillSpeed * (liftPos<liftMiddle ? -1 : 1);
+	takeInput(lift);
 }
 //#endregion
 
 //#region claw
 void clawControl() {
-	if (vexRT[closeClawBtn] == 1) {
+	if (potentiometerVal(lift)>liftThrowPos && potentiometerVal(claw)<clawOpenPos && autoDumping) {
 		setPower(claw, 127);
-		clawOpen = false;
-	} else if (vexRT[openClawBtn] == 1) {
-		setPower(claw, -127);
 		clawOpen = true;
+	} else	if (vexRT[openClawBtn] == 1) {
+		setPower(claw, 127);
+		clawOpen = true;
+	} else if (vexRT[closeClawBtn] == 1) {
+		setPower(claw, -127);
+		clawOpen = false;
 	} else {
-		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
+		setPower(claw, clawStillSpeed * (clawOpen ? 1 : -1));
 	}
+
+	if (vexRT[autoDumpOnBtn] == 1)
+		autoDumping = true;
+	else if (vexRT[autoDumpOffBtn] == 1)
+		autoDumping = false;
 }
 //#endregion
 
@@ -114,24 +122,30 @@ task maneuvers() {
 
 void setClawStateManeuver(bool open) { //toggles by default
 	if (open) {
-		createManeuver(claw, clawOpenPos, -clawStillSpeed);
+		createManeuver(claw, clawOpenPos, clawStillSpeed);
 	} else {
-		createManeuver(claw, clawClosedPos, clawStillSpeed);
+		createManeuver(claw, clawClosedPos, -clawStillSpeed);
 	}
 
 	clawOpen = open;
 }
 
 void openClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawOpenPos, (stillSpeed ? -clawStillSpeed : 0));
+	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0));
+
+	clawOpen = true;
 }
 
 void closeClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawClosedPos, (stillSpeed ? clawStillSpeed : 0));
+	goToPosition(claw, clawClosedPos, (stillSpeed ? -clawStillSpeed : 0));
+
+	clawOpen = false;
 }
 
 void hyperExtendClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawMax, (stillSpeed ? -clawStillSpeed : 0));
+	goToPosition(claw, clawMax, (stillSpeed ? clawStillSpeed : 0));
+
+	clawOpen = true;
 }
 
 void setLiftStateManeuver(bool top) {
@@ -145,7 +159,7 @@ void setLiftStateManeuver(bool top) {
 void grabNdump(int delayDuration) {
 	wait1Msec(delayDuration); //wait for objects to be dropped
 	closeClaw();
-	createManeuver(lift, liftVert, -liftStillSpeed); //lift to top
+	createManeuver(lift, liftMax, -liftStillSpeed); //lift to top
 	driveStraight(-40, true); //drive to fence
 	while (driveData.isDriving || lift.maneuverExecuting);
 	openClaw();
@@ -171,14 +185,14 @@ task skillz() {
 
 	//get pillow in center of field
 	setLiftStateManeuver(false);
-	createManeuver(claw, clawOpenPos-200, -clawStillSpeed);
+	createManeuver(claw, clawOpenPos-200, clawStillSpeed);
 	while (lift.maneuverExecuting || claw.maneuverExecuting);
 	turn(-38, false, 40, 127, -10);
 	driveStraight(20);
 	closeClaw(); //grab pillow
 
 	//dump pillow
-	createManeuver(lift, liftVert, -liftStillSpeed);
+	createManeuver(lift, liftMax, -liftStillSpeed);
 	turn(45, true);
 	while (turnData.isTurning);
 	driveStraight(-10, true);
@@ -224,7 +238,7 @@ task pillowAuton() {
  	driveStraight(10);
  	closeClaw();
 
- 	createManeuver(claw, clawMax, -clawStillSpeed);
+ 	createManeuver(claw, clawMax, clawStillSpeed);
 
  	//drive to other wall and lift down
  	driveStraight(-15, true);
@@ -243,7 +257,7 @@ task pillowAuton() {
 }
 
 task oneSideAuton() {
-	createManeuver(claw, clawMax, -clawStillSpeed); //open claw
+	createManeuver(claw, clawMax, clawStillSpeed); //open claw
 	createManeuver(lift, liftTop-450, liftStillSpeed); //lift to near top
   driveStraight(5, true); //drive away from wall
   while(driveData.isDriving);
@@ -274,7 +288,7 @@ task oneSideAuton() {
  	wait1Msec(3500);
 
  	//dump
- 	createManeuver(lift, liftVert, -liftStillSpeed);
+ 	createManeuver(lift, liftMax, -liftStillSpeed);
  	turn(50, true);
  	while (turnData.isTurning);
  	driveStraight(-30, true);
