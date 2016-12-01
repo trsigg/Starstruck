@@ -25,6 +25,7 @@
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\parallelDrive.c"
 #include "..\Includes\pd_autoMove.c"
+#include "..\Includes\timer.c"
 //#endregion
 
 //#region buttons
@@ -48,6 +49,8 @@
 //#endregion
 
 //#region constants
+#define initialRampPower 20 //ramping
+#define timeToMax 400
 #define liftStillSpeed 10 //still speeds
 #define clawStillSpeed 15
 //#endregion
@@ -55,6 +58,8 @@
 //#region globals
 bool clawOpen = false;
 bool autoDumping = true;
+long rampTimer = 0; //time since beginning of most recent button press (0 when unpressed)
+enum { DOWN, UP, STATIONARY } liftState;
 short autoSign; //for autonomous, positive if robot is left of pillow
 
 motorGroup lift;
@@ -73,7 +78,7 @@ void pre_auton() {
 
   //configure lift
 	initializeGroup(lift, 5, lift1, lift2, lift3, lift4, lift5);
-  configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
+  //configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
   addSensor(lift, liftPot);
 
 	//configure claw
