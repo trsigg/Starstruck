@@ -1,8 +1,8 @@
-#pragma config(Sensor, in2,    hyro,           sensorPotentiometer)
 #pragma config(Sensor, in3,    liftPot,        sensorPotentiometer)
 #pragma config(Sensor, in4,    clawPot,        sensorPotentiometer)
 #pragma config(Sensor, in5,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, in6,    sidePot,        sensorPotentiometer)
+#pragma config(Sensor, in7,    hyro,           sensorGyro)
 #pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           rd1,           tmotorVex393_HBridge, openLoop, reversed)
@@ -39,21 +39,21 @@
 //#region positions
 #define liftBottom 1190 //lift
 #define liftMiddle 1420
-#define liftTop 2000
+#define liftTop 1750
 #define liftThrowPos 2260
 #define liftMax 3000
-#define clawClosedPos 1400 //claw
-#define clawOpenPos 1780
-#define clawMax 2590
+#define clawClosedPos 1490 //claw
+#define clawOpenPos 1830
+#define clawMax 2300
 //#endregion
 
 //#region constants
-#define liftStillSpeed 10 //still speeds
+#define liftStillSpeed -7 //still speeds
 #define clawStillSpeed 15
 //#endregion
 
 //#region globals
-bool clawOpen = false;
+bool clawOpen = true;
 bool autoDumping = true;
 short autoSign; //for autonomous, positive if robot is left of pillow
 
@@ -68,7 +68,7 @@ void pre_auton() {
 	initializeDrive(drive);
   setDriveMotors(drive, 4, ld1, ld2, rd1, rd2);
   attachEncoder(drive, leftEnc, LEFT);
-  attachEncoder(drive, rightEnc, RIGHT, false, 4);
+  attachEncoder(drive, rightEnc, RIGHT, false, 3.25);
   attachGyro(drive, hyro);
 
   //configure lift
@@ -83,9 +83,6 @@ void pre_auton() {
 
 //#region lift
 void liftControl() {
-	int liftPos = potentiometerVal(lift);
-
-	lift.stillSpeed = liftStillSpeed * (liftPos<liftMiddle ? -1 : 1);
 	takeInput(lift);
 }
 //#endregion
@@ -120,11 +117,11 @@ task maneuvers() {
 	}
 }
 
-void setClawStateManeuver(bool open) { //toggles by default
+void setClawStateManeuver(bool open, int power=127) { //toggles by default
 	if (open) {
-		createManeuver(claw, clawOpenPos, clawStillSpeed);
+		createManeuver(claw, clawOpenPos, clawStillSpeed, power);
 	} else {
-		createManeuver(claw, clawClosedPos, -clawStillSpeed);
+		createManeuver(claw, clawClosedPos, -clawStillSpeed, power);
 	}
 
 	clawOpen = open;
@@ -207,35 +204,34 @@ task skillz() {
 
 task pillowAuton() {
 	//open claw, drive away from wall, and lift up a little bit
-	setClawStateManeuver(true);
-	createManeuver(lift, 100, liftStillSpeed, 35);
-  driveStraight(10, true);
+	setClawStateManeuver(true, 50);
+  driveStraight(7, true);
   while(driveData.isDriving || lift.maneuverExecuting);
 
   //drive to central pillow
-  turn(-53, true);
+  turn(-57, true);
   while(turnData.isTurning || claw.maneuverExecuting);
-  driveStraight(20);
+  driveStraight(14);
 
   closeClaw(); //clamp pillow
 
 	//go to fence and lift up
   setLiftStateManeuver(true);
-  driveStraight(24, true);
+  driveStraight(8, true);
   while (driveData.isDriving);
-  turn(63, true, 40, 80, -10); //turn to face fence
+  turn(54, true, 40, 80, -10); //turn to face fence
   while (turnData.isTurning);
-  driveStraight(36, true); // drive up to wall
+  driveStraight(18, true); // drive up to wall
   while (driveData.isDriving || lift.maneuverExecuting);
 
   openClaw(); //release pillow
   wait1Msec(600); //wait for pillow to fall
   closeClaw();
-  driveStraight(-10); //back up
+  driveStraight(-6); //back up
   hyperExtendClaw();
 
   //push jacks over
- 	driveStraight(10);
+ 	driveStraight(8);
  	closeClaw();
 
  	createManeuver(claw, clawMax, clawStillSpeed);
@@ -243,12 +239,12 @@ task pillowAuton() {
  	//drive to other wall and lift down
  	driveStraight(-15, true);
  	while (driveData.isDriving);
- 	turn(77, true, 40, 127, -20);
+ 	turn(65, true, 40, 127, -20);
  	while (turnData.isTurning || claw.maneuverExecuting);
- 	createManeuver(lift, 761, liftStillSpeed);
- 	driveStraight(55, true);
+ 	createManeuver(lift, liftMiddle+100, liftStillSpeed);
+ 	driveStraight(35, true);
  	while (driveData.isDriving || lift.maneuverExecuting);
- 	turn(-77, false, 40, 120, -40);
+ 	turn(-65, false, 40, 120, -40);
  	driveStraight(10);
 
  	goToPosition(lift, 1466); //push jacks over

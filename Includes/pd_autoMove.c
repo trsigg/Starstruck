@@ -1,6 +1,3 @@
-//TODO: change ramping to be handled by rampHandler
-//TODO: add #defined constants to defaults lists
-
 #define autoDrive drive
 
 #include "coreIncludes.c"
