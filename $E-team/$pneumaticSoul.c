@@ -25,6 +25,7 @@
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\parallelDrive.c"
 #include "..\Includes\pd_autoMove.c"
+#include "..\Includes\timer.c"
 //#endregion
 
 //#region buttons
@@ -54,6 +55,7 @@
 
 //#region globals
 bool clawOpen = true;
+bool liftDown = true;
 bool autoDumping = true;
 short autoSign; //for autonomous, positive if robot is left of pillow
 
@@ -113,7 +115,12 @@ void clawControl() {
 task maneuvers() {
 	while (true) {
 		executeManeuver(claw);
-		executeManeuver(lift);
+
+		if (lift.maneuverExecuting) {
+			executeManeuver(lift);
+		} else {
+			setPower(lift, liftStillSpeed * (clawOpen || liftDown ? -1 : 1));
+		}
 	}
 }
 
@@ -127,13 +134,15 @@ void setClawStateManeuver(bool open, int power=127) { //toggles by default
 	clawOpen = open;
 }
 
-void openClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0));
+void openClaw(bool stillSpeed=true, int power=127) {
+	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0), power);
 
 	clawOpen = true;
 }
 
-void closeClaw(bool stillSpeed=true) {
+void closeClaw(bool stillSpeed=true, int power=127, int timeout=500/*, int minSpeed=, sampleTime=*/) {
+	long clawTimer = resetTimer();
+	while (clawTimer < )
 	goToPosition(claw, clawClosedPos, (stillSpeed ? -clawStillSpeed : 0));
 
 	clawOpen = false;
