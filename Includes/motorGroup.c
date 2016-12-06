@@ -22,7 +22,7 @@ typedef struct {
 	float powMap; //degree of polynomial to which inputs are mapped (1 for linear)
 	float coeff; //factor by which motor powers are multiplied
 	long lastUpdated; //ramping
-	int absMin, absMax; //extreme potentiometer positions of motorGroup
+	int absMin, absMax; //extreme  positions of motorGroup
 	int maxPowerAtAbs, defPowerAtAbs; //maximum power at absolute position (pushing down from minimum or up from maximum) and default power if this is exceeded
 	//sensors
 	bool hasEncoder, hasPotentiometer;
@@ -143,12 +143,14 @@ void createTarget(motorGroup *group, int position, TVexJoysticks btn, int power=
 }
 //#endregion
 
-void setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
+int setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
 	if (((getPosition(group) <= group->absMin && power < -group->maxPowerAtAbs) || (getPosition(group) >= group->absMax && power > group->maxPowerAtAbs) && !overrideAbsolutes)) //moving below absMin or above absMax and overrideAbsolutes is false TODO: make more efficient (a la wrist code)
 		power = group->defPowerAtAbs * sgn(power);
 
 	for (int i=0; i<group->numMotors; i++) //set motors
 		motor[group->motors[i]] = power;
+
+	return power;
 }
 
 //#region position movement
@@ -219,7 +221,7 @@ int handleButtonInput(motorGroup *group) {
 		if (group->maneuverExecuting)
 			return group->maneuverPower;
 		else
-			return group->stillSpeed
+			return group->stillSpeed;
 	}
 }
 

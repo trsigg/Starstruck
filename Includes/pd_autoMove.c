@@ -41,7 +41,7 @@ typedef struct {
 turnStruct turnData;
 
 float turnProgress() {
-	return turnData.usingGyro ? gyroVal(autoDrive, DEGREES) : driveEncoderVal(autoDrive)
+	return turnData.usingGyro ? gyroVal(autoDrive, DEGREES) : driveEncoderVal(autoDrive);
 }
 
 bool turnIsComplete() {

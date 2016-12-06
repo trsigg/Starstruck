@@ -43,7 +43,7 @@
 #define liftTop 1750
 #define liftThrowPos 2260
 #define liftMax 3000
-#define clawClosedPos 1490 //claw
+#define clawClosedPos 1650 //claw
 #define clawOpenPos 1830
 #define clawMax 2300
 //#endregion
@@ -57,7 +57,7 @@
 bool clawOpen = true;
 bool liftDown = true;
 bool autoDumping = true;
-short autoSign; //for autonomous, positive if robot is left of pillow
+int autoSign; //for autonomous, positive if robot is left of pillow
 
 motorGroup lift;
 motorGroup claw;
@@ -91,7 +91,7 @@ void liftControl() {
 
 //#region claw
 void clawControl() {
-	if (potentiometerVal(lift)>liftThrowPos && potentiometerVal(claw)<clawOpenPos && autoDumping) {
+	if (getPosition(lift)>liftThrowPos && getPosition(claw)<clawOpenPos && autoDumping) {
 		setPower(claw, 127);
 		clawOpen = true;
 	} else	if (vexRT[openClawBtn] == 1) {
@@ -140,10 +140,24 @@ void openClaw(bool stillSpeed=true, int power=127) {
 	clawOpen = true;
 }
 
-void closeClaw(bool stillSpeed=true, int power=127, int timeout=500/*, int minSpeed=, sampleTime=*/) {
+void closeClaw(bool stillSpeed=true, int power=127, int timeout=500, int minSpeed=90, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
+	int minDiffPerSample = minSpeed * sampleTime / 1000;
+	int prevPos = getPosition(claw);
+	int newPos;
 	long clawTimer = resetTimer();
-	while (clawTimer < )
-	goToPosition(claw, clawClosedPos, (stillSpeed ? -clawStillSpeed : 0));
+
+	setPower(claw, -127);
+
+	while (time(clawTimer)<timeout || getPosition(claw)>clawClosedPos) {
+		wait1Msec(sampleTime);
+		newPos = getPosition(claw);
+
+		if (newPos - prevPos < minDiffPerSample) clawTimer = resetTimer();
+
+		prevPos = newPos;
+	}
+
+	setPower(claw, (stillSpeed ? -clawStillSpeed : 0));
 
 	clawOpen = false;
 }
