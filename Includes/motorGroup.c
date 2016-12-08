@@ -23,6 +23,7 @@ typedef struct {
 	float coeff; //factor by which motor powers are multiplied
 	long lastUpdated; //ramping
 	int absMin, absMax; //extreme  positions of motorGroup
+	bool hasAbsMin, hasAbsMax;
 	int maxPowerAtAbs, defPowerAtAbs; //maximum power at absolute position (pushing down from minimum or up from maximum) and default power if this is exceeded
 	//sensors
 	bool hasEncoder, hasPotentiometer;
@@ -43,9 +44,6 @@ void initializeGroup(motorGroup *group, int numMotors, tMotor motor1, tMotor mot
 
 	for (int i=0; i<numTargets; i++)
 		group->targets[i] = -1;
-
-	group->absMin = -1;
-	group->absMax = 4097;
 
 	group->numMotors = numMotors;
 	group->maneuverExecuting = false;
@@ -120,9 +118,25 @@ void resetEncoder(motorGroup *group, int resetVal=0) {
 //#endregion
 
 //#region position limiting
-void setAbsolutes(motorGroup *group, int min, int max=4097, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
+void setAbsMax(motorGroup *group, int max, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
+	group->absMax = max;
+	group->hasAbsMax = true;
+	group->maxPowerAtAbs = maxPowerAtAbs;
+	group->defPowerAtAbs = defPowerAtAbs;
+}
+
+void setAbsMin(motorGroup *group, int min, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
+	group->absMin = min;
+	group->hasAbsMin = true;
+	group->maxPowerAtAbs = maxPowerAtAbs;
+	group->defPowerAtAbs = defPowerAtAbs;
+}
+
+void setAbsolutes(motorGroup *group, int min, int max, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
 	group->absMin = min;
 	group->absMax = max;
+	group->hasAbsMin = true;
+	group->hasAbsMax = true;
 	group->maxPowerAtAbs = maxPowerAtAbs;
 	group->defPowerAtAbs = defPowerAtAbs;
 }
@@ -144,8 +158,13 @@ void createTarget(motorGroup *group, int position, TVexJoysticks btn, int power=
 //#endregion
 
 int setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
-	if (((getPosition(group) <= group->absMin && power < -group->maxPowerAtAbs) || (getPosition(group) >= group->absMax && power > group->maxPowerAtAbs) && !overrideAbsolutes)) //moving below absMin or above absMax and overrideAbsolutes is false TODO: make more efficient (a la wrist code)
-		power = group->defPowerAtAbs * sgn(power);
+	if (!overrideAbsolutes) {
+		if (group->hasAbsMin && getPosition(group) <= group->absMin && power < -group->maxPowerAtAbs)
+			power = -group->defPowerAtAbs;
+
+		if (group->hasAbsMax && getPosition(group) >= group->absMax && power > group->maxPowerAtAbs)
+			power = group->defPowerAtAbs;
+	}
 
 	for (int i=0; i<group->numMotors; i++) //set motors
 		motor[group->motors[i]] = power;

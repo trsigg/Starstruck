@@ -69,8 +69,8 @@ void pre_auton() {
 	//configure drive
 	initializeDrive(drive);
 	setDriveMotors(drive, 4, ld1, ld2, rd1, rd2);
-	//attachEncoder(drive, leftEnc, LEFT);
-	//attachEncoder(drive, rightEnc, RIGHT, false, 3.25);
+	attachEncoder(drive, leftEnc, LEFT);
+	attachEncoder(drive, rightEnc, RIGHT, false, 3.25);
 	attachGyro(drive, hyro);
 
 	//configure lift
@@ -341,25 +341,5 @@ task usercontrol() {
 		liftControl();
 
 		clawControl();
-
-		if (vexRT[Btn7U] == 1) {
-			attachEncoder(drive, leftEnc, LEFT);
-			while (vexRT[Btn7U] == 1);
-		}
-
-		if (vexRT[Btn7D] == 1) {
-			drive.leftDrive.hasEncoder = !drive.leftDrive.hasEncoder;
-			while (vexRT[Btn7D] == 1);
-		}
-
-		if (vexRT[Btn8U] == 1) {
-			attachEncoder(drive, rightEnc, RIGHT, false, 3.25);
-			while (vexRT[Btn8U] == 1);
-		}
-
-		if (vexRT[Btn8D] == 1) {
-			drive.rightDrive.hasEncoder = !drive.rightDrive.hasEncoder;
-			while (vexRT[Btn8D] == 1);
-		}
 	}
 }
