@@ -124,7 +124,7 @@ task maneuvers() {
 	}
 }
 
-void setClawStateManeuver(bool open, int power=127) { //toggles by default
+void setClawStateManeuver(bool open, int power=127) {
 	if (open) {
 		createManeuver(claw, clawOpenPos, clawStillSpeed, power);
 	} else {
@@ -176,11 +176,11 @@ void setLiftStateManeuver(bool top) {
 	}
 }
 
-void grabNdump(int delayDuration) {
+void grabNdump(int delayDuration, int distance=40) {
 	wait1Msec(delayDuration); //wait for objects to be dropped
 	closeClaw();
 	createManeuver(lift, liftMax, -liftStillSpeed); //lift to top
-	driveStraight(-40, true); //drive to fence
+	driveStraight(-distance, true); //drive to fence
 	while (driveData.isDriving || lift.maneuverExecuting);
 	openClaw();
 }
