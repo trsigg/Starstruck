@@ -203,7 +203,7 @@ void createManeuver(motorGroup *group, int position, int endPower=0, int maneuve
 	setPower(group, maneuverPower);
 }
 
-void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverPower=127, int timeout=10) {
+void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverPower=127, int timeout=100) {
 	long posTimer = resetTimer();
 	int displacementSign = sgn(position - getPosition(group));
 	setPower(group, displacementSign*maneuverPower);
