@@ -179,8 +179,10 @@ int moveTowardPosition(motorGroup *group, int position, int power=127) {
 
 void executeManeuver(motorGroup *group) {
 	if (group->maneuverExecuting) {
-		if (group->forward == (getPosition(group) < group->targetPos))
+		if (group->forward == (getPosition(group) < group->targetPos)) {
 			group->maneuverTimer = resetTimer();
+			setPower(group, group->maneuverPower);
+		}
 
 		if (time(group->maneuverTimer) > group->maneuverTimeout) {
 			group->maneuverExecuting = false;
