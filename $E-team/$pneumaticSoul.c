@@ -2,7 +2,6 @@
 #pragma config(Sensor, in3,    liftPot,        sensorPotentiometer)
 #pragma config(Sensor, in5,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, in6,    sidePot,        sensorPotentiometer)
-#pragma config(Sensor, in7,    hyro,           sensorNone)
 #pragma config(Sensor, in8,    clawPot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
@@ -40,11 +39,11 @@
 
 //#region positions
 #define liftBottom 1190 //lift
-#define liftMiddle 1420
-#define liftTop 1675
-#define liftThrowPos 2260
-#define liftMax 2700
-#define clawClosedPos 1650 //claw
+#define liftMiddle 1500
+#define liftTop 2020
+#define liftThrowPos 2270
+#define liftMax 2950
+#define clawClosedPos 1500 //claw
 #define clawOpenPos 1800
 #define clawMax 2400
 //#endregion
@@ -122,7 +121,7 @@ task maneuvers() {
 		if (lift.maneuverExecuting) {
 			executeManeuver(lift);
 		} else {
-			setPower(lift, liftStillSpeed * (clawOpen || liftDown ? -1 : 1));
+			//setPower(lift, liftStillSpeed * (clawOpen || liftDown ? -1 : 1));
 		}
 	}
 }
@@ -143,7 +142,7 @@ void openClaw(bool stillSpeed=true, int power=127) {
 	clawOpen = true;
 }
 
-void closeClaw(bool stillSpeed=true, int power=127, int timeout=500, int minSpeed=90, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
+void closeClaw(bool stillSpeed=true, int power=127, int timeout=500, int minSpeed=150, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
 	int minDiffPerSample = minSpeed * sampleTime / 1000;
 	int prevPos = getPosition(claw);
 	int newPos;
@@ -151,11 +150,11 @@ void closeClaw(bool stillSpeed=true, int power=127, int timeout=500, int minSpee
 
 	setPower(claw, -127);
 
-	while (time(clawTimer)<timeout || getPosition(claw)>clawClosedPos) {
+	while (time(clawTimer)<timeout || getPosition(claw)>clawOpenPos) {
 		wait1Msec(sampleTime);
 		newPos = getPosition(claw);
 
-		if (newPos - prevPos < minDiffPerSample) clawTimer = resetTimer();
+		if (newPos - prevPos > minDiffPerSample) clawTimer = resetTimer();
 
 		prevPos = newPos;
 	}
@@ -177,6 +176,8 @@ void setLiftStateManeuver(bool top) {
 	} else {
 		createManeuver(lift, liftBottom, liftStillSpeed);
 	}
+
+	liftDown = !top;
 }
 
 void grabNdump(int delayDuration, int distance=30) {
@@ -198,27 +199,20 @@ void initialPillow() {
 	setPower(lift, -liftStillSpeed);
 
 	//open claw, drive away from wall, and lift up a little bit
-	setClawStateManeuver(true, 50);
-  driveStraight(7, true);
-  while(driveData.isDriving || lift.maneuverExecuting);
+	setClawStateManeuver(true/*, 50*/);
+	driveStraight(7, true);
+	while(driveData.isDriving || lift.maneuverExecuting);
 
-  //drive to central pillow
-  turn(-57, true);
-  while(turnData.isTurning || claw.maneuverExecuting);
-  driveStraight(16);
+	//drive to central pillow
+	turn(-57, true);
+	while(turnData.isTurning || claw.maneuverExecuting);
+	driveStraight(16);
 
-  closeClaw(); //clamp pillow
+	closeClaw(); //clamp pillow
 }
 
 task skillz() {
 	clearTimer(T1);
-	//createManeuver(claw, clawOpenPos+200, clawStillSpeed);
-	//driveStraight(-16, true); //drive back
-	//while (driveData.isDriving);
-	//turn(20, true);
-	//while (turnData.isTurning || claw.maneuverExecuting);
-	//driveStraight(18);
-	//goToPosition(claw, clawClosedPos+100, -clawStillSpeed);
 	setClawStateManeuver(true);
 	driveStraight(-10, true);
 	while (claw.maneuverExecuting || driveData.isDriving);
@@ -266,48 +260,49 @@ task pillowAuton() {
 	initialPillow();
 
 	//go to fence and lift up
-  setLiftStateManeuver(true);
-  driveStraight(8, true);
-  while (driveData.isDriving);
-  turn(57, true, 40, 80, -10); //turn to face fence
-  while (turnData.isTurning);
-  driveStraight(18, true); // drive up to wall
-  while (driveData.isDriving || lift.maneuverExecuting);
+	setLiftStateManeuver(true);
+	driveStraight(8, true);
+	while (driveData.isDriving);
+	turn(57, true, 40, 80, -10); //turn to face fence
+	while (turnData.isTurning);
+	driveStraight(18, true); // drive up to wall
+	while (driveData.isDriving || lift.maneuverExecuting);
 
-  setPower(lift, -liftStillSpeed);
-  openClaw(); //release pillow
-  wait1Msec(600); //wait for pillow to fall
-  closeClaw();
-  driveStraight(-6); //back up
-  hyperExtendClaw();
+	setPower(lift, -liftStillSpeed);
+	openClaw(); //release pillow
+	wait1Msec(600); //wait for pillow to fall
+	closeClaw();
+	driveStraight(-6); //back up
+	hyperExtendClaw();
 
-  //push jacks over
- 	driveStraight(8);
- 	closeClaw();
+	//push jacks over
+	driveStraight(8);
+	closeClaw();
 
- 	createManeuver(claw, clawMax, clawStillSpeed);
+	createManeuver(claw, clawMax, clawStillSpeed);
 
- 	//drive to other wall and lift down
- 	driveStraight(-15, true);
- 	while (driveData.isDriving);
- 	turn(65, true, 40, 127, -20);
- 	while (turnData.isTurning || claw.maneuverExecuting);
- 	createManeuver(lift, liftMiddle+100, liftStillSpeed);
- 	driveStraight(35, true);
- 	while (driveData.isDriving || lift.maneuverExecuting);
- 	turn(-65, false, 40, 120, -40);
- 	driveStraight(5);
+	//drive to other wall and lift down
+	driveStraight(-15, true);
+	while (driveData.isDriving);
+	turn(65, true, 40, 127, -20);
+	while (turnData.isTurning || claw.maneuverExecuting);
+	createManeuver(lift, liftMiddle+100, liftStillSpeed);
+	driveStraight(35, true);
+	while (driveData.isDriving || lift.maneuverExecuting);
+	turn(-65, false, 40, 120, -40);
+	driveStraight(5);
 
- 	goToPosition(lift, liftTop+75); //push jacks over
- 	driveStraight(5);
- 	closeClaw();
+	goToPosition(lift, liftTop+75); //push jacks over
+	driveStraight(5);
+	closeClaw();
 }
 
-task oneSideAuton() {
+task dumpyAuton() {
 	initialPillow();
 
 	goToPosition(lift, liftMiddle, liftStillSpeed);
 
+	driveStraight(15);
 	turn(-100, false, 45, 127, -20);
 	driveStraight(-20, true);
 	createManeuver(lift, liftMax, liftStillSpeed);
@@ -317,45 +312,49 @@ task oneSideAuton() {
 	wait1Msec(250);
 
 	driveToWall();
-	grabNdump(250);
-	//createManeuver(claw, clawMax, clawStillSpeed); //open claw
-	//createManeuver(lift, liftTop-450, liftStillSpeed); //lift to near top
- // driveStraight(5, true); //drive away from wall
- // while(driveData.isDriving);
+	grabNdump(0);
+	goToPosition(lift, liftBottom, -liftStillSpeed);
+}
 
- // turn(-30, true);
- // while (turnData.isTurning);
+task oneSideAuton() {
+	createManeuver(claw, clawMax, clawStillSpeed); //open claw
+	createManeuver(lift, liftTop-450, liftStillSpeed); //lift to near top
+	driveStraight(5, true); //drive away from wall
+	while(driveData.isDriving);
 
- // driveStraight(18, true);
- // while (driveData.isDriving || claw.maneuverExecuting);
+  turn(-30, true);
+  while (turnData.isTurning);
 
- // turn(37, true); //turn toward wall
- // while (turnData.isTurning || lift.maneuverExecuting);
+  driveStraight(18, true);
+	while (driveData.isDriving || claw.maneuverExecuting);
 
- // //knock off jacks
- // driveStraight(42);
- // goToPosition(lift, 1250, liftStillSpeed);
- // closeClaw();
- // wait1Msec(2500);
+	turn(37, true); //turn toward wall
+	while (turnData.isTurning || lift.maneuverExecuting);
 
- // //go to back jacks
- //	setClawStateManeuver(true);
- //	turn(120, true, 40, 127, -10);
- //	while (turnData.isTurning);
- //	setLiftStateManeuver(false);
- //	driveStraight(46, true);
- //	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
- //	closeClaw();
- //	wait1Msec(3500);
+	//knock off jacks
+	driveStraight(42);
+	goToPosition(lift, 1250, liftStillSpeed);
+	closeClaw();
+	wait1Msec(2500);
 
- //	//dump
- //	createManeuver(lift, liftMax, -liftStillSpeed);
- //	turn(50, true);
- //	while (turnData.isTurning);
- //	driveStraight(-30, true);
- //	while(driveData.isDriving || lift.maneuverExecuting);
- //	openClaw();
- //	goToPosition(lift, liftBottom);
+	//go to back jacks
+	setClawStateManeuver(true);
+	turn(120, true, 40, 127, -10);
+	while (turnData.isTurning);
+	setLiftStateManeuver(false);
+	driveStraight(46, true);
+	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
+	closeClaw();
+	wait1Msec(3500);
+
+	//dump
+	createManeuver(lift, liftMax, -liftStillSpeed);
+	turn(50, true);
+	while (turnData.isTurning);
+	driveStraight(-30, true);
+	while(driveData.isDriving || lift.maneuverExecuting);
+	openClaw();
+	goToPosition(lift, liftBottom);
 }
 
 task autonomous() {
@@ -371,7 +370,7 @@ task autonomous() {
 	} else if (SensorValue[modePot] > 2670) {
 		startTask(pillowAuton);
 	} else if (SensorValue[modePot] > 1275) {
-		startTask(oneSideAuton);
+		startTask(dumpyAuton);
 	}
 }
 //#endregion
