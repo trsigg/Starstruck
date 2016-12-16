@@ -2,8 +2,6 @@
 
 #include "timer.c"
 
-#define DEFAULT_TIMEOUT 15
-
 enum controlType { NONE, BUTTON, JOYSTICK };
 
 typedef struct {
@@ -14,8 +12,9 @@ typedef struct {
 	//button control
 	int upPower, downPower, stillSpeed;
 	//execute maneuver
-	int targetPos, endPower, maneuverPower;
+	int targetPos, endPower, maneuverPower, maneuverTimeout;
 	bool forward, maneuverExecuting; //forward: whether target is forwad from initial group position
+	long maneuverTimer;
 	//joystick control
 	int deadband; //range of motor values around 0 for which motors are not engaged
 	bool isRamped; //whether group is ramped
@@ -23,19 +22,18 @@ typedef struct {
 	float powMap; //degree of polynomial to which inputs are mapped (1 for linear)
 	float coeff; //factor by which motor powers are multiplied
 	long lastUpdated; //ramping
-	int absMin, absMax; //extreme potentiometer positions of motorGroup
+	int absMin, absMax; //extreme  positions of motorGroup
+	bool hasAbsMin, hasAbsMax;
 	int maxPowerAtAbs, defPowerAtAbs; //maximum power at absolute position (pushing down from minimum or up from maximum) and default power if this is exceeded
 	//sensors
 	bool hasEncoder, hasPotentiometer;
 	bool encoderReversed, potentiometerReversed;
+	bool potentiometerDefault; //whether potentiometer (as opposed to encoder) is default sensor for position measurements
 	tSensors encoder, potentiometer;
 	//position targets
 	int targets[numTargets];
 	TVexJoysticks targetButtons[numTargets];
-	int targetIndex;
-	int prevPos;
-	int timeout;
-	long timer;
+	int targetTimeout, targetPower;
 } motorGroup;
 
 //#region initialization
@@ -47,12 +45,8 @@ void initializeGroup(motorGroup *group, int numMotors, tMotor motor1, tMotor mot
 	for (int i=0; i<numTargets; i++)
 		group->targets[i] = -1;
 
-	group->absMin = -1;
-	group->absMax = 4097;
-
 	group->numMotors = numMotors;
-	group->targetIndex = -1;
-	group->timeout = DEFAULT_TIMEOUT;
+	group->maneuverExecuting = false;
 }
 
 void configureButtonInput(motorGroup *group, TVexJoysticks posBtn, TVexJoysticks negBtn, int stillSpeed=0, int upPower=127, int downPower=-127) {
@@ -77,17 +71,19 @@ void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadb
 //#endregion
 
 //#region sensors
-void addSensor(motorGroup *group, tSensors sensor, bool reversed=false) {
+void addSensor(motorGroup *group, tSensors sensor, bool reversed=false, bool setAsDefault=true) {
 	switch (SensorType[sensor]) {
 		case sensorPotentiometer:
 			group->hasPotentiometer = true;
 			group->potentiometer = sensor;
 			group->potentiometerReversed = reversed;
+			if (setAsDefault) group->potentiometerDefault = true;
 			break;
 		case sensorQuadEncoder:
 			group->hasEncoder = true;
 			group->encoder = sensor;
 			group->encoderReversed = reversed;
+			if (setAsDefault) group->potentiometerDefault = false;
 			break;
 	}
 }
@@ -108,70 +104,114 @@ int potentiometerVal(motorGroup *group) {
 	}
 }
 
+int getPosition(motorGroup *group) {
+	if (group->hasPotentiometer && group->hasEncoder) {
+		return group->potentiometerDefault ? potentiometerVal(group) : encoderVal(group);
+	} else {
+		return (group->hasEncoder ? encoderVal(group) : potentiometerVal(group));
+	}
+}
+
 void resetEncoder(motorGroup *group, int resetVal=0) {
 	SensorValue[group->encoder] = resetVal;
 }
 //#endregion
 
 //#region position limiting
-void setAbsolutes(motorGroup *group, int min, int max=4097, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
+void setAbsMax(motorGroup *group, int max, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
+	group->absMax = max;
+	group->hasAbsMax = true;
+	group->maxPowerAtAbs = maxPowerAtAbs;
+	group->defPowerAtAbs = defPowerAtAbs;
+}
+
+void setAbsMin(motorGroup *group, int min, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
+	group->absMin = min;
+	group->hasAbsMin = true;
+	group->maxPowerAtAbs = maxPowerAtAbs;
+	group->defPowerAtAbs = defPowerAtAbs;
+}
+
+void setAbsolutes(motorGroup *group, int min, int max, int defPowerAtAbs=0, int maxPowerAtAbs=20) {
 	group->absMin = min;
 	group->absMax = max;
+	group->hasAbsMin = true;
+	group->hasAbsMax = true;
 	group->maxPowerAtAbs = maxPowerAtAbs;
 	group->defPowerAtAbs = defPowerAtAbs;
 }
 //#endregion
 
 //#region motor targets
-void createTarget(motorGroup *group, int position, TVexJoysticks btn) {
-	if (group->hasPotentiometer) {
-		for (int i=0; i<numTargets; i++) {
-			if (group->targets[i] == -1) {
-				group->targets[i] = position;
-				group->targetButtons[i] = btn;
-				break;
-			}
+void createTarget(motorGroup *group, int position, TVexJoysticks btn, int power=127, int timeout=10) {
+	for (int i=0; i<numTargets; i++) {
+		if (group->targets[i] == -1) {
+			group->targets[i] = position;
+			group->targetButtons[i] = btn;
+			break;
 		}
 	}
+
+	group->targetPower = power;
+	group->targetTimeout = timeout;
 }
 //#endregion
 
-void setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
-	if (((potentiometerVal(group) <= group->absMin && power < -group->maxPowerAtAbs) || (potentiometerVal(group) >= group->absMax && power > group->maxPowerAtAbs) && !overrideAbsolutes)) //moving below absMin or above absMax and overrideAbsolutes is false TODO: make more efficient (a la wrist code)
-		power = group->defPowerAtAbs * sgn(power);
+int setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
+	if (!overrideAbsolutes) {
+		if (group->hasAbsMin && getPosition(group) <= group->absMin && power < -group->maxPowerAtAbs)
+			power = -group->defPowerAtAbs;
+
+		if (group->hasAbsMax && getPosition(group) >= group->absMax && power > group->maxPowerAtAbs)
+			power = group->defPowerAtAbs;
+	}
 
 	for (int i=0; i<group->numMotors; i++) //set motors
 		motor[group->motors[i]] = power;
+
+	return power;
 }
 
 //#region position movement
-void moveTowardPosition(motorGroup *group, int position, int power=127) {
-	setPower(group, power * sgn(position - potentiometerVal(group)));
+int moveTowardPosition(motorGroup *group, int position, int power=127) {
+	return setPower(group, power * sgn(position - getPosition(group)));
 }
 
 void executeManeuver(motorGroup *group) {
 	if (group->maneuverExecuting) {
-		if (group->forward == (potentiometerVal(group) > group->targetPos)) { //whether maneuver is finished
-			setPower(group, group->endPower);
+		if (group->forward == (getPosition(group) < group->targetPos)) {
+			group->maneuverTimer = resetTimer();
+			setPower(group, group->maneuverPower);
+		}
+
+		if (time(group->maneuverTimer) > group->maneuverTimeout) {
 			group->maneuverExecuting = false;
-		} else {
-			setPower(group, (group->forward ? group->maneuverPower : -group->maneuverPower));
+			setPower(group, group->endPower);
 		}
 	}
 }
 
-void createManeuver(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {
+void createManeuver(motorGroup *group, int position, int endPower=0, int maneuverPower=127, int timeout=10) {
 	group->targetPos = position;
 	group->endPower = endPower;
-	group->maneuverPower = maneuverPower;
-	group->forward = group->targetPos > potentiometerVal(group);
+	group->forward = group->targetPos > getPosition(group);
+	group->maneuverPower = abs(maneuverPower) * (group->forward ? 1 : -1);
 	group->maneuverExecuting = true;
+	group->maneuverTimeout = timeout;
+	group->maneuverTimer = resetTimer();
+
+	setPower(group, maneuverPower);
 }
 
-void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverPower=127) {
-	int displacementSign = sgn(position - potentiometerVal(group));
+void goToPosition(motorGroup *group, int position, int endPower=0, int maneuverPower=127, int timeout=100) {
+	long posTimer = resetTimer();
+	int displacementSign = sgn(position - getPosition(group));
 	setPower(group, displacementSign*maneuverPower);
-	while (sgn(position - potentiometerVal(group)) == displacementSign);
+
+	while (time(posTimer) < timeout) {
+		if (sgn(position - getPosition(group)) == displacementSign) posTimer = resetTimer();
+	}
+
 	setPower(group, endPower);
 }
 //#endregion
@@ -182,55 +222,28 @@ void getTargetInput(motorGroup *group) {
 		if (group->targets[i] == -1) {
 			break;
 		} else if (vexRT[group->targetButtons[i]] == 1) {
-			group->timer = resetTimer();
-			group->targetIndex = i;
-			group->prevPos = potentiometerVal(group);
+			createManeuver(group, group->targets[i], group->stillSpeed, group->targetPower, group->targetTimeout);
 		}
 	}
-}
-
-int handleTargets(motorGroup *group) {
-	int power = 0;
-
-	getTargetInput(group);
-
-	if (group->targetIndex == -1) {
-		power = group->stillSpeed;
-	} else {
-		//go to target
-		int newPos = potentiometerVal(group);
-		int target = group->targets[group->targetIndex];
-
-		if (sgn(group->prevPos - target) == sgn(newPos - target)) {
-			power = newPos>target ? -127 : 127;
-			group->prevPos = newPos;
-			group->timer = resetTimer();
-		} else if (time(group->timer) > group->timeout) {
-			group->targetIndex = -1;
-			power = 0;
-		}
-	}
-
-	return power;
 }
 
 int handleButtonInput(motorGroup *group) {
-	int power = 0;
-
 	if (vexRT[group->posInput] == 1) {
-		power = group->upPower;
-		group->targetIndex = -1;
+		group->maneuverExecuting = false;
+		return group->upPower;
 	} else if (vexRT[group->negInput] == 1) {
-		power = group->downPower;
-		group->targetIndex = -1;
+		group->maneuverExecuting = false;
+		return group->downPower;
 	} else {
-		power = handleTargets(group);
+		getTargetInput(group);
+
+		executeManeuver(group);
+
+		if (group->maneuverExecuting)
+			return group->maneuverPower;
+		else
+			return group->stillSpeed;
 	}
-
-	if ((potentiometerVal(group) < group->absMin && power<0) || (potentiometerVal(group) > group->absMax && power>0))
-		power = group->stillSpeed;
-
-	return power;
 }
 
 int handleJoystickInput(motorGroup *group) {
