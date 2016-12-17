@@ -42,7 +42,7 @@
 #define liftMiddle 1420
 #define liftTop 1700 //1885
 #define liftThrowPos 2260
-#define liftMax 2550 //2700
+#define liftMax 2500 //2700
 #define clawClosedPos 1450 //claw
 #define clawOpenPos 1740 //1800
 #define clawMax 2150 //2400
@@ -175,9 +175,9 @@ void setLiftStateManeuver(bool top) {
 	liftDown = !top;
 }
 
-void grabNdump(int delayDuration, int distance=30) {
+void grabNdump(int delayDuration, int distance=30, int closeTimeout=500) {
 	wait1Msec(delayDuration); //wait for objects to be dropped
-	closeClaw();
+	closeClaw(true, 127, closeTimeout);
 	createManeuver(lift, liftMax, -liftStillSpeed); //lift to top
 	driveStraight(-distance, true); //drive to fence
 	while (getPosition(lift) < liftThrowPos);
@@ -185,9 +185,9 @@ void grabNdump(int delayDuration, int distance=30) {
 	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
 }
 
-void driveToWall() {
+void driveToWall(int distance=22) {
 	goToPosition(lift, liftBottom, -liftStillSpeed);
-	driveStraight(24);
+	driveStraight(distance);
 }
 
 void initialPillow() {
@@ -201,7 +201,7 @@ void initialPillow() {
 	//drive to central pillow
 	turn(autoSign * -57, true);
 	while(turnData.isTurning || claw.maneuverExecuting);
-	driveStraight(16);
+	driveStraight(14);
 
 	closeClaw(); //clamp pillow
 }
@@ -285,9 +285,10 @@ task dumpyAuton() {
 
 	goToPosition(lift, liftMiddle, liftStillSpeed);
 
-	driveStraight(15);
-	turn(autoSign * -100, false, 45, 127, -20);
-	driveStraight(-20, true);
+	driveStraight(5);
+	wait1Msec(500);
+	turn(autoSign * -80, false, 45, 120, -20);
+	driveStraight(-15, true);
 	createManeuver(lift, liftMax, liftStillSpeed);
 	while (potentiometerVal(lift) < liftThrowPos);
 	createManeuver(claw, clawMax-75, clawStillSpeed);
@@ -295,7 +296,9 @@ task dumpyAuton() {
 	wait1Msec(250);
 
 	driveToWall();
-	grabNdump(0);
+	grabNdump(0, 30, 750);
+	driveToWall();
+	grabNdump(0, 30, 750);
 	goToPosition(lift, liftBottom, -liftStillSpeed);
 }
 
@@ -355,7 +358,7 @@ task autonomous() {
 	} else if (SensorValue[modePot] > 2670) {
 		startTask(pillowAuton);
 	} else if (SensorValue[modePot] > 1275) {
-		startTask(oneSideAuton);
+		startTask(dumpyAuton);
 	}
 }
 //#endregion
