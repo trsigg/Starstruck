@@ -137,7 +137,7 @@ void openClaw(bool stillSpeed=true, int power=127) {
 	clawOpen = true;
 }
 
-void closeClaw(bool stillSpeed=true, int power=127, int timeout=500, int minSpeed=150, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
+void closeClaw(bool stillSpeed=true, int timeout=500, int power=127, int minSpeed=150, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
 	int minDiffPerSample = minSpeed * sampleTime / 1000;
 	int prevPos = getPosition(claw);
 	int newPos;
@@ -175,9 +175,9 @@ void setLiftStateManeuver(bool top) {
 	liftDown = !top;
 }
 
-void grabNdump(int delayDuration, int distance=30, int closeTimeout=500) {
+void grabNdump(int delayDuration, int distance=27, int closeTimeout=500) {
 	wait1Msec(delayDuration); //wait for objects to be dropped
-	closeClaw(true, 127, closeTimeout);
+	closeClaw(true, closeTimeout);
 	createManeuver(lift, liftMax, -liftStillSpeed); //lift to top
 	driveStraight(-distance, true); //drive to fence
 	while (getPosition(lift) < liftThrowPos);
@@ -185,7 +185,7 @@ void grabNdump(int delayDuration, int distance=30, int closeTimeout=500) {
 	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
 }
 
-void driveToWall(int distance=22) {
+void driveToWall(int distance=25) {
 	goToPosition(lift, liftBottom, -liftStillSpeed);
 	driveStraight(distance);
 }
@@ -210,7 +210,8 @@ task skillz() {
 	setClawStateManeuver(true);
 	driveStraight(-10, true);
 	while (claw.maneuverExecuting || driveData.isDriving);
-	grabNdump(1000);
+
+	grabNdump(2000);
 	driveToWall();
 
 	grabNdump(500);
@@ -220,24 +221,43 @@ task skillz() {
 
 	//get pillow in center of field
 	setLiftStateManeuver(false);
-	createManeuver(claw, clawOpenPos+200, clawStillSpeed);
+	//createManeuver(claw, clawOpenPos, clawStillSpeed);
 	while (lift.maneuverExecuting || claw.maneuverExecuting);
-	turn(-38, false, 40, 127, -10);
+	turn(-37, false, 40, 127, -10);
 	driveStraight(20);
 	closeClaw(); //grab pillow
 
 	//dump pillow
-	createManeuver(lift, liftMax, -liftStillSpeed);
-	turn(45, true);
+	createManeuver(lift, liftMax, -liftStillSpeed, 90);
+	turn(43, true);
 	while (turnData.isTurning);
-	driveStraight(-10, true);
-	while (driveData.isDriving || lift.maneuverExecuting);
-	openClaw();
+	driveStraight(-13, true);
+	while (getPosition(lift) < liftThrowPos);
+	setClawStateManeuver(true);
+	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
 
 	//grab and dump jacks
-	driveToWall();
-	grabNdump(0);
-	goToPosition(lift, liftBottom);
+	driveStraight(25, true);
+	createManeuver(claw, clawMax, clawStillSpeed);
+	setLiftStateManeuver(false);
+	while (driveData.isDriving || claw.maneuverExecuting);
+	grabNdump(0, 30, 750);
+
+	//go to pillow
+	setLiftStateManeuver(false);
+	turn(-15, true);
+	while (lift.maneuverExecuting || turnData.isTurning);
+	driveStraight(37);
+	closeClaw();
+
+	//dump pillow
+	goToPosition(lift, liftMiddle, liftStillSpeed);
+	turn(47);
+	createManeuver(lift, liftMax, -liftStillSpeed, 90);
+	driveStraight(-20, true);
+	while (getPosition(lift) < liftThrowPos);
+	setClawStateManeuver(true);
+	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
 }
 
 task pillowAuton() {
