@@ -219,14 +219,10 @@ void liftTo(liftState state, int power=127) {
 	}
 }
 
-void grabNdump(int delayDuration, int distance=30, int closeTimeout=500) {
+void grabNdump(int delayDuration, int dist=30, int closeTimeout=500) {
 	wait1Msec(delayDuration); //wait for objects to be dropped
 	closeClaw(true, closeTimeout);
-	createLiftManeuver(MAX); //lift to top
-	driveStraight(-distance, true); //drive to fence
-	while (getPosition(lift) < liftThrowPos);
-	createClawManeuver(OPEN);
-	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
+	turnDriveDump(0, -dist);
 }
 
 void driveToWall(int distance=25) {
@@ -238,7 +234,7 @@ void initialPillow() {
 	setPower(lift, -liftStillSpeed);
 
 	//open claw, drive away from wall, and lift up a little bit
-	createClawManeuver(OPEN/*, 50*/);
+	createClawManeuver(OPEN);
 	driveStraight(7, true);
 	while(driveData.isDriving || lift.maneuverExecuting);
 
@@ -265,19 +261,13 @@ task skillz() {
 
 	//get pillow in center of field
 	createLiftManeuver(BOTTOM);
-	while (lift.maneuverExecuting || claw.maneuverExecuting);
 	turn(-33, false, 40, 127, -10);
+	while (lift.maneuverExecuting || turnData.isTurning);
 	driveStraight(20);
 	closeClaw(); //grab pillow
 
 	//dump pillow
-	createLiftManeuver(MAX, 90);
-	turn(49, true);
-	while (turnData.isTurning);
-	driveStraight(-13, true);
-	while (getPosition(lift) < liftThrowPos);
-	createClawManeuver(OPEN);
-	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
+	turnDriveDump(49, -13, 6);
 
 	//grab and dump jacks
 	driveStraight(25, true);
@@ -296,7 +286,6 @@ task skillz() {
 	//dump pillow
 	liftTo(MIDDLE);
 	turn(47);
-	//createLiftManeuver(MAX, 90);
 	driveStraight(-30, true);
 	while (driveData.totalDist < 10);
 	createLiftManeuver(MAX);
@@ -373,7 +362,7 @@ task dumpyAuton() {
 	driveStraight(-17, true);
 	createLiftManeuver(MAX);
 	while (potentiometerVal(lift) < liftThrowPos);
-	createManeuver(claw, clawMax-75, clawStillSpeed);
+	createClawManeuver(OPEN);
 	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
 	wait1Msec(250);
 
