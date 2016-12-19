@@ -121,7 +121,7 @@ typedef struct {
 driveStruct driveData;
 
 bool drivingComplete() {
-	return abs(driveData.totalDist)>driveData.distance  || time(driveData.timer)>driveData.timeout;
+	return driveData.totalDist>driveData.distance  || time(driveData.timer)>driveData.timeout;
 }
 
 void driveStraightRuntime() {
