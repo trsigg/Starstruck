@@ -116,11 +116,9 @@ void clawControl() {
 //#endregion
 
 //#region autonomous
-task maneuvers() {
-	while (true) {
-		executeManeuver(claw);
-		executeManeuver(lift);
-	}
+void maneuvers() {
+	executeManeuver(claw);
+	executeManeuver(lift);
 }
 
 void createClawManeuver(clawState state, int power=127) {
@@ -237,9 +235,9 @@ void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=defT
 	}
 
 	createLiftManeuver(MAX);
-	while (potentiometerVal(lift) < liftThrowPos);
+	while (potentiometerVal(lift) < liftThrowPos) maneuvers();
 	createClawManeuver(OPEN);
-	while (turnData.isTurning || driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
+	while (turnData.isTurning || driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting) maneuvers();
 }
 
 void grabNdump(int delayDuration, int dist=30, int closeTimeout=500) {
@@ -256,14 +254,14 @@ void driveToWall(int distance=fenceToWallDist) {
 void initialPillow() {
 	setPower(lift, -liftStillSpeed);
 
-	//open claw, drive away from wall, and lift up a little bit
+	//open claw and drive away from wall
 	createClawManeuver(OPEN);
 	driveStraight(7, true);
-	while(driveData.isDriving || lift.maneuverExecuting);
+	while(driveData.isDriving) maneuvers();
 
 	//drive to central pillow
 	turn(autoSign * -57, true);
-	while(turnData.isTurning || claw.maneuverExecuting);
+	while(turnData.isTurning || claw.maneuverExecuting) maneuvers();
 	driveStraight(14);
 
 	closeClaw(); //clamp pillow
@@ -272,7 +270,7 @@ void initialPillow() {
 task skillz() {
 	createClawManeuver(OPEN);
 	driveStraight(-10, true);
-	while (claw.maneuverExecuting || driveData.isDriving);
+	while (claw.maneuverExecuting || driveData.isDriving) maneuvers();
 
 
 	for (int i=0; i<2; i++) { //dump preload pillows
@@ -286,38 +284,35 @@ task skillz() {
 		grabNdump(500);
 	}
 
-	//get pillow in center of field
+	//get and dump pillow in center of field
 	createLiftManeuver(BOTTOM);
-	turn(-33, false, 40, 127, -10);
-	while (lift.maneuverExecuting || turnData.isTurning);
+	turn(-33, true, 40, 127, -10);
+	while (lift.maneuverExecuting || turnData.isTurning) maneuvers();
 	driveStraight(20);
 	closeClaw(); //grab pillow
-
-	//dump pillow
 	turnDriveDump(49, -13, 6);
 
 	//grab and dump jacks
 	driveStraight(25, true);
 	createClawManeuver(HYPEREXTENDED);
 	createLiftManeuver(BOTTOM);
-	while (driveData.isDriving || claw.maneuverExecuting);
+	while (driveData.isDriving || claw.maneuverExecuting || lift.maneuverExecuting) maneuvers();
 	grabNdump(0, 30, 750);
 
 	//get and dump pillow
 	createLiftManeuver(BOTTOM);
 	turn(-18, true);
-	while (lift.maneuverExecuting || turnData.isTurning);
+	while (lift.maneuverExecuting || turnData.isTurning) maneuvers();
 	driveStraight(30);
 	closeClaw();
 	turnDriveDump(47, -30, 10);
 
 	//pick up and dump central jacks
-	createLiftManeuver(MIDDLE);
-	turn(70, true);
-	while (turnData.isTurning || lift.maneuverExecuting);
 	createLiftManeuver(BOTTOM);
+	turn(70, true);
+	while (turnData.isTurning || lift.maneuverExecuting) maneuvers();
 	driveStraight(20, true);
-	while (driveData.isDriving || lift.maneuverExecuting);
+	while (driveData.isDriving) maneuvers();
 	closeClaw();
 	turnDriveDump(-60, 0);
 
@@ -330,11 +325,11 @@ task pillowAuton() {
 	//go to fence and lift up
 	createLiftManeuver(TOP);
 	driveStraight(10.5, true);
-	while (driveData.isDriving);
+	while (driveData.isDriving) maneuvers();
 	turn(autoSign * 57, true, 40, 80, -10); //turn to face fence
-	while (turnData.isTurning);
+	while (turnData.isTurning) maneuvers();
 	driveStraight(20, true); // drive up to wall
-	while (driveData.isDriving || lift.maneuverExecuting);
+	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
 
 	openClaw(); //release pillow
 	wait1Msec(600); //wait for pillow to fall
@@ -350,12 +345,12 @@ task pillowAuton() {
 
  	//drive to other wall and lift down
  	driveStraight(-10, true);
- 	while (driveData.isDriving);
+ 	while (driveData.isDriving) maneuvers();
  	turn(autoSign * 65, true, 40, 127, -20);
- 	while (turnData.isTurning || claw.maneuverExecuting);
+ 	while (turnData.isTurning || claw.maneuverExecuting) maneuvers();
  	createManeuver(lift, liftMiddle+100, liftStillSpeed);
  	driveStraight(35, true);
- 	while (driveData.isDriving || lift.maneuverExecuting);
+ 	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
  	turn(autoSign * -65, false, 40, 120, -40);
  	driveStraight(10);
 
@@ -387,16 +382,16 @@ task oneSideAuton() {
 	createClawManeuver(HYPEREXTENDED); //open claw
 	createManeuver(lift, liftTop-450, liftStillSpeed); //lift to near top
 	driveStraight(5, true); //drive away from wall
-	while(driveData.isDriving);
+	while(driveData.isDriving) maneuvers();
 
 	turn(-30, true);
-	while (turnData.isTurning);
+	while (turnData.isTurning) maneuvers();
 
 	driveStraight(18, true);
-	while (driveData.isDriving || claw.maneuverExecuting);
+	while (driveData.isDriving || claw.maneuverExecuting) maneuvers();
 
 	turn(37, true); //turn toward wall
-	while (turnData.isTurning || lift.maneuverExecuting);
+	while (turnData.isTurning || lift.maneuverExecuting) maneuvers();
 
 	//knock off jacks
 	driveStraight(42);
@@ -404,30 +399,22 @@ task oneSideAuton() {
 	closeClaw();
 	wait1Msec(2500);
 
-	//go to back jacks
+	//pick up and dump back jacks
 	createClawManeuver(OPEN);
 	turn(120, true, 40, 127, -10);
 	while (turnData.isTurning);
 	createLiftManeuver(BOTTOM);
 	driveStraight(46, true);
-	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting);
+	while (driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting) maneuvers();
 	closeClaw();
-	wait1Msec(3500);
+	turnDriveDump(50, -30, 10);
 
-	//dump
-	createLiftManeuver(MAX);
-	turn(50, true);
-	while (turnData.isTurning);
-	driveStraight(-30, true);
-	while(driveData.isDriving || lift.maneuverExecuting);
-	openClaw();
 	liftTo(BOTTOM);
 }
 
 task autonomous() {
 	lift.maneuverExecuting = false;
 	claw.maneuverExecuting = false;
-	startTask(maneuvers);
 
 	int sidePos = SensorValue[sidePot];
 
