@@ -95,15 +95,15 @@ void liftControl() {
 
 //#region claw
 void clawControl() {
-	if (getPosition(lift)>liftThrowPos && getPosition(claw)<clawOpenPos && autoDumping) {
-		setPower(claw, 127);
-		clawOpen = true;
-	} else	if (vexRT[openClawBtn] == 1) {
+	if (vexRT[openClawBtn] == 1) {
 		setPower(claw, 127);
 		clawOpen = true;
 	} else if (vexRT[closeClawBtn] == 1) {
 		setPower(claw, -127);
 		clawOpen = false;
+	} else if (getPosition(lift)>liftThrowPos && getPosition(claw)<clawOpenPos && autoDumping) {
+		setPower(claw, 127);
+		clawOpen = true;
 	} else {
 		setPower(claw, clawStillSpeed * (clawOpen ? 1 : -1));
 	}
@@ -240,7 +240,7 @@ void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=defT
 	while (turnData.isTurning || driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting) maneuvers();
 }
 
-void grabNdump(int delayDuration, int dist=30, int closeTimeout=500) {
+void grabNdump(int delayDuration, int dist=27, int closeTimeout=500) {
 	wait1Msec(delayDuration); //wait for objects to be dropped
 	closeClaw(closeTimeout);
 	turnDriveDump(0, -dist); //dump pillow
@@ -249,6 +249,13 @@ void grabNdump(int delayDuration, int dist=30, int closeTimeout=500) {
 void driveToWall(int distance=fenceToWallDist) {
 	liftTo(BOTTOM);
 	driveStraight(distance);
+}
+
+void ramToRealign(int duration=500) {
+	liftTo(BOTTOM);
+
+	setDrivePower(drive, -127, -127); //realign using wall
+	wait1Msec(duration);
 }
 
 void initialPillow() {
@@ -272,16 +279,16 @@ task skillz() {
 	driveStraight(-10, true);
 	while (claw.maneuverExecuting || driveData.isDriving) maneuvers();
 
+	grabNdump(2000);
+
+	ramToRealign();
 
 	for (int i=0; i<2; i++) { //dump preload pillows
-		liftTo(BOTTOM);
-
-		setDrivePower(drive, -127, -127); //realign using wall
-		wait1Msec(300);
-
 		driveStraight(fenceToWallDist);
 
 		grabNdump(500);
+
+		ramToRealign();
 	}
 
 	//get and dump pillow in center of field
