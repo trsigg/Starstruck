@@ -6,27 +6,70 @@
 #include "rampHandler.c"
 #include "timer.c"
 
-//turn defaults
-angleType defAngleType = DEGREES;
-bool defTurnBools[2] = { false, true }; //runAsTask, useGyro
-int defTurnInts[3] = { 20, 100, 100 }; //brakePower, waitAtEnd, brakeDuration
-float defTurnFloats[3] = { 40, 100, -40 }; //initialPower, maxPower/kP, finalPower/kD
-//end turn defaults
-
 enum correctionType { NONE, GYRO, ENCODER, AUTO };
-
-//drive defaults
-#define DRIVE_BRAKE_DURATION 100
-correctionType defCorrectionType = AUTO;
-bool defDriveBools[2] = { false, false }; //runAsTask, rawValue
-int defDriveInts[4] = { 1000, 30, 100, 50 }; //timeout, brakePower, waitAtEnd, sampleTime
-float defDriveFloats[7] = { 40, 120, -15, 0, 0, 0, 40 }; //initialPower, maxPower/kP_r, finalPower/kD_r, kP_c, kI_c, kD_c, minSpeed
-//end drive defaults
-
 
 parallel_drive autoDrive;
 
-//turning region
+//#region defaults
+typedef struct {
+	angleType defAngleType;
+	bool runAsTask;
+	bool useGyro;
+	int brakePower;
+	int waitAtEnd;
+	int brakeDuration;
+	float rampConst1, rampConst2,rampConst3; // initialPower/0; maxPower/kP; finalPower/kD
+} turnDefsStruct;
+
+typedef struct {
+	correctionType defCorrectionType;
+	bool runAsTask;
+	bool rawValue;
+	int brakeDuration;
+	int timeout;
+	int brakePower, brakeDuration;
+	int waitAtEnd;
+	int sampleTime;
+	float rampConst1, rampConst2, rampConst3;
+	float kP_c, kI_c, kD_c; //correction PID constants
+	float minSpeed;
+} driveDefsStruct;
+
+turnDefsStruct turnDefaults;
+driveDefsStruct driveDefaults;
+
+void initializeAutoMovement() {
+	//turning
+	turnDefaults.defAngleType = DEGREES;
+	turnDefaults.runAsTask = false;
+	turnDefaults.useGyro = true;
+	turnDefaults.brakePower = 20;
+	turnDefaults.waitAtEnd = 100;
+	turnDefaults.brakeDuration = 100;
+	turnDefaults.rampConst1 = 40; // initialPower/0
+	turnDefaults.rampConst2 = 100; // maxPower/kP
+	turnDefaults.rampConst3 = -40;
+
+	//driving
+	driveDefaults.defCorrectionType = AUTO;
+	driveDefaults.runAsTask = false;
+	driveDefaults.rawValue = false;
+	driveDefaults.brakeDuration = 100;
+	driveDefaults.timeout = 1000;
+	driveDefaults.brakePower = 30;
+	driveDefaults.waitAtEnd = 100;
+	driveDefaults.sampleTime = 50;
+	driveDefaults.rampConst1 = 40;
+	driveDefaults.rampConst2 = 120;
+	driveDefaults.rampConst3 = -15;
+	driveDefaults.kP_c = 0;
+	driveDefaults.kI_c = 0;
+	driveDefaults.kD_c = 0;
+	driveDefaults.minSpeed = 40;
+}
+//#endregion
+
+//#region turning
 typedef struct {
 	float angle; //positive for clockwise, negative for counterclockwise
 	rampHandler ramper; //used for ramping motor powers
@@ -73,7 +116,7 @@ task turnTask() {
 	turnEnd();
 }
 
-void turn(float angle, bool runAsTask=defTurnBools[0], float in1=defTurnFloats[0], float in2=defTurnFloats[1], float in3=defTurnFloats[2], angleType angleType=defAngleType, bool useGyro=defTurnBools[1], int brakePower=defTurnInts[0], int waitAtEnd=defTurnInts[1], int brakeDuration=defTurnInts[2]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
+void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefaults.rampConst1, float in2=turnDefaults.rampConst2, float in3=turnDefaults.rampConst3, angleType angleType=turnDefaults.defAngleType, bool useGyro=turnDefaults.useGyro, int brakePower=turnDefaults.brakePower, int waitAtEnd=turnDefaults.waitAtEnd, int brakeDuration=turnDefaults.brakeDuration) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
 	//initialize variables
 	float formattedAngle = convertAngle(abs(angle), DEGREES, angleType);
 	turnData.angle = (useGyro ? formattedAngle : PI*autoDrive.width*formattedAngle/360.);
@@ -95,10 +138,9 @@ void turn(float angle, bool runAsTask=defTurnBools[0], float in1=defTurnFloats[0
 		turnEnd();
 	}
 }
-//end turning region
+//#endregion
 
-
-//driveStraight region
+//#region driveStraight
 typedef struct {
 	float distance;
 	bool rawValue; //whether distance is measured in encoder clicks or inches
@@ -191,7 +233,7 @@ void setCorrectionType(correctionType type) {
 	}
 }
 
-void driveStraight(float distance, bool runAsTask=defDriveBools[0], float in1=defDriveFloats[0], float in2=defDriveFloats[1], float in3=defDriveFloats[2], float kP=defDriveFloats[3], float kI=defDriveFloats[4], float kD=defDriveFloats[5], correctionType correctionType=defCorrectionType, bool rawValue=defDriveBools[1], float minSpeed=defDriveFloats[3], int timeout=defDriveInts[0], int brakePower=defDriveInts[1], int waitAtEnd=defDriveInts[2], int sampleTime=defDriveInts[3]) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
+void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float in1=driveDefaults.rampConst1, float in2=driveDefaults.rampConst2, float in3=driveDefaults.rampConst3, float kP=driveDefaults.kP_c, float kI=driveDefaults.kI_c, float kD=driveDefaults.kD_c, correctionType correctionType=driveDefaults.defCorrectionType, bool rawValue=driveDefaults.rawValue, float minSpeed=driveDefaults.minSpeed, int timeout=driveDefaults.timeout, int brakePower=driveDefaults.brakePower, int waitAtEnd=driveDefaults.waitAtEnd, int sampleTime=driveDefaults.sampleTime) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
 	//initialize variables
 	driveData.distance = abs(distance);
 	initializeRampHandler(driveData.ramper, distance, in1, in2, in3);
@@ -201,7 +243,7 @@ void driveStraight(float distance, bool runAsTask=defDriveBools[0], float in1=de
 	driveData.timeout = timeout;
 	driveData.waitAtEnd = waitAtEnd;
 	driveData.sampleTime = sampleTime;
-	driveData.brakeDuration = DRIVE_BRAKE_DURATION;
+	driveData.brakeDuration = driveDefaults.brakeDuration;
 	driveData.isDriving = true;
 	initializePID(driveData.pid, 0, kP, kI, kD);
 
@@ -234,4 +276,4 @@ void driveStraight(float distance, bool runAsTask=defDriveBools[0], float in1=de
 		driveStraightEnd();
 	}
 }
-//end driveStraight region
+//#endregion

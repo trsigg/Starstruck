@@ -53,7 +53,7 @@ void setDriveMotors(parallel_drive *drive, int numMotors, tMotor motor1, tMotor 
 }
 
 
-//sensor setup region
+//#region sensor setup
 void updateEncoderConfig(parallel_drive *drive) {
 	if (drive->leftDrive.hasEncoder) {
 		if (drive->rightDrive.hasEncoder) {
@@ -89,10 +89,10 @@ void attachGyro(parallel_drive *drive, tSensors gyro, bool reversed=true, gyroCo
 void setEncoderConfig(parallel_drive *drive, encoderConfig config) {
 	drive->encoderConfig = config;
 }
-//end sensor setup region
+//#endregion
 
 
-//sensor access region
+//#region sensor access
 float driveEncoderVal(parallel_drive *drive, encoderConfig side=UNASSIGNED, bool rawValue=false, bool absolute=true) {
 	if (side == UNASSIGNED) {
 		side = drive->encoderConfig;
@@ -145,10 +145,10 @@ float absAngle(parallel_drive *drive, angleType format=DEGREES) {
 void resetAbsAngle(parallel_drive *drive, float angle=0, angleType format=DEGREES) {
 	drive->angleOffset = convertAngle(angle, RAW, format) - gyroVal(drive, RAW);
 }
-//end sensor access region
+//#endregion
 
 
-//position tracking region
+//#region position tracking
 void setRobotPosition(parallel_drive *drive, float x, float y, float theta, bool setAbsAngle=true) {
 	drive->position.x = x;
 	drive->position.y = y;
@@ -186,10 +186,10 @@ void updatePosition(parallel_drive *drive) {
 		}
 	}
 }
-//end position tracking region
+//#endregion
 
 
-//set drive power region
+//#region set drive power
 void setLeftPower (parallel_drive *drive, int power) {
 	setPower(drive->leftDrive, power);
 }
@@ -202,10 +202,9 @@ void setDrivePower (parallel_drive *drive, int left, int right) {
 	setLeftPower(drive, left);
 	setRightPower(drive, right);
 }
-//end set drive power region
+//#endregion
 
 
-//misc
 float calculateWidth(parallel_drive *drive, int duration=10000, int sampleTime=200, int power=80, int reverseDelay=750) {
 	if (drive->hasGyro && drive->encoderConfig != UNASSIGNED) {
 		long timer;
@@ -231,7 +230,6 @@ float calculateWidth(parallel_drive *drive, int duration=10000, int sampleTime=2
 		return 0;
 	}
 }
-//end misc
 
 
 void driveRuntime(parallel_drive *drive) {

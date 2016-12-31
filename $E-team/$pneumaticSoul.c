@@ -218,7 +218,7 @@ void liftTo(liftState state, int power=127) {
 	}
 }
 
-void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=defTurnFloats[0], float turnConst2=defTurnFloats[1], float turnConst3=defTurnFloats[2]) {
+void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=turnDefaults.rampConst1, float turnConst2=turnDefaults.rampConst2, float turnConst3=turnDefaults.rampConst3) {
 	if (angle != 0) { //turning
 		if (dist != 0) { //turning & driving
 			if (liftDown) liftTo(MIDDLE); //lift up so claw doesn't drag on ground
@@ -374,7 +374,7 @@ task dumpyAuton() {
 	driveStraight(7);
 	wait1Msec(500);
 
-	turnDriveDump(autoSign * (-90, -17, 7, 45, 120, -20);
+	turnDriveDump(autoSign * -90, -17, 7, 45, 120, -20);
 	wait1Msec(250);
 
 	driveToWall();
