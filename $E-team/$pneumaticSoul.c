@@ -68,6 +68,8 @@ enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 void pre_auton() {
 	bStopTasksBetweenModes = true;
 
+	initializeAutoMovement();
+
 	//configure drive
 	initializeDrive(drive);
 	setDriveMotors(drive, 4, ld1, ld2, rd1, rd2);
