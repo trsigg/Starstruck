@@ -65,7 +65,7 @@ void initializeAutoMovement() {
 	driveDefaults.kP_c = 0;
 	driveDefaults.kI_c = 0;
 	driveDefaults.kD_c = 0;
-	driveDefaults.minSpeed = 40;
+	driveDefaults.minSpeed = 10;
 }
 //#endregion
 
