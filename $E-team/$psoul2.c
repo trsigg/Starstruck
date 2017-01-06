@@ -49,11 +49,7 @@
 #define liftDownSSFactor 0
 #define clawStillSpeed 15
 #define clawOpenSSFactor 0.5
-#define fenceToWallDist 27 //distances
-//#endregion
-
-//#region config
-#define antiNate true
+#define fenceToWallDist 29 //distances (prev 27)
 //#endregion
 
 //#region globals
@@ -252,10 +248,10 @@ void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=turn
 	while (turnData.isTurning || driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting) maneuvers();
 }
 
-void grabNdump(int delayDuration, int dist=27, int closeTimeout=500) {
+void grabNdump(int delayDuration, int dist=27, int closeTimeout=500, int distCutoff=10) {
 	wait1Msec(delayDuration); //wait for objects to be dropped
 	closeClaw(closeTimeout);
-	turnDriveDump(0, -dist); //dump pillow
+	turnDriveDump(0, -dist, distCutoff); //dump pillow
 }
 
 void driveToWall(int distance=fenceToWallDist) {
@@ -287,8 +283,13 @@ void initialPillow() {
 
 task skillz() {
 	createClawManeuver(OPEN);
+	createLiftManeuver(MIDDLE);
 	driveStraight(-10, true);
-	while (claw.maneuverExecuting || driveData.isDriving) maneuvers();
+	while (claw.maneuverExecuting || lift.maneuverExecuting || driveData.isDriving) maneuvers();
+
+	setPower(lift, -60);
+	wait1Msec(500);
+	setPower(lift, 0);
 
 	grabNdump(2000);
 
@@ -304,9 +305,9 @@ task skillz() {
 
 	//get and dump pillow in center of field
 	createLiftManeuver(BOTTOM);
-	turn(-33, true, 40, 127, -10);
+	turn(-36, true, 40, 127, -10);
 	while (lift.maneuverExecuting || turnData.isTurning) maneuvers();
-	driveStraight(20);
+	driveStraight(24);
 	closeClaw(); //grab pillow
 	turnDriveDump(49, -13, 6);
 
