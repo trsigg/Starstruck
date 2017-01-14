@@ -148,7 +148,7 @@ void openClaw(bool stillSpeed=true, int power=127) {
 	clawOpen = true;
 }
 
-void closeClaw(int timeout=200, int power=127, bool stillSpeed=true, int minSpeed=10, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
+void closeClaw(int timeout=200, int power=127, bool stillSpeed=true, int minSpeed=100, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
 	int minDiffPerSample = minSpeed * sampleTime / 1000;
 	int prevPos = getPosition(claw);
 	int newPos;
@@ -160,7 +160,7 @@ void closeClaw(int timeout=200, int power=127, bool stillSpeed=true, int minSpee
 		wait1Msec(sampleTime);
 		newPos = getPosition(claw);
 
-		if (abs(newPos - prevPos) > minDiffPerSample) clawTimer = resetTimer();
+		if (abs(newPos - prevPos) > minSpeed) clawTimer = resetTimer();
 
 		prevPos = newPos;
 	}
