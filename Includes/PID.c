@@ -28,10 +28,11 @@ void initializePID(PID *pid, float target, float kP, float kI, float kD, int min
 float PID_runtime(PID *pid, float input) {
 	long now = nPgmTime;
 	long elapsed = now - pid->lastUpdated;
-	pid->lastUpdated = now;
 
 	if (elapsed > pid->minSampleTime) {
-		float error = (pid->target == 0 ? input : pid->target-input);
+		pid->lastUpdated = now;
+
+		float error = pid->target - input;
 
 		pid->integral += (!pid->hasMin || error>pid->integralMin) && (!pid->hasMax || error>pid->integralMax) ? error : 0; //update integral if within bounds of integralMin and integralMax
 
