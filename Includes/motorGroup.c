@@ -83,6 +83,7 @@ void addSensor(motorGroup *group, tSensors sensor, bool reversed=false, bool set
 			group->hasEncoder = true;
 			group->encoder = sensor;
 			group->encoderReversed = reversed;
+			SensorValue[sensor] = 0;
 			if (setAsDefault) group->potentiometerDefault = false;
 			break;
 	}
