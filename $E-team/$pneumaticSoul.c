@@ -1,7 +1,7 @@
 #pragma config(Sensor, in1,    hyro,           sensorGyro)
 #pragma config(Sensor, in4,    clawPot,        sensorPotentiometer)
-#pragma config(Sensor, in5,    modePot,        sensorPotentiometer)
-#pragma config(Sensor, in6,    sidePot,        sensorPotentiometer)
+#pragma config(Sensor, in5,    sidePot,        sensorPotentiometer)
+#pragma config(Sensor, in6,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
 #pragma config(Sensor, dgtl5,  liftEnc,        sensorQuadEncoder)
@@ -34,26 +34,25 @@
 //#endregion
 
 //#region positions
-#define liftBottom 0 //lift
+#define liftBottom 5 //lift
 #define liftMiddle 76
-#define liftTop 310
-#define liftThrowPos 460
+#define liftTop 260
+#define liftThrowPos 400
 #define liftMax 520
-#define clawClosedPos 3430 //claw
-#define clawOpenPos 3545
-#define clawMax 4050
+#define clawClosedPos 915 //claw
+#define clawOpenPos 1035
+#define clawMax 1930
 //#endregion
 
 //#region constants
 #define liftStillSpeed 10 //still speeds
-#define clawStillSpeed 15
-#define fenceToWallDist 27 //distances
+#define clawStillSpeed 10
+#define fenceToWallDist 28 //distances
 //#endregion
 
 //#region config
-#define straightToCube true
+#define straightToCube false
 #define blocking false
-#define oneSide false
 //#endregion
 
 //#region globals
@@ -103,8 +102,8 @@ void pre_auton() {
 
 //#region lift
 void liftEncCorrection() {
-	if (getPosition(lift) < 0);
-		//resetEncoder(lift);
+	if (getPosition(lift) < 0)
+		resetEncoder(lift);
 }
 
 void liftControl() {
@@ -261,7 +260,7 @@ void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=turn
 	}
 
 	createLiftManeuver(MAX);
-	while (potentiometerVal(lift) < liftThrowPos) maneuvers();
+	while (getPosition(lift) < liftThrowPos) maneuvers();
 	createClawManeuver(OPEN);
 	while (turnData.isTurning || driveData.isDriving || lift.maneuverExecuting || claw.maneuverExecuting) maneuvers();
 }
@@ -284,22 +283,24 @@ void ramToRealign(int duration=500) {
 	wait1Msec(duration);
 }
 
-void initialPillow() {
+void initialPillow(bool liftToMid=false) {
 	setPower(lift, -liftStillSpeed);
+	if (liftToMid) createManeuver(lift, liftMiddle - 45, liftStillSpeed, 80);
 
 	if (straightToCube) {
-		driveStraight(20);
+		driveStraight(16.5, true);
 	} else {
 		//open claw and drive away from wall
 		createClawManeuver(OPEN);
-		driveStraight(7, true);
+		driveStraight(5, true);
 		while(driveData.isDriving) maneuvers();
 
 		//drive to central pillow
-		turn(autoSign * -57, true);
+		turn(autoSign * -50, true);
 		while(turnData.isTurning || claw.maneuverExecuting) maneuvers();
-		driveStraight(14);
+		driveStraight(14, true);
 	}
+	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
 
 	closeClaw(); //clamp pillow
 }
@@ -311,29 +312,36 @@ task skillz() {
 
 	grabNdump(2000);
 
-	ramToRealign();
-
 	for (int i=0; i<2; i++) { //dump preload pillows
+		ramToRealign();
+
 		driveStraight(fenceToWallDist);
 
 		grabNdump(500);
-
-		ramToRealign();
 	}
+
+	//get and dump front center jacks
+	createManeuver(lift, liftMiddle+20, liftStillSpeed);
+	driveStraight(8, true);
+	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
+	createManeuver(claw, clawClosedPos, clawStillSpeed);
+	turn(-79, true, 60, 127, -10);
+	while (turnData.isTurning || claw.maneuverExecuting) maneuvers();
+	liftTo(BOTTOM);
+	driveStraight(30);
+	closeClaw();
+	turnDriveDump(70, 0);
 
 	//get and dump pillow in center of field
 	createLiftManeuver(BOTTOM);
-	driveStraight(5, true);
+	driveStraight(-5, true);	//to align to central pillow
 	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
-	turn(-50, false, 40, 127, -10);
-	driveStraight(20);
+	driveStraight(10);
 	closeClaw(); //grab pillow
-	createLiftManeuver(MIDDLE);
-	driveStraight(12);
-	turnDriveDump(65, -13, 7);
+	turnDriveDump(0, -10);
 
 	//grab and dump jacks
-	driveStraight(fenceToWallDist, true);
+	driveStraight(fenceToWallDist+1.5, true);
 	createClawManeuver(HYPEREXTENDED);
 	createLiftManeuver(BOTTOM);
 	while (driveData.isDriving || claw.maneuverExecuting || lift.maneuverExecuting) maneuvers();
@@ -347,27 +355,18 @@ task skillz() {
 	closeClaw();
 	turnDriveDump(47, -30, 10);
 
-	//pick up and dump central jacks
-	createLiftManeuver(BOTTOM);
-	turn(70, true, 45, 100, -10);
-	while (turnData.isTurning || lift.maneuverExecuting) maneuvers();
-	driveStraight(20, true);
-	while (driveData.isDriving) maneuvers();
-	closeClaw();
-	turnDriveDump(-60, 0);
-
 	liftTo(BOTTOM);
 }
 
 task pillowAuton() {
 	clearTimer(T1);
-	initialPillow();
+	initialPillow(true);
 
 	//go to fence and lift up
 	createLiftManeuver(TOP);
 	driveStraight(10.5, true);
 	while (driveData.isDriving) maneuvers();
-	turn(autoSign * 45, true, 60, 127, -15); //turn to face fence
+	turn(autoSign * 40, true, 60, 127, -15); //turn to face fence
 	while (turnData.isTurning) maneuvers();
 	driveStraight(20, true); // drive up to wall
 	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
@@ -381,7 +380,7 @@ task pillowAuton() {
 	hyperExtendClaw();
 
 	//push jacks over
- 	driveStraight(7);
+ 	driveStraight(8);
  	closeClaw();
 
  	createClawManeuver(HYPEREXTENDED);
@@ -392,13 +391,13 @@ task pillowAuton() {
  	turn(autoSign * 80, true, 60, 127, -15);
  	while (turnData.isTurning || claw.maneuverExecuting) maneuvers();
  	createManeuver(lift, liftMiddle+100, liftStillSpeed);
- 	driveStraight(35, true, driveDefaults.rampConst1, driveDefaults.rampConst2, -10);
+ 	driveStraight(30, true, driveDefaults.rampConst1, driveDefaults.rampConst2, -10);
  	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
- 	turn(autoSign * -83, false, 40, 120, -40);
- 	driveStraight(5);
+ 	turn(autoSign * -85, false, 40, 120, -40);
+ 	driveStraight(13);
 
  	goToPosition(lift, liftTop+50, -liftStillSpeed); //push jacks over
- 	driveStraight(3);
+ 	driveStraight(5);
  	closeClaw();
 }
 
@@ -462,18 +461,17 @@ task autonomous() {
 
 	int sidePos = SensorValue[sidePot];
 
-	autoSign = (sidePos < 1900) ? 1 : -1;
+	autoSign = (sidePos > 1830) ? 1 : -1;
 
 	//start appropriate autonomous task
-	if (sidePos>1030 && sidePos<2585) {
+	if (1290<sidePos && sidePos<2470) {
 		startTask(skillz);
-	} else if (SensorValue[modePot] > 2670) {
-		if (oneSide)
-			startTask(oneSideAuton);
-		else
-			startTask(pillowAuton);
-	} else if (SensorValue[modePot] > 1275) {
+	} else if (SensorValue[modePot] < 385) {
+		startTask(pillowAuton);
+	} else if (SensorValue[modePot] < 1765) {
 		startTask(dumpyAuton);
+	} else if (SensorValue[modePot] > 3300) {
+		startTask(oneSideAuton);
 	}
 }
 //#endregion

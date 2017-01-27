@@ -91,7 +91,7 @@ void addSensor(motorGroup *group, tSensors sensor, bool reversed=false, bool set
 
 int encoderVal(motorGroup *group) {
 	if (group->hasEncoder) {
-		return (group->encoderReversed ?  -SensorValue[group->encoder] : SensorValue[group->encoder]);
+		return SensorValue[group->encoder] * (group->encoderReversed ?  -1 : 1);
 	} else {
 		return 0;
 	}
@@ -114,7 +114,7 @@ int getPosition(motorGroup *group) {
 }
 
 void resetEncoder(motorGroup *group, int resetVal=0) {
-	SensorValue[group->encoder] = resetVal;
+	SensorValue[group->encoder] = resetVal * (group->encoderReversed ?  -1 : 1);
 }
 //#endregion
 
