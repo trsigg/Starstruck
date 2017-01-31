@@ -169,7 +169,7 @@ void openClaw(bool stillSpeed=true, int power=127) {
 	clawOpen = true;
 }
 
-void closeClaw(int timeout=600, int power=127, bool stillSpeed=true, int minSpeed=25, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
+void closeClaw(int timeout=750, int power=127, bool stillSpeed=true, int minSpeed=25, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
 	int minDiffPerSample = minSpeed * sampleTime / 1000;
 	int prevPos = getPosition(claw);
 	int newPos;
@@ -288,11 +288,11 @@ void initialPillow(bool liftToMid=false) {
 	if (liftToMid) createManeuver(lift, liftMiddle - 65, liftStillSpeed, 30);
 
 	if (straightToCube) {
-		createLiftManeuver(MIDDLE);
-		createClawManeuver(OPEN);
-		driveStraight(14.5, true);
-		while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
-		liftTo(BOTTOM);
+		//createLiftManeuver(MIDDLE);
+		//createClawManeuver(OPEN);
+		driveStraight(18);
+		//while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
+		//liftTo(BOTTOM);
 	} else {
 		//open claw and drive away from wall
 		createClawManeuver(OPEN);
@@ -374,7 +374,14 @@ task skillz() {
 
 task pillowAuton() {
 	clearTimer(T1);
-	initialPillow(/*true*/);
+	//initialPillow(true);
+
+	driveStraight(18, true);
+	createClawManeuver(OPEN);
+	while (getPosition(claw) > 3300) maneuvers();
+	createManeuver(lift, liftMiddle - 65, liftStillSpeed, 30);
+	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
+	closeClaw();
 
 	//go to fence and lift up
 	createLiftManeuver(TOP);
@@ -418,12 +425,13 @@ task pillowAuton() {
 task dumpyAuton() {
 	initialPillow();
 
+	//createManeuver(lift, liftMiddle+10, liftStillSpeed);
+	//goToPosition(lift, liftMiddle+10, liftStill
 	liftTo(MIDDLE);
-
-	driveStraight(7);
+	driveStraight(8);
 	//wait1Msec(500);
 
-	turnDriveDump(autoSign * -100, -17, 7, 45, 120, -20);
+	turnDriveDump(autoSign * -97, -17, 7, 45, 120, -20);
 	//wait1Msec(250);
 
 	//driveToWall();
