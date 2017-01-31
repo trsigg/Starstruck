@@ -284,15 +284,11 @@ void ramToRealign(int duration=500) {
 }
 
 void initialPillow(bool liftToMid=false) {
-	//setPower(lift, -liftStillSpeed);
+	setPower(lift, -liftStillSpeed);
 	if (liftToMid) createManeuver(lift, liftMiddle - 65, liftStillSpeed, 30);
 
 	if (straightToCube) {
-		//createLiftManeuver(MIDDLE);
-		//createClawManeuver(OPEN);
 		driveStraight(18);
-		//while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
-		//liftTo(BOTTOM);
 	} else {
 		//open claw and drive away from wall
 		createClawManeuver(OPEN);
@@ -374,14 +370,7 @@ task skillz() {
 
 task pillowAuton() {
 	clearTimer(T1);
-	//initialPillow(true);
-
-	driveStraight(18, true);
-	createClawManeuver(OPEN);
-	while (getPosition(claw) > 3300) maneuvers();
-	createManeuver(lift, liftMiddle - 65, liftStillSpeed, 30);
-	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
-	closeClaw();
+	initialPillow(true);
 
 	//go to fence and lift up
 	createLiftManeuver(TOP);
