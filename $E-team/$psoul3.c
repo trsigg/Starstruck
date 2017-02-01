@@ -62,7 +62,10 @@ bool autoDumping = true;
 int autoSign; //for autonomous, positive if robot is left of pillow
 
 motorGroup lift;
+motorGroup rightClaw;
+motorGroup leftClaw;
 motorGroup claw;
+PID clawPID;
 //#endregion
 
 //#region enums
@@ -95,9 +98,17 @@ void pre_auton() {
 	configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
 	addSensor(lift, liftEnc, true);
 
+
 	//configure claw
-	initializeGroup(claw, 1, clawMotor);
-	addSensor(claw, clawPot);
+	initializeGroup(claw, 2, clawR, clawL);
+
+	initializeGroup(rightClaw, 1, clawR);	//master side
+	addSensor(rightClaw, clawPotR);
+
+	initializeGroup(leftClaw, 1, clawL);	//slave side
+	addSensor(leftClaw, clawPotL);
+
+	initializePID(clawPID, getPosition(rightClaw)+clawDiff, 0.2, 0, 0.7, 25);
 }
 
 //#region lift
@@ -116,6 +127,11 @@ void liftControl() {
 //#endregion
 
 //#region claw
+void matchClaws() {
+	clawPID.target = getPosition(rightClaw) + clawDiff;
+	setPower(leftClaw, PID_runtime(clawPID, getPosition(leftClaw)));
+}
+
 void clawControl() {
 	if (vexRT[openClawBtn] == 1) {
 		setPower(claw, 127);
@@ -123,11 +139,18 @@ void clawControl() {
 	} else if (vexRT[closeClawBtn] == 1) {
 		setPower(claw, -127);
 		clawOpen = false;
-	} else if (getPosition(lift)>liftThrowPos && getPosition(claw)<clawOpenPos && autoDumping) {
-		setPower(claw, 127);
+	} else if (getPosition(lift)>liftThrowPos && autoDumping) {
 		clawOpen = true;
+		if (getPosition(rightClaw) < clawOpenPos) setPower(rightClaw, 127);
+
+		if (getPosition(leftClaw) < clawClosedPos) {
+			setPower(leftClaw, 127);
+		} else {
+			matchClaws();
+		}
 	} else {
-		setPower(claw, clawStillSpeed * (clawOpen ? 1 : -1));
+		setPower(rightClaw, clawStillSpeed * (clawOpen ? clawOpenSSFactor : -1));
+		matchClaws();
 	}
 
 	if (vexRT[autoDumpOnBtn] == 1)
@@ -139,7 +162,8 @@ void clawControl() {
 
 //#region autonomous
 void maneuvers() {
-	executeManeuver(claw);
+  executeManeuver(claw);
+
 	if (lift.maneuverExecuting)
 		executeManeuver(lift);
 	else
