@@ -4,7 +4,7 @@
 #pragma config(Sensor, in6,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
-#pragma config(Sensor, dgtl5,  liftEnc,        sensorQuadEncoder)
+#pragma config(Sensor, dgtl5,  liftPot,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           rd1,           tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           rd2,           tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port3,           lift1,         tmotorVex393_MC29, openLoop)
@@ -45,9 +45,11 @@
 //#endregion
 
 //#region constants
-#define liftStillSpeed 10 //still speeds
+#define liftStillSpeed 10		//still speeds
 #define clawStillSpeed 10
-#define fenceToWallDist 31 //distances
+#define fenceToWallDist 31	//distances
+#define clawDiff -300				//difference between claw potentiometers when at the same angle (left - right)
+
 //#endregion
 
 //#region config
@@ -96,8 +98,7 @@ void pre_auton() {
 	//configure lift
 	initializeGroup(lift, 5, lift1, lift2, lift3, lift4, lift5);
 	configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
-	addSensor(lift, liftEnc, true);
-
+	addSensor(lift, liftPot, true);
 
 	//configure claw
 	initializeGroup(claw, 2, clawR, clawL);
@@ -139,11 +140,11 @@ void clawControl() {
 	} else if (vexRT[closeClawBtn] == 1) {
 		setPower(claw, -127);
 		clawOpen = false;
-	} else if (getPosition(lift)>liftThrowPos && autoDumping) {
+	} else if (getPosition(lift)-clawDiff > liftThrowPos && autoDumping) {
 		clawOpen = true;
 		if (getPosition(rightClaw) < clawOpenPos) setPower(rightClaw, 127);
 
-		if (getPosition(leftClaw) < clawClosedPos) {
+		if (getPosition(leftClaw)-clawDiff < clawClosedPos) {
 			setPower(leftClaw, 127);
 		} else {
 			matchClaws();
@@ -161,8 +162,21 @@ void clawControl() {
 //#endregion
 
 //#region autonomous
+void getAvgClawPos() {
+	return (getPosition(rightClaw) + getPosition(leftClaw) - clawDiff) / 2;
+}
+
+bool clawManeuverExecuting() {
+	return rightClaw.maneuverExecuting || leftClaw.maneuverExecuting;
+}
+
+void executeClawManeuvers() {
+	executeManeuver(leftClaw);
+	executeManeuver(rightClaw);
+}
+
 void maneuvers() {
-  executeManeuver(claw);
+	executeClawManeuvers();
 
 	if (lift.maneuverExecuting)
 		executeManeuver(lift);
@@ -173,29 +187,33 @@ void maneuvers() {
 void createClawManeuver(clawState state, int power=127) {
 	switch (state) {
 		case CLOSED:
-			createManeuver(claw, clawClosedPos, -clawStillSpeed, power);
+			createManeuver(leftClaw,	clawClosedPos-clawDiff, -clawStillSpeed, power);
+			createManeuver(rightClaw, clawClosedPos,					-clawStillSpeed, power);
 			clawOpen = false;
 			break;
 		case OPEN:
-			createManeuver(claw, clawOpenPos, clawStillSpeed, power);
+			createManeuver(leftClaw,	clawOpenPos-clawDiff, clawStillSpeed, power);
+			createManeuver(rightClaw, clawOpenPos,					clawStillSpeed, power);
 			clawOpen = true;
 			break;
 		case HYPEREXTENDED:
-			createManeuver(claw, clawMax, clawStillSpeed, power);
+			createManeuver(leftClaw,	clawMax-clawDiff, clawStillSpeed, power);
+			createManeuver(rightClaw,	clawMax,					clawStillSpeed, power);
 			clawOpen = true;
 			break;
 	}
 }
 
-void openClaw(bool stillSpeed=true, int power=127) {
-	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0), power);
+void openClaw(int power=127) {
+	createClawManeuver(OPEN, power);
+	while (clawManeuverExecuting()) executeClawManeuvers();
 
 	clawOpen = true;
 }
 
 void closeClaw(int timeout=750, int power=127, bool stillSpeed=true, int minSpeed=25, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
 	int minDiffPerSample = minSpeed * sampleTime / 1000;
-	int prevPos = getPosition(claw);
+	int prevPos = getAvgClawPos();
 	int newPos;
 	long clawTimer = resetTimer();
 
@@ -203,7 +221,7 @@ void closeClaw(int timeout=750, int power=127, bool stillSpeed=true, int minSpee
 
 	while (time(clawTimer)<timeout || getPosition(claw)>clawOpenPos) {
 		wait1Msec(sampleTime);
-		newPos = getPosition(claw);
+		newPos = getAvgClawPos();
 
 		if (newPos - prevPos > minDiffPerSample) clawTimer = resetTimer();
 
@@ -216,7 +234,8 @@ void closeClaw(int timeout=750, int power=127, bool stillSpeed=true, int minSpee
 }
 
 void hyperExtendClaw(bool stillSpeed=true) {
-	goToPosition(claw, clawMax, (stillSpeed ? clawStillSpeed : 0));
+	createClawManeuver(HYPEREXTENDED, power);
+	while (clawManeuverExecuting()) executeClawManeuvers();
 
 	clawOpen = true;
 }
