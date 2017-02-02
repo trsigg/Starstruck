@@ -62,7 +62,7 @@
 
 //#region globals
 bool clawOpen = true;
-bool continuousClaw = true;	//whether claw is in continuous or discrete control mode
+bool continuousMode = true;	//whether claw is in continuous or discrete control mode
 bool liftDown = true;
 bool autoDumping = true;
 int autoSign; //for autonomous, positive if robot is left of pillow
@@ -89,7 +89,7 @@ void pre_auton() {
 
 	turnDefaults.rampConst1 = 60;
 	turnDefaults.rampConst2 = 127;
-	turnDefaults.rampConst3 = -5;
+	turnDefaults.rampConst3 = -10;
 
 	driveDefaults.rampConst1 = 60;
 	driveDefaults.rampConst2 = 127;
@@ -147,26 +147,53 @@ void executeClawPIDs() {
 	setPower(rightClaw, PID_runtime(clawR_PID, getPosition(rightClaw)));
 }
 
-void clawControl() {
-	if (vexRT[openClawBtn] == 1) {
+void setClawTargets(int leftTarget, int rightTarget) {
+	clawL_PID.target = leftTarget;
+	clawR_PID.target = rightTarget;
+}
+
+void continuousClaw() {
+	if (vexRT[openClawBtn] == 1) {	//opening
 		setPower(claw, 127);
 		clawOpen = true;
-	} else if (vexRT[closeClawBtn] == 1) {
+	} else if (vexRT[closeClawBtn] == 1) {	//closing
 		setPower(claw, -127);
 		clawOpen = false;
-	} else if (getPosition(lift)-clawDiff > liftThrowPos && autoDumping) {
+	} else if (getPosition(lift)>liftThrowPos && autoDumping) {	//autodumping
 		clawOpen = true;
-		if (getPosition(rightClaw) < clawOpenPos) setPower(rightClaw, 127);
-
-		if (getPosition(leftClaw)-clawDiff < clawClosedPos) {
-			setPower(leftClaw, 127);
-		} else {
-			matchClaws();
-		}
+		setClawTargets(clawOpenPos+clawDiff, clawOpenPos);
+		executeClawPIDs();
 	} else {
 		setPower(rightClaw, (clawOpen ? 0 : -clawStillSpeed));
 		matchClaws();
 	}
+}
+
+void discreteClaw() {
+	if (vexRT[openClawBtn] == 1)
+		setClawTargets(clawOpenPos+clawDiff, clawOpenPos);
+	else if (vexRT[closeClawBtn] == 1)
+		setClawTargets(clawClosedPos+clawDiff, clawClosedPos);
+	else if (vexRT[hyperExtendBtn] == 1)
+		setClawTargets(clawMax+clawDiff, clawMax);
+	else if (getPosition(lift)>liftThrowPos && autoDumping)
+		setClawTargets(clawOpenPos+clawDiff, clawOpenPos);
+
+	executeClawPIDs();
+}
+
+void clawControl() {
+	if (vexRT[continuousModeBtn] == 1) {
+		continuousMode = true;
+	} else {
+		continuousMode = false;
+		setClawTargets(getPosition(leftClaw), getPosition(rightClaw));
+	}
+
+	if (continuousMode)
+		continuousClaw();
+	else
+		discreteClaw();
 
 	if (vexRT[autoDumpOnBtn] == 1)
 		autoDumping = true;
@@ -176,8 +203,8 @@ void clawControl() {
 //#endregion
 
 //#region autonomous
-float getAvgClawPos() {
-	return (getPosition(rightClaw) + getPosition(leftClaw) - clawDiff) / 2;
+int getAvgClawPos() {
+	return (getPosition(rightClaw) + getPosition(leftClaw) + clawDiff) / 2;
 }
 
 bool clawManeuverExecuting() {
@@ -201,17 +228,17 @@ void maneuvers() {
 void createClawManeuver(clawState state, int power=127) {
 	switch (state) {
 		case CLOSED:
-			createManeuver(leftClaw,	clawClosedPos-clawDiff, -clawStillSpeed, power);
+			createManeuver(leftClaw,	clawClosedPos+clawDiff, -clawStillSpeed, power);
 			createManeuver(rightClaw, clawClosedPos,					-clawStillSpeed, power);
 			clawOpen = false;
 			break;
 		case OPEN:
-			createManeuver(leftClaw,	clawOpenPos-clawDiff, 0, power);
+			createManeuver(leftClaw,	clawOpenPos+clawDiff, 0, power);
 			createManeuver(rightClaw, clawOpenPos,					0, power);
 			clawOpen = true;
 			break;
 		case HYPEREXTENDED:
-			createManeuver(leftClaw,	clawMax-clawDiff, 0, power);
+			createManeuver(leftClaw,	clawMax+clawDiff, 0, power);
 			createManeuver(rightClaw,	clawMax,					0, power);
 			clawOpen = true;
 			break;
@@ -247,7 +274,7 @@ void closeClaw(int timeout=750, int power=127, int minSpeed=25, int sampleTime=1
 	clawOpen = false;
 }
 
-void hyperExtendClaw(bool stillSpeed=true) {
+void hyperExtendClaw(int power=127) {
 	createClawManeuver(HYPEREXTENDED, power);
 	while (clawManeuverExecuting()) executeClawManeuvers();
 
