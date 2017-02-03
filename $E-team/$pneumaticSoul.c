@@ -43,14 +43,14 @@ enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 4096-2570, 4096-1870, 4096-1100, 4096-1150, 4096-900 };	//same order as corresponding enums
+int liftPositions[5] = { 4096-2850, 4096-2506, 4096-1450, 4096-1450, 4096-1000 };	//same order as corresponding enums
 int clawPositions[3] = { 400, 1150, 2000 };
 //#endregion
 
 //#region constants
-#define liftStillSpeed -15	//still speeds
+#define liftStillSpeed 10	//still speeds
 #define clawStillSpeed 10
-#define fenceToWallDist 31	//distances
+#define fenceToWallDist 28	//distances
 #define clawDiff 0					//difference between claw potentiometers when at the same angle (left - right)
 //#endregion
 
@@ -124,13 +124,15 @@ void liftEncCorrection() {
 void liftControl() {
 	liftEncCorrection();
 
+	lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1);
+
 	takeInput(lift);
 }
 //#endregion
 
 //#region claw
 void matchClaws() {
-	clawMatchingPID.target = getPosition(rightClaw) + clawDiff;
+	setNewTarget(clawMatchingPID, getPosition(rightClaw)+clawDiff);
 	setPower(leftClaw, PID_runtime(clawMatchingPID, getPosition(leftClaw)));
 }
 
@@ -140,13 +142,13 @@ void executeClawPIDs() {
 }
 
 void setClawState(clawState state) {
-	clawL_PID.target = clawPositions[state]+clawDiff;
-	clawR_PID.target = clawPositions[state];
+	setNewTarget(clawL_PID, clawPositions[state]+clawDiff);
+	setNewTarget(clawR_PID, clawPositions[state]);
 }
 
 void setClawTargets(int leftTarget, int rightTarget) {
-	clawL_PID.target = leftTarget;
-	clawR_PID.target = rightTarget;
+	setNewTarget(clawL_PID, leftTarget);
+	setNewTarget(clawR_PID, rightTarget);
 }
 
 void continuousClaw() {
@@ -236,7 +238,7 @@ void openClaw(int power=127) {
 	clawOpen = true;
 }
 
-void closeClaw(int timeout=750, int power=127, int minSpeed=25, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
+void closeClaw(int timeout=750, int power=127, int minSpeed=20, int sampleTime=100) { //minSpeed in encoder/potentiometer values per second
 	int minDiffPerSample = minSpeed * sampleTime / 1000;
 	int prevPos = getAvgClawPos();
 	int newPos;
@@ -248,7 +250,7 @@ void closeClaw(int timeout=750, int power=127, int minSpeed=25, int sampleTime=1
 		wait1Msec(sampleTime);
 		newPos = getAvgClawPos();
 
-		if (newPos - prevPos > minDiffPerSample) clawTimer = resetTimer();
+		if (abs(newPos - prevPos) > minDiffPerSample) clawTimer = resetTimer();
 
 		prevPos = newPos;
 	}
@@ -268,13 +270,13 @@ void hyperExtendClaw(int power=127) {
 void createLiftManeuver(liftState state, int power=127) {
 	liftDown = state==BOTTOM;
 
-	createManeuver(lift, liftPositions[state], liftStillSpeed, power);
+	createManeuver(lift, liftPositions[state], liftStillSpeed*(liftDown ? -1 : 1), power);
 }
 
 void liftTo(liftState state, int power=127) {
 	liftDown = state==BOTTOM;
 
-	goToPosition(lift, liftPositions[state], liftStillSpeed, power);
+	goToPosition(lift, liftPositions[state], liftStillSpeed*(liftDown ? -1 : 1), power);
 }
 
 void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=turnDefaults.rampConst1, float turnConst2=turnDefaults.rampConst2, float turnConst3=turnDefaults.rampConst3) {
@@ -318,8 +320,8 @@ void ramToRealign(int duration=500) {
 }
 
 void initialPillow(bool liftToMid=false) {
-	setPower(lift, liftStillSpeed);
-	if (liftToMid) createManeuver(lift, liftPositions[MIDDLE]-65, liftStillSpeed, 30);
+	setPower(lift, -liftStillSpeed);
+	if (liftToMid) createManeuver(lift, liftPositions[MIDDLE]-65, -liftStillSpeed, 30);
 
 	if (straightToCube) {
 		driveStraight(18);
@@ -356,7 +358,7 @@ task skillz() {
 	ramToRealign();
 
 	//get and dump front center jacks
-	createManeuver(lift, liftPositions[MIDDLE]+10, liftStillSpeed);
+	createManeuver(lift, liftPositions[MIDDLE]+10, -liftStillSpeed);
 	createManeuver(claw, clawPositions[CLOSED]-75);
 	driveStraight(4.75, true);
 	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
@@ -434,13 +436,13 @@ task pillowAuton() {
  	while (driveData.isDriving) maneuvers();
  	turn(autoSign * 74, true, 60, 127, -15);
  	while (turnData.isTurning || claw.maneuverExecuting) maneuvers();
- 	createManeuver(lift, liftPositions[MIDDLE]+100, liftStillSpeed);
+ 	createManeuver(lift, liftPositions[MIDDLE]+100, -liftStillSpeed);
  	driveStraight(33, true, driveDefaults.rampConst1, driveDefaults.rampConst2, -10);
  	while (driveData.isDriving || lift.maneuverExecuting) maneuvers();
  	turn(autoSign * -85, false, 40, 120, -40);
  	driveStraight(11);
 
- 	goToPosition(lift, liftPositions[TOP]+50, liftStillSpeed); //push jacks over
+ 	goToPosition(lift, liftPositions[TOP]+50); //push jacks over
  	driveStraight(5);
  	closeClaw();
 }
@@ -465,8 +467,7 @@ task dumpyAuton() {
 }
 
 task oneSideAuton() {
-	//createClawManeuver(HYPEREXTENDED); //open claw
-	createManeuver(lift, liftPositions[TOP]-450, liftStillSpeed); //lift to near top
+	createManeuver(lift, liftPositions[TOP]-450, -liftStillSpeed); //lift to near top
 	driveStraight(-5, true); //drive away from wall
 	while(driveData.isDriving) maneuvers();
 
@@ -497,14 +498,15 @@ task oneSideAuton() {
 task autonomous() {
 	lift.maneuverExecuting = false;
 	claw.maneuverExecuting = false;
-	resetEncoder(lift);
 
 	int sidePos = SensorValue[sidePot];
 
 	autoSign = (sidePos > 1830) ? 1 : -1;
 
+	startTask(dumpyAuton);
+
 	//start appropriate autonomous task
-	if (1290<sidePos && sidePos<2470) {
+/*	if (1290<sidePos && sidePos<2470) {
 		startTask(skillz);
 	} else if (SensorValue[modePot] < 385) {
 		startTask(pillowAuton);
@@ -512,7 +514,7 @@ task autonomous() {
 		startTask(dumpyAuton);
 	} else if (SensorValue[modePot] > 3300) {
 		startTask(oneSideAuton);
-	}
+	}*/
 }
 //#endregion
 
