@@ -25,6 +25,13 @@ void initializePID(PID *pid, float target, float kP, float kI, float kD, int min
 	pid->prevError = 0;
 }
 
+void setNewTarget(PID *pid, float target) {
+	pid->prevError += target - pid->target;
+	pid->integral = 0;
+	pid->lastUpdated = nPgmTime;
+	pid->target = target;
+}
+
 float PID_runtime(PID *pid, float input) {
 	long now = nPgmTime;
 	long elapsed = now - pid->lastUpdated;
