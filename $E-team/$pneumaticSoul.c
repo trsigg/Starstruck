@@ -1,5 +1,5 @@
 #pragma config(Sensor, in1,    hyro,           sensorGyro)
-#pragma config(Sensor, in2,    liftPot,        sensorNone)
+#pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
 #pragma config(Sensor, in3,    clawPotR,       sensorPotentiometer)
 #pragma config(Sensor, in4,    clawPotL,       sensorPotentiometer)
 #pragma config(Sensor, in5,    sidePot,        sensorPotentiometer)
@@ -43,15 +43,15 @@ enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 15, 76, 260, 400, 520 };	//same order as corresponding enums
+int liftPositions[5] = { 4096-2570, 4096-1870, 4096-1100, 4096-1150, 4096-900 };	//same order as corresponding enums
 int clawPositions[3] = { 400, 1150, 2000 };
 //#endregion
 
 //#region constants
-#define liftStillSpeed -10		//still speeds
+#define liftStillSpeed -15	//still speeds
 #define clawStillSpeed 10
 #define fenceToWallDist 31	//distances
-#define clawDiff 0				//difference between claw potentiometers when at the same angle (left - right)
+#define clawDiff 0					//difference between claw potentiometers when at the same angle (left - right)
 //#endregion
 
 //#region config
@@ -174,7 +174,7 @@ void discreteClaw() {
 	else if (vexRT[hyperExtendBtn] == 1)
 		setClawState(HYPEREXTENDED);
 	else if (getPosition(lift)>liftPositions[THROW] && autoDumping)
-		setClawState(HYPEREXTENDED);
+		setClawState(OPEN);
 
 	executeClawPIDs();
 }
