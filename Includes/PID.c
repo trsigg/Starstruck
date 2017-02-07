@@ -25,7 +25,7 @@ void initializePID(PID *pid, float target, float kP, float kI, float kD, int min
 	pid->prevError = 0;
 }
 
-void setNewTarget(PID *pid, float target) {
+void changeTarget(PID *pid, float target) {
 	pid->prevError += target - pid->target;
 	pid->integral = 0;
 	pid->lastUpdated = nPgmTime;

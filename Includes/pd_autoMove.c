@@ -205,7 +205,7 @@ void driveStraightRuntime() {
 void driveStraightEnd() {
 	//brake
 	setDrivePower(autoDrive, -driveData.direction * driveData.brakePower, -driveData.direction * driveData.brakePower);
-	int brakeDelay = limit(0, driveData.brakePower, driveData.waitAtEnd);
+	int brakeDelay = limit(0, driveData.brakeDuration, driveData.waitAtEnd);
 	wait1Msec(brakeDelay);
 	setDrivePower(autoDrive, 0, 0);
 

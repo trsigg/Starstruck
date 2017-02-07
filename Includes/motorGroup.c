@@ -17,7 +17,6 @@ typedef struct {
 	bool forward, maneuverExecuting; //forward: whether target is forwad from initial group position
 	long maneuverTimer;
 	//maintainPos
-	int pos;	//target position to maintain;	TODO: name better
 	PID positionPID;	//PID controller which maintains position
 	bool activelyMaintining;	//whether position is being maintained
 	//joystick control
@@ -180,10 +179,22 @@ int setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
 
 //#region position movement
 	//#subregion maintainPos
-void setTargetPos(motorGroup *group, int position) {
-	group->pos = position;
+	void setTargetingPIDconsts(motorGroup *group, double kP, double kI, double kD) {
+		initializePID(group->positionPID, 0, kP, kI, kD);
+	}
 
-}
+	void setTargetPosition(motorGroup *group, int position) {
+		changeTarget(group->positionPID, position);
+		group->targetingActive = true;
+	}
+
+	void maintainTargetPos(motorGroup *group) {
+		if (group->targetingActive && group->positionPID.kP != 0) {
+			setPower(PID_runtime(group->positionPID, getPosition(group)));
+		}
+	}
+
+	void stopTargeting(motorGroup *group) { group->targetingActive = false; }
 	//#endsubregion
 
 int moveTowardPosition(motorGroup *group, int position, int power=127) {
