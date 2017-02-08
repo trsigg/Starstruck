@@ -1,7 +1,8 @@
 #pragma config(Sensor, in1,    gyro,           sensorGyro)
-#pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
-#pragma config(Sensor, in3,    clawPot,        sensorPotentiometer)
+#pragma config(Sensor, in2,    clawPotL,       sensorPotentiometer)
+#pragma config(Sensor, in3,    clawPotR,       sensorPotentiometer)
 #pragma config(Sensor, in4,    modePot,        sensorPotentiometer)
+#pragma config(Sensor, in5,    liftPot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  leftEnc,        sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  rightEnc,       sensorQuadEncoder)
 #pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
@@ -42,12 +43,15 @@
 #define liftTop 1890
 #define liftPush 1530
 #define liftPushTop 1660
+
 #define clawClosedPos 3920 //3595
 #define clawOpenPos 2820
 #define clawMax 778
 #define clawPush 1990
 #define clawClosedPosPillow 3305
 #define clawClosedNew 1835 //??????
+//*/
+
 
 //Constants
 #define liftStillSpeed 10
@@ -77,7 +81,8 @@ void pre_auton() { //INITIALIZATIONS
   addSensor(lift, liftPot);
 
   initializeGroup(claw, 1, clawMotor); //USES MOTOR GROUP ARRAY IN INCLUDES - Claw is only 1 motor
-  addSensor(claw, clawPot, false);
+  addSensor(claw, clawPotL, false);
+  addSensor(claw, clawPotR, false);
 
 }
 
