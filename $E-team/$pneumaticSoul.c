@@ -30,22 +30,23 @@
 #define autoDumpOffBtn		Btn8D
 #define openClawBtn				Btn6U
 #define closeClawBtn			Btn6D
-#define hyperExtendBtn		Btn7R
+#define hyperExtendBtn		Btn7D
 #define liftUpBtn					Btn5U //lift
 #define liftDownBtn				Btn5D
 //#endregion
 
 //#region enums
-enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
+enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 1000, 1650, 2425, 2425, 2800 };	//same order as corresponding enums
+int liftPositions[5] = { 1000, 1650, 2425, 2425, 2950 };	//same order as corresponding enums
 int clawPositions[3] = { 400, 1150, 2000 };
 //#endregion
 
 //#region constants
+#define liftStillSpeed 10	//still speeds
 #define liftErrorMargin 150	//margins of error
 #define clawErrorMargin 150
 #define maxStationarySpeed	100	//max error decrease in claw PID error (per second) where claw is considered not to be moving
@@ -57,6 +58,7 @@ int clawPositions[3] = { 400, 1150, 2000 };
 //#region config
 #define straightToCube true
 #define blocking false
+#define driverPID false
 //#endregion
 
 //#region timers
@@ -96,6 +98,7 @@ void pre_auton() {
 
 	//configure lift
 	initializeGroup(lift, 3, lift1, lift2, lift3);
+	configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed);
 	addSensor(lift, liftPot);
 
 	//configure claw sides
@@ -123,18 +126,24 @@ void setLiftPIDmode(bool auto) {
 	if (auto)
 		setTargetingPIDconsts(lift, 0.9, 0.005, 50, 25);
 	else
-		setTargetingPIDconsts(lift, 0.2, 0.001, 10, 25);
+		setTargetingPIDconsts(lift, 0.2, 0.0001, 5, 25);
 }
 
 void liftControl() {
-	if (vexRT[liftUpBtn] == 1) {
-		setPower(lift, 127);
-		setTargetPosition(lift, limit(getPosition(lift)+liftDriftDist, liftPositions[BOTTOM], liftPositions[MAX]));
-	} else if (vexRT[liftDownBtn] == 1) {
-		setPower(lift, -127);
-		setTargetPosition(lift, limit(getPosition(lift)-liftDriftDist, liftPositions[BOTTOM], liftPositions[MAX]));
+	if (driverPID) {
+		lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1);
+
+		takeInput(lift);
 	} else {
-		maintainTargetPos(lift);
+		if (vexRT[liftUpBtn] == 1) {
+			setPower(lift, 127);
+			setTargetPosition(lift, limit(getPosition(lift)+liftDriftDist, liftPositions[BOTTOM], liftPositions[MAX]));
+		} else if (vexRT[liftDownBtn] == 1) {
+			setPower(lift, -127);
+			setTargetPosition(lift, limit(getPosition(lift)-liftDriftDist, liftPositions[BOTTOM], liftPositions[MAX]));
+		} else {
+			maintainTargetPos(lift);
+		}
 	}
 }
 //#endregion
