@@ -17,7 +17,7 @@ typedef struct {
 	bool forward, maneuverExecuting; //forward: whether target is forwad from initial group position
 	long maneuverTimer;
 	//maintainPos
-	PID positionPID;	//PID controller which maintains position
+	PID posPID;	//PID controller which maintains position
 	bool activelyMaintining;	//whether position is being maintained
 	//joystick control
 	int deadband; //range of motor values around 0 for which motors are not engaged
@@ -179,22 +179,26 @@ int setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
 
 //#region position movement
 	//#subregion maintainPos
-	void setTargetingPIDconsts(motorGroup *group, double kP, double kI, double kD) {
-		initializePID(group->positionPID, 0, kP, kI, kD);
+	void setTargetingPIDconsts(motorGroup *group, float kP, float kI, float kD, int minSampleTime=0) {
+		initializePID(group->posPID, 0, kP, kI, kD, minSampleTime);
 	}
 
 	void setTargetPosition(motorGroup *group, int position) {
-		changeTarget(group->positionPID, position);
-		group->targetingActive = true;
+		changeTarget(group->posPID, position);
+		group->activelyMaintining = true;
 	}
 
 	void maintainTargetPos(motorGroup *group) {
-		if (group->targetingActive && group->positionPID.kP != 0) {
-			setPower(PID_runtime(group->positionPID, getPosition(group)));
+		if (group->activelyMaintining && group->posPID.kP != 0) {
+			setPower(group, PID_runtime(group->posPID, getPosition(group)));
 		}
 	}
 
-	void stopTargeting(motorGroup *group) { group->targetingActive = false; }
+	void stopTargeting(motorGroup *group) { group->activelyMaintining = false; }
+
+	bool errorLessThan(motorGroup *group, int errorMargin) {	//returns true if PID error is less than specified margin
+		return abs(group->posPID.target - getPosition(group)) < errorMargin;
+	}
 	//#endsubregion
 
 int moveTowardPosition(motorGroup *group, int position, int power=127) {
