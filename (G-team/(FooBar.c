@@ -73,7 +73,7 @@ void pre_auton() { //INITIALIZATIONS
 
   initializeGroup(lift, 5, lift1, lift2, lift3, lift4, lift5); //USES MOTOR GROUP ARRAY IN INCLUDES
   configureButtonInput(lift, liftUpBtn, liftDownBtn, 10, 127, -100);
-  setAbsolutes(lift, liftBottom);
+  setAbsolutes(lift, liftBottom, 0);
   addSensor(lift, liftPot);
 
   initializeGroup(claw, 1, clawMotor); //USES MOTOR GROUP ARRAY IN INCLUDES - Claw is only 1 motor
