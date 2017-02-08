@@ -41,7 +41,7 @@ enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 1000, 1620, 2425, 2425, 2800 };	//same order as corresponding enums
+int liftPositions[5] = { 1000, 1650, 2425, 2425, 2800 };	//same order as corresponding enums
 int clawPositions[3] = { 400, 1150, 2000 };
 //#endregion
 
@@ -51,7 +51,7 @@ int clawPositions[3] = { 400, 1150, 2000 };
 #define maxStationarySpeed	100	//max error decrease in claw PID error (per second) where claw is considered not to be moving
 #define fenceToWallDist 28	//distances
 #define clawDiff 0					//difference between claw potentiometers when at the same angle (left - right)
-#define liftDriftDist	200	//estimated distance lift drifts after button is released
+#define liftDriftDist	300	//estimated distance lift drifts after button is released
 //#endregion
 
 //#region config
@@ -123,7 +123,7 @@ void setLiftPIDmode(bool auto) {
 	if (auto)
 		setTargetingPIDconsts(lift, 0.9, 0.005, 50, 25);
 	else
-		setTargetingPIDconsts(lift, 0.2, 0.01, 10, 25);
+		setTargetingPIDconsts(lift, 0.2, 0.001, 10, 25);
 }
 
 void liftControl() {
@@ -274,9 +274,10 @@ void ramToRealign(int duration=500) {
 
 void initialPillow(bool liftToMid=false) {
 	liftTo(MIDDLE);
-	liftTo(BOTTOM);
-
-	if (liftToMid) setTargetPosition(lift, liftPositions[MIDDLE]-65);
+	if (liftToMid)
+		setTargetPosition(lift, liftPositions[MIDDLE]-65);
+	else
+		liftTo(BOTTOM);
 
 	if (straightToCube) {
 		driveStraight(18);
@@ -454,7 +455,6 @@ task autonomous() {
 	inactivateTargets();
 	setLiftPIDmode(true);
 	startTask(maneuvers);
-	while(true);	//debug
 
 	int sidePos = SensorValue[sidePot];
 	int modePos = SensorValue[modePot];
