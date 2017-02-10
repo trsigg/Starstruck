@@ -133,8 +133,10 @@ void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefa
 		startTask(turnTask);
 	}
 	else {
-		while (!turnIsComplete())
+		while (!turnIsComplete()) {
 			turnRuntime();
+			EndTimeSlice();
+		}
 		turnEnd();
 	}
 }

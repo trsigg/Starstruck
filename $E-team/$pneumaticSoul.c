@@ -2,10 +2,10 @@
 #pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
 #pragma config(Sensor, in3,    clawPotR,       sensorPotentiometer)
 #pragma config(Sensor, in4,    clawPotL,       sensorPotentiometer)
-#pragma config(Sensor, in5,    sidePot,        sensorPotentiometer)
-#pragma config(Sensor, in6,    modePot,        sensorPotentiometer)
+#pragma config(Sensor, in5,    modePot,        sensorPotentiometer)
+#pragma config(Sensor, in6,    sidePot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
-#pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
+#pragma config(Sensor, dgtl5,  leftEnc,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           ld1,           tmotorVex393_HBridge, openLoop)
 #pragma config(Motor,  port2,           lift1,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port3,           rd1,           tmotorVex393_MC29, openLoop, reversed)
@@ -41,7 +41,7 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 1000, 1650, 2425, 2425, 2950 };	//same order as corresponding enums
+int liftPositions[5] = { 1050, 1650, 2425, 2425, 2950 };	//same order as corresponding enums
 int clawPositions[3] = { 400, 1150, 2000 };
 //#endregion
 
@@ -103,11 +103,11 @@ void pre_auton() {
 
 	//configure claw sides
 	initializeGroup(rightClaw, 1, clawR);
-	setTargetingPIDconsts(rightClaw, 0.2, 0, 0.7, 25);
+	setTargetingPIDconsts(rightClaw, 0.3, 0, 0.0, 25);
 	addSensor(rightClaw, clawPotR);
 
 	initializeGroup(leftClaw, 1, clawL);
-	setTargetingPIDconsts(leftClaw, 0.2, 0, 0.7, 25);
+	setTargetingPIDconsts(leftClaw, 0.3, 0, 0.0, 25);
 	addSensor(leftClaw, clawPotL);
 }
 
@@ -124,17 +124,13 @@ void setLiftState(liftState state) {
 
 void setLiftPIDmode(bool auto) {
 	if (auto)
-		setTargetingPIDconsts(lift, 0.9, 0.005, 50, 25);
+		setTargetingPIDconsts(lift, 0.4, 0.001, 0.6, 25);
 	else
-		setTargetingPIDconsts(lift, 0.2, 0.0001, 5, 25);
+		setTargetingPIDconsts(lift, 0.2, 0.001, 0.2, 25);
 }
 
 void liftControl() {
 	if (driverPID) {
-		lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1);
-
-		takeInput(lift);
-	} else {
 		if (vexRT[liftUpBtn] == 1) {
 			setPower(lift, 127);
 			setTargetPosition(lift, limit(getPosition(lift)+liftDriftDist, liftPositions[BOTTOM], liftPositions[MAX]));
@@ -144,6 +140,10 @@ void liftControl() {
 		} else {
 			maintainTargetPos(lift);
 		}
+	} else {
+		lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1);
+
+		takeInput(lift);
 	}
 }
 //#endregion
@@ -190,20 +190,22 @@ task maneuvers() {
 		executeClawPIDs();
 
 		maintainTargetPos(lift);
+
+		EndTimeSlice();
 	}
 }
 
 bool clawNotMoving(motorGroup *claw, int maxSpeed=maxStationarySpeed) {
-	float speed = (abs(claw->posPID.target - getPosition(claw)) - abs(claw->posPID.prevError)) * 1000 / claw->posPID.minSampleTime;
+	float speed = (abs(claw->posPID.target - getPosition(claw)) - abs(claw->posPID.prevError)) * 1000 / time(claw->posPID.lastUpdated);
 	return speed < maxSpeed;
 }
 
-bool clawIsClosed() {
-	return getPosition(rightClaw)<clawPositions[OPEN] && clawNotMoving(rightClaw, maxStationarySpeed)
-					&& getPosition(leftClaw)<clawPositions[OPEN]+clawDiff && clawNotMoving(leftClaw, maxStationarySpeed);
+bool clawIsClosed(int maxSpeed=maxStationarySpeed) {
+	return getPosition(rightClaw)<clawPositions[OPEN] /*&& clawNotMoving(rightClaw, maxSpeed)*/
+					&& getPosition(leftClaw)<clawPositions[OPEN]+clawDiff /*&& clawNotMoving(leftClaw, maxSpeed)*/;
 }
 
-bool liftNotReady() { return errorLessThan(lift, liftErrorMargin); }
+bool liftNotReady() { return !errorLessThan(lift, liftErrorMargin); }
 
 bool clawNotReady() {
 	if (rightClaw.posPID.target < clawPositions[OPEN])	//assuming this is representative of both claw sides
@@ -215,29 +217,36 @@ bool clawNotReady() {
 void waitForMovementToFinish(bool waitForClaw=true, bool waitForLift=true, bool waitForDrive=true, int timeout=75) {
 	clearTimer(movementTimer);
 
-	while (time1(movementTimer) < timeout)
+	while (time1(movementTimer) < timeout) {
 		if ((liftNotReady() && waitForLift) || (clawNotReady() && waitForClaw))
 			clearTimer(movementTimer);
+		EndTimeSlice();
+	}
 
-	while (turnData.isTurning || driveData.isDriving);
+	while (turnData.isTurning || driveData.isDriving) EndTimeSlice();
 }
 
 void liftTo(liftState state, int timeout=75) {
+	//goToPosition(lift, liftPositions[state],
 	setLiftState(state);
 	clearTimer(movementTimer);
 
-	while (time1(movementTimer) < timeout)
+	while (time1(movementTimer) < timeout) {
 		if (liftNotReady())
 			clearTimer(movementTimer);
+		EndTimeSlice();
+	}
 }
 
 void moveClawTo(clawState state, int timeout=75) {
 	setClawState(state);
 	clearTimer(movementTimer);
 
-	while (time1(movementTimer) < timeout)
+	while (time1(movementTimer) < timeout) {
 		if (clawNotReady())
 			clearTimer(movementTimer);
+		EndTimeSlice();
+	}
 }
 
 void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=turnDefaults.rampConst1, float turnConst2=turnDefaults.rampConst2, float turnConst3=turnDefaults.rampConst3) {
@@ -248,17 +257,17 @@ void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=turn
 			turn(angle, false, turnConst1, turnConst2, turnConst3); //turn
 		} else { //turning but not driving
 			turn(angle, true, turnConst1, turnConst2, turnConst3); //turn
-			while (abs(turnProgress()) < distCutoff); //wait to throw
+			while (abs(turnProgress()) < distCutoff) EndTimeSlice(); //wait to throw
 		}
 	}
 
 	if (dist != 0) { //driving
 		driveStraight(dist, true); //drive
-		while (driveData.totalDist < distCutoff); //wait to throw
+		while (driveData.totalDist < distCutoff) EndTimeSlice(); //wait to throw
 	}
 
 	setLiftState(MAX);
-	while (getPosition(lift) < liftPositions[THROW]);
+	while (getPosition(lift) < liftPositions[THROW]) EndTimeSlice();
 	setClawState(OPEN);
 	waitForMovementToFinish();
 }
@@ -281,20 +290,13 @@ void ramToRealign(int duration=500) {
 	wait1Msec(duration);
 }
 
-void initialPillow(bool liftToMid=false) {
-	liftTo(MIDDLE);
-	if (liftToMid)
-		setTargetPosition(lift, liftPositions[MIDDLE]-65);
-	else
-		liftTo(BOTTOM);
-
+void initialPillow() {
 	if (straightToCube) {
 		driveStraight(18);
 	} else {
 		//open claw and drive away from wall
-		setClawState(OPEN);
 		driveStraight(5, true);
-		while (driveData.isDriving);
+		while (driveData.isDriving) EndTimeSlice();
 
 		//drive to central pillow
 		turn(autoSign * -47, true);
@@ -371,19 +373,19 @@ task skillz() {
 
 task pillowAuton() {
 	clearTimer(autonTimer);
-	initialPillow(true);
+	initialPillow();
 
 	//go to fence and lift up
 	setLiftState(TOP);
 	driveStraight(8.5, true);
-	while (driveData.isDriving);
+	while (driveData.isDriving) EndTimeSlice();
 	turn(autoSign * 37, true, 60, 127, -15); //turn to face fence
-	while (turnData.isTurning);
+	while (turnData.isTurning) EndTimeSlice();
 	driveStraight(20, true); // drive up to wall
 	waitForMovementToFinish();
 
 	if (blocking)
-		while (time1(autonTimer) < 12000);
+		while (time1(autonTimer) < 12000) EndTimeSlice();
 	moveClawTo(OPEN); //release pillow
 	wait1Msec(750); //wait for pillow to fall
 	moveClawTo(CLOSED);
@@ -398,7 +400,7 @@ task pillowAuton() {
 
  	//drive to other wall and lift down
  	driveStraight(-10, true);
- 	while (driveData.isDriving);
+ 	while (driveData.isDriving) EndTimeSlice();
  	turn(autoSign * 74, true, 60, 127, -15);
  	waitForMovementToFinish();
  	setTargetPosition(lift, liftPositions[MIDDLE]+100);
@@ -434,10 +436,10 @@ task dumpyAuton() {
 task oneSideAuton() {
 	setTargetPosition(lift, liftPositions[TOP]-450); //lift to near top
 	driveStraight(-5, true); //drive away from wall
-	while(driveData.isDriving);
+	while(driveData.isDriving) EndTimeSlice();
 
 	turn(autoSign * 30, true);
-	while (turnData.isTurning);
+	while (turnData.isTurning) EndTimeSlice();
 
 	driveStraight(-12, true);
 	waitForMovementToFinish(false);
@@ -468,20 +470,19 @@ task autonomous() {
 	int sidePos = SensorValue[sidePot];
 	int modePos = SensorValue[modePot];
 
-	autoSign = (sidePos > 1830) ? 1 : -1;
-
-	startTask(dumpyAuton);
+	autoSign = sgn(1770 - sidePos);
 
 	//start appropriate autonomous task
-	/*if (1290<sidePos && sidePos<2470) {
+	if (1150<sidePos && sidePos<2415) {
 		startTask(skillz);
-	} else if (modePos < 385) {
+	} else if (modePos < 500) {
 		startTask(pillowAuton);
-	} else if (modePos < 1765) {
+	} else if (modePos < 1850) {
 		startTask(dumpyAuton);
-	} else if (modePos > 3300) {
+	} else if (modePos > 3455) {
 		startTask(oneSideAuton);
-	}*/
+	}
+	while (true) EndTimeSlice();
 }
 //#endregion
 
