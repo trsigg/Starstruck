@@ -28,6 +28,7 @@
 //#region buttons
 #define autoDumpOnBtn			Btn8U	//claw
 #define autoDumpOffBtn		Btn8D
+#define maydayBtn					Btn7R
 #define openClawBtn				Btn6U
 #define closeClawBtn			Btn6D
 #define hyperExtendBtn		Btn7D
@@ -48,7 +49,7 @@ int clawPositions[3] = { 400, 1150, 2000 };
 //#region constants
 #define liftStillSpeed 10	//still speeds
 #define liftErrorMargin 150	//margins of error
-#define clawErrorMargin 150
+#define clawErrorMargin 50
 #define maxStationarySpeed	100	//max error decrease in claw PID error (per second) where claw is considered not to be moving
 #define fenceToWallDist 28	//distances
 #define clawDiff 0					//difference between claw potentiometers when at the same angle (left - right)
@@ -58,7 +59,7 @@ int clawPositions[3] = { 400, 1150, 2000 };
 //#region config
 #define straightToCube true
 #define blocking false
-#define driverPID false
+#define driverPID true
 //#endregion
 
 //#region timers
@@ -81,12 +82,12 @@ void pre_auton() {
 
 	initializeAutoMovement();
 
-	turnDefaults.rampConst1 = 60;
+	turnDefaults.rampConst1 = 40;
 	turnDefaults.rampConst2 = 127;
-	turnDefaults.rampConst3 = -10;
+	turnDefaults.rampConst3 = -30;
 
-	driveDefaults.rampConst1 = 60;
-	driveDefaults.rampConst2 = 127;
+	driveDefaults.rampConst1 = 50;
+	driveDefaults.rampConst2 = 120;
 	driveDefaults.rampConst3 = -20;
 
 	//configure drive
@@ -103,11 +104,11 @@ void pre_auton() {
 
 	//configure claw sides
 	initializeGroup(rightClaw, 1, clawR);
-	setTargetingPIDconsts(rightClaw, 0.3, 0, 0.0, 25);
+	setTargetingPIDconsts(rightClaw, 0.13, 0, 0.005, 25);
 	addSensor(rightClaw, clawPotR);
 
 	initializeGroup(leftClaw, 1, clawL);
-	setTargetingPIDconsts(leftClaw, 0.3, 0, 0.0, 25);
+	setTargetingPIDconsts(leftClaw, 0.2, 0, 0.7/25, 25);
 	addSensor(leftClaw, clawPotL);
 }
 
@@ -166,7 +167,10 @@ void setClawTargets(int targetPos) {
 }
 
 void clawControl() {
-	if (vexRT[openClawBtn]==1 && currentState!=OPEN)
+	if (vexRT[maydayBtn] == 1) {
+		setPower(leftClaw, -80);
+		setPower(rightClaw, -80);
+	} else if (vexRT[openClawBtn]==1 && currentState!=OPEN)
 		setClawState(OPEN);
 	else if (vexRT[closeClawBtn]==1 && currentState!=CLOSED)
 		setClawState(CLOSED);
@@ -174,8 +178,9 @@ void clawControl() {
 		setClawState(HYPEREXTENDED);
 	else if (getPosition(lift)>liftPositions[THROW] && currentState!=OPEN && autoDumping)
 		setClawState(OPEN);
-
-	executeClawPIDs();
+	else {
+		executeClawPIDs();
+	}
 
 	if (vexRT[autoDumpOnBtn] == 1)
 		autoDumping = true;
@@ -227,7 +232,6 @@ void waitForMovementToFinish(bool waitForClaw=true, bool waitForLift=true, bool 
 }
 
 void liftTo(liftState state, int timeout=75) {
-	//goToPosition(lift, liftPositions[state],
 	setLiftState(state);
 	clearTimer(movementTimer);
 
@@ -263,7 +267,7 @@ void turnDriveDump (int angle, int dist, int distCutoff=0, float turnConst1=turn
 
 	if (dist != 0) { //driving
 		driveStraight(dist, true); //drive
-		while (driveData.totalDist < distCutoff) EndTimeSlice(); //wait to throw
+		while (driveData.totalDist<distCutoff && driveData.isDriving) EndTimeSlice(); //wait to throw
 	}
 
 	setLiftState(MAX);
@@ -292,7 +296,7 @@ void ramToRealign(int duration=500) {
 
 void initialPillow() {
 	if (straightToCube) {
-		driveStraight(18);
+		driveStraight(20);
 	} else {
 		//open claw and drive away from wall
 		driveStraight(5, true);
@@ -310,7 +314,7 @@ void initialPillow() {
 task skillz() {
 	setClawState(OPEN);
 	driveStraight(-11, true);
-	waitForMovementToFinish();
+	waitForMovementToFinish(true, false);
 
 	grabNdump(3000);
 
@@ -329,12 +333,12 @@ task skillz() {
 	setClawTargets(clawPositions[CLOSED]-75);
 	driveStraight(4.75, true);
 	waitForMovementToFinish(false);
-	turn(-80, true, 60, 127, -10);
+	turn(-74, true, 60, 127, -10);
 	waitForMovementToFinish();
 	liftTo(BOTTOM);
 	driveStraight(29);
 	moveClawTo(CLOSED);
-	driveStraight(-6);
+	//driveStraight(-5);
 	turnDriveDump(67, 0);
 
 	//get and dump pillow in center of field
@@ -354,11 +358,11 @@ task skillz() {
 
 	//get and dump pillow
 	setLiftState(BOTTOM);
-	turn(-13, true);
+	turn(-35, true);
 	waitForMovementToFinish();
-	driveStraight(29);
+	driveStraight(37);
 	moveClawTo(CLOSED);
-	turnDriveDump(40, -30, 10);
+	turnDriveDump(35, -30, 10);
 
 	ramToRealign();
 	driveStraight(fenceToWallDist);
@@ -377,11 +381,13 @@ task pillowAuton() {
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(8.5, true);
+	driveStraight(8.5, true, 40, 90, -30);
 	while (driveData.isDriving) EndTimeSlice();
-	turn(autoSign * 37, true, 60, 127, -15); //turn to face fence
+	//wait1Msec(2000);
+	turn(autoSign * 20, true, 40, 90, -25); //turn to face fence
 	while (turnData.isTurning) EndTimeSlice();
-	driveStraight(20, true); // drive up to wall
+	//wait1Msec(2000);
+	driveStraight(23, true); // drive up to wall
 	waitForMovementToFinish();
 
 	if (blocking)
@@ -398,19 +404,16 @@ task pillowAuton() {
 
  	setClawState(HYPEREXTENDED);
 
- 	//drive to other wall and lift down
+ 	//drive to other wall
+ 	setTargetPosition(lift, liftPositions[TOP]+100);
  	driveStraight(-10, true);
  	while (driveData.isDriving) EndTimeSlice();
- 	turn(autoSign * 74, true, 60, 127, -15);
+ 	turn(autoSign * 50, true, 60, 127, -20);
  	waitForMovementToFinish();
- 	setTargetPosition(lift, liftPositions[MIDDLE]+100);
- 	driveStraight(33, true, driveDefaults.rampConst1, driveDefaults.rampConst2, -10);
- 	waitForMovementToFinish();
+ 	driveStraight(33);
  	turn(autoSign * -85, false, 40, 120, -40);
- 	driveStraight(11);
+ 	driveStraight(17);
 
- 	goToPosition(lift, liftPositions[TOP]+50); //push jacks over
- 	driveStraight(5);
  	moveClawTo(CLOSED);
 }
 
@@ -418,9 +421,9 @@ task dumpyAuton() {
 	initialPillow();
 
 	liftTo(MIDDLE);
-	driveStraight(8);
+	driveStraight(11);
 
-	turnDriveDump(autoSign * -97, -17, 7, 45, 120, -20);
+	turnDriveDump(autoSign * -85, -17, 7, 45, 120, -20);
 
 	setLiftState(BOTTOM);
 	setClawState(HYPEREXTENDED);
@@ -471,17 +474,18 @@ task autonomous() {
 	int modePos = SensorValue[modePot];
 
 	autoSign = sgn(1770 - sidePos);
-
+	startTask(skillz);
 	//start appropriate autonomous task
-	if (1150<sidePos && sidePos<2415) {
+	/*if (1150<sidePos && sidePos<2415) {
 		startTask(skillz);
 	} else if (modePos < 500) {
 		startTask(pillowAuton);
 	} else if (modePos < 1850) {
-		startTask(dumpyAuton);
-	} else if (modePos > 3455) {
 		startTask(oneSideAuton);
-	}
+	} else if (modePos > 3455) {
+		startTask(dumpyAuton);
+	}*/
+
 	while (true) EndTimeSlice();
 }
 //#endregion
