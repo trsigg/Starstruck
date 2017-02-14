@@ -31,19 +31,19 @@
 #include "..\Includes\pd_autoMove.c"
 #include "..\Includes\buttonTracker.c"
 
-//Buttons
+//Button Config - Used to call to control the lift/claw see lines 158-174, 571-581
 #define openClawBtn Btn6D
 #define closeClawBtn Btn6U
 #define liftUpBtn Btn5U
 #define liftDownBtn Btn5D
 
-//Positions
+#define autoDumpOnBtn Btn8U
+#define autoDumpOffBtn Btn8D
+#define maydayBtn Btn8R
+
+//Lift Potentiometer Positions - Called to set lift to specific value ie goToPosition - Called from motorGroup.c
 #define liftBottom 3119
 #define liftMax 865
-//#define liftTop 1890
-//#define liftPush 1530
-//#define liftPushTop 1660
-
 
 enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 enum clawState { CLOSED, OPEN, HYPEREXTENDED };
@@ -54,7 +54,9 @@ int clawPositions[3] = { 400, 1150, 2000 };
 
 
 
-//REVERSED POT VALUES
+//REVERSED POT VALUES - FOR WHEN THE POTENTIOMETER BECAME FLIPPED
+//KEEPING IN BECAUSE WE MAY HAVE TO RETUNE POT VALUES AGAIN
+//ARE 4095- BECAUSE THE POTENTIOMETER WAS TRYING TO MOVE THE WRONG WAY TO ACHIEVE ITS VALUES
 /*
 #define clawClosedPosL (4095-3058) //3595
 #define clawOpenPosL (4095-3181)
@@ -74,33 +76,32 @@ int clawPositions[3] = { 400, 1150, 2000 };
 #define clawStraightR (4095-545)
 */
 
-
-#define clawClosedPosL 3058 //3595
-#define clawOpenPosL 3181
-#define clawMaxL 3905
-#define clawPushL 3480
-#define clawClosedPosPillowL 3143 //******
-#define clawOpenPillowL 3266 //??????
-#define clawStriaghtL 3109
+//POTENTIOMETER VALUES
+//Values read by the Potentiometer used for auton =\/ \/ \/ \/ \/=
+//Called in the functions to allow the robot to move to certain values
+//LEFT SIDE VALUES - TWO POTS
+#define clawClosedPosR 3058 //3595
+#define clawOpenPosR 3181
+#define clawMaxR 3905
+#define clawPushR 3480
+#define clawClosedPosPillowR 3143
+#define clawOpenPillowR 3266
+#define clawStriaghtR 3109
 //*/
+//Right Side Pot Values
+#define clawClosedPosL 3933
+#define clawOpenPosL 2968
+#define clawMaxL 315
+#define clawPushL 1777
+#define clawClosedPosPillowL 3077
+#define clawOpenPillowL 2508
+#define clawStraightL 3058
 
-#define clawClosedPosR 362 //3595
-#define clawOpenPosR 1049
-#define clawMaxR 4045
-#define clawPushR 2171
-#define clawClosedPosPillowR 741 //******
-#define clawOpenPillowR 1571 //??????
-#define clawStraightR 603
-
-
-
+//Values to Assist with PID
 #define driverPID false
 #define liftDriftDist 300
 
-
-
-
-//Constants
+//Still Speed Constants
 #define liftStillSpeed 1
 #define clawStillSpeed 20
 
@@ -108,6 +109,10 @@ int clawPositions[3] = { 400, 1150, 2000 };
 bool clawOpen = false;
 //short autoSign;
 
+bool autoDumping = true
+clawState currentState;
+
+//Initializes Motor Groups - Calls from motorGroup.c
 motorGroup lift;
 motorGroup claw;
 
@@ -117,12 +122,17 @@ void pre_auton() { //INITIALIZATIONS
 	initializeAutoMovement();
   bStopTasksBetweenModes = true;
 
-  initializeDrive(drive);
-  setDriveMotors(drive, 4, lfd, lbd, rfd, rbd);
-  attachEncoder(drive, leftEnc, LEFT);
-  attachEncoder(drive, rightEnc, RIGHT, false, 4);
-  attachGyro(drive, gyro);
+  initializeDrive(drive); //Initializes Drive -> calls from prallelDrive.c
+  setDriveMotors(drive, 4, lfd, lbd, rfd, rbd); //Sets Drive Motors (as it is called) -> needs to know
+  																						  //that it is the drive being defined, the number of
+  																							//motors being used, and the names of the motors that
+  																							//have been defined in the Motor and Sensor Setup.
+  attachEncoder(drive, leftEnc, LEFT); //Calls AttachEncoder from parallelDrive.c to say it's on the drive,
+  																		 //the name of the Encoder and which side.
+  attachEncoder(drive, rightEnc, RIGHT, false, 4);//Calls the same function as right Encoder.
+  attachGyro(drive, gyro); //Calls attachGyro from parallelDrive.c to specify the gyro being on the robot.
 
+  //USES MOTOR GROUPS FUNCTIONS
   initializeGroup(lift, 4, lift1, lift2, lift3, lift4); //USES MOTOR GROUP ARRAY IN INCLUDES
   configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed, 127, -100);
   //setAbsolutes(lift, liftBottom, 0);
@@ -568,6 +578,8 @@ task autonomous() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+//old
 void clawControl() {
 	if (vexRT[closeClawBtn] == 1) {
 		setPower(claw, 127);
@@ -578,7 +590,41 @@ void clawControl() {
 	} else {
 		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
 	}
+
 }
+*/
+
+
+
+
+
+//new
+void clawControl() {
+	if (vexRT[maydayBtn] == 1) {
+		setPower(claw, -80);
+		setClawTargets(getPosition(rightClaw));
+	} else if (vexRT[openClawBtn]==1 && currentState!=OPEN)
+		setClawState(OPEN);
+	else if (vexRT[closeClawBtn]==1 && currentState!=CLOSED)
+		setClawState(CLOSED);
+	else if (vexRT[hyperExtendBtn]==1 && currentState!=HYPEREXTENDED)
+		setClawState(HYPEREXTENDED);
+	else if (getPosition(lift)>liftPositions[THROW] && currentState!=OPEN && autoDumping)
+		setClawState(OPEN);
+	else {
+		executeClawPIDs();
+	}
+
+	if (vexRT[autoDumpOnBtn] == 1)
+		autoDumping = true;
+	else if (vexRT[autoDumpOffBtn] == 1)
+		autoDumping = false;
+}
+
+
+
+
+
 
 
 //END OF AUTON TAKEN FROM E
