@@ -38,21 +38,24 @@
 #define liftDownBtn Btn5D
 
 //Positions
-#define liftBottom 3727
-#define liftMax 1387
+#define liftBottom 3119
+#define liftMax 865
 //#define liftTop 1890
 //#define liftPush 1530
 //#define liftPushTop 1660
 
 
 enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
-//enum clawState { CLOSED, OPEN, HYPEREXTENDED };
+enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 
 int liftPositions[5] = { 3727, 3000, 1800, 1200, 1387 };	//same order as corresponding enums
-//int clawPositions[3] = { 400, 1150, 2000 };
+int clawPositions[3] = { 400, 1150, 2000 };
 
 
 
+
+//REVERSED POT VALUES
+/*
 #define clawClosedPosL (4095-3058) //3595
 #define clawOpenPosL (4095-3181)
 #define clawMaxL (4095-3905)
@@ -60,7 +63,7 @@ int liftPositions[5] = { 3727, 3000, 1800, 1200, 1387 };	//same order as corresp
 #define clawClosedPosPillowL (4095-3143) //******
 #define clawOpenPillowL (4095-3266) //??????
 #define clawStriaghtL (4095-3109)
-//*/
+//
 
 #define clawClosedPosR (4095-257) //3595
 #define clawOpenPosR (4095-1170)
@@ -69,6 +72,25 @@ int liftPositions[5] = { 3727, 3000, 1800, 1200, 1387 };	//same order as corresp
 #define clawClosedPosPillowR (4095-591) //******
 #define clawOpenPillowR (4095-1620) //??????
 #define clawStraightR (4095-545)
+*/
+
+
+#define clawClosedPosL 3058 //3595
+#define clawOpenPosL 3181
+#define clawMaxL 3905
+#define clawPushL 3480
+#define clawClosedPosPillowL 3143 //******
+#define clawOpenPillowL 3266 //??????
+#define clawStriaghtL 3109
+//*/
+
+#define clawClosedPosR 362 //3595
+#define clawOpenPosR 1049
+#define clawMaxR 4045
+#define clawPushR 2171
+#define clawClosedPosPillowR 741 //******
+#define clawOpenPillowR 1571 //??????
+#define clawStraightR 603
 
 
 
@@ -79,8 +101,8 @@ int liftPositions[5] = { 3727, 3000, 1800, 1200, 1387 };	//same order as corresp
 
 
 //Constants
-#define liftStillSpeed 10
-#define clawStillSpeed -20
+#define liftStillSpeed 1
+#define clawStillSpeed 20
 
 //Varibles
 bool clawOpen = false;
@@ -151,6 +173,13 @@ void liftControl() {
 	}
 }
 
+void autoRelease() {
+	if (liftPot <= 900)
+	{
+		goToPosition(claw, clawOpenPillowL);
+	}
+}
+
 task maneuvers() {
 	while (true) {
 		//executeClawPIDs();
@@ -189,11 +218,11 @@ void deploy(int waitAtEnd=250) { //THIS IS THE DEPLOY FUNCTION
 //NEW DEPLOY FOR SOLID CLAW
 	//driveStraight(3);
 	setDrivePower(drive, 127, 127);
-	wait1Msec(2000);
+	wait1Msec(200);
 	setDrivePower(drive, 0, 0);
 	//goToPosition(lift, liftBottom + 200, liftStillSpeed);
-//	//goToPosition(claw, clawOpenPosL, -clawStillSpeed);
-//  //goToPosition(claw, clawOpenPosR, -clawStillSpeed);
+goToPosition(claw, clawOpenPosR, -clawStillSpeed);
+//goToPosition(claw, clawOpenPosR, -clawStillSpeed);
 	//goToPosition(lift, liftBottom  + 30, liftStillSpeed);
 
 }
@@ -343,7 +372,13 @@ task pillowAutonRight() { //Put true to run 2 things at once
 
 
  	driveStraight(7);
-
+ 	goToPosition(claw, clawClosedPosPillowL, -clawStillSpeed);
+ 	goToPosition(lift, liftBottom + 40);
+ 	setDrivePower(drive, 127, -127);
+ 	wait1Msec(1500);
+ 	setDrivePower(drive, 0, 0);
+ 	goToPosition(lift, liftMax);
+ 	goToPosition(claw, clawOpenPosR, -clawStillSpeed);
 
 
 
@@ -525,7 +560,7 @@ task autonomous() {
   	startTask(pillowAutonLeft);
   } else if (SensorValue[modePot] < 1830 && (SensorValue[modePot] > 501)) {
   	startTask(programmingSkills);
-  } else if (SensorValue[modePot] < 3000 && (SensorValue[modePot] > 1831)) {
+  } else if (SensorValue[modePot] < 4000 && (SensorValue[modePot] > 1831)) {
   	startTask(pillowAutonRight);
   }
 }
@@ -568,6 +603,8 @@ task usercontrol() {
     clawControl(); //USES CLAW CONTROL FUNCTION TO CONTROL CLAW
 
     liftControl();
+
+   // autoRelease();
 
     //TEST FOR PUSH BUTTON///////////////////////////////////////////////////
 /*
