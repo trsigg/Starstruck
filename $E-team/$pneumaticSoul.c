@@ -58,7 +58,7 @@ int clawPositions[3] = { 400, 1150, 2000 };
 #define liftErrorMargin 150	//margins of error
 #define clawErrorMargin 50
 #define maxStationarySpeed	100	//max error decrease in claw PID error (per second) where claw is considered not to be moving (CURRENTLY UNUSED)
-#define fenceToWallDist 28
+#define fenceToWallDist 33
 #define clawDiff 0					//difference between claw potentiometers when at the same angle (left - right)
 #define liftDriftDist	300	//estimated distance lift drifts after button is released (for setting lift PID target during drive control)
 //#endregion
@@ -183,10 +183,10 @@ void setClawPower(int power, bool setTargets=true) {
 void clawControl() {
 	if (vexRT[clawNeutralBtn] == 1) {
 		setClawPower(0);
-	} else if (vexRT[forwardBtn] == 1) {
-		setPower(clawDefPower);
-	} else	if (vexRT[backwardBtn] == 1) {
-		setPower(-clawDefPower);
+	} else if (vexRT[clawForwardBtn] == 1) {
+		setClawPower(clawDefPower);
+	} else	if (vexRT[clawBackwardBtn] == 1) {
+		setClawPower(-clawDefPower);
 	} else if (vexRT[openClawBtn]==1 && currentState!=OPEN)
 		setClawState(OPEN);
 	else if (vexRT[closeClawBtn]==1 && currentState!=CLOSED)
@@ -299,11 +299,6 @@ void grabNdump(int delayDuration, int dist=fenceToWallDist, int closeTimeout=500
 	turnDriveDump(0, -dist); //dump pillow
 }
 
-void driveToWall(int distance=fenceToWallDist) {
-	liftTo(BOTTOM);
-	driveStraight(distance);
-}
-
 void ramToRealign(int duration=500) {
 	liftTo(BOTTOM);
 
@@ -314,16 +309,18 @@ void ramToRealign(int duration=500) {
 
 void initialPillow() {
 	if (straightToCube) {
-		driveStraight(22);
+		setClawState(OPEN);
+		driveStraight(26, true);
+		while (driveData.isDriving);
 	} else {
 		//open claw and drive away from wall
-		driveStraight(5, true);
+		driveStraight(6, true);
 		while (driveData.isDriving) EndTimeSlice();
 
 		//drive to central pillow
 		turn(autoSign * -47, true);
 		waitForMovementToFinish();
-		driveStraight(14);
+		driveStraight(17);
 	}
 
 	moveClawTo(CLOSED, 100); //clamp pillow
@@ -331,7 +328,7 @@ void initialPillow() {
 
 task skillz() {
 	setClawState(OPEN);
-	driveStraight(-11, true);
+	driveStraight(-13, true);
 	while(driveData.isDriving);
 	liftTo(MIDDLE);
 	liftTo(BOTTOM);
@@ -351,16 +348,16 @@ task skillz() {
 	//get and dump front center jacks
 	setTargetPosition(lift, liftPositions[MIDDLE]+10);
 	setClawState(OPEN);
-	driveStraight(4.5, true);
+	driveStraight(5, true);
 	waitForMovementToFinish(false);
 	turn(-44, true, 40, 90, -20);
 	waitForMovementToFinish();
 	liftTo(BOTTOM);
-	driveStraight(29);
+	driveStraight(34);
 	moveClawTo(CLOSED);
 	wait1Msec(500);
 	liftTo(MIDDLE);
-	//driveStraight(-5);
+	//driveStraight(-6);
 	turnDriveDump(50, 0, 30, 40, 100, -20);
 
 	//get and dump pillow in center of field
@@ -368,24 +365,24 @@ task skillz() {
 	ramToRealign();
 	setLiftState(BOTTOM);
 	waitForMovementToFinish();
-	driveStraight(8);
+	driveStraight(9);
 	moveClawTo(CLOSED); //grab pillow
-	turnDriveDump(0, -10);
+	turnDriveDump(0, -12);
 
 	//grab and dump center back jacks
-	driveStraight(fenceToWallDist+1.5, true);
+	driveStraight(fenceToWallDist+2, true);
 	setClawState(HYPEREXTENDED);
 	setLiftState(BOTTOM);
 	waitForMovementToFinish();
-	grabNdump(0, 30, 750);
+	grabNdump(0, fenceToWallDist, 750);
 
 	//get and dump right side pillow
 	setLiftState(BOTTOM);
 	turn(-15, true);
 	waitForMovementToFinish();
-	driveStraight(37);
+	driveStraight(44);
 	moveClawTo(CLOSED);
-	turnDriveDump(15, -30, 10);
+	turnDriveDump(15, -35, 10);
 
 	//for redundancy
 	ramToRealign();
@@ -394,11 +391,11 @@ task skillz() {
 
 	//get first right side jack
 	setLiftState(MIDDLE);
-	driveStraight(4, true);
+	driveStraight(5, true);
 	waitForMovementToFinish();
 	turn(-80);
 	liftTo(BOTTOM);
-	driveStraight(7);
+	driveStraight(8);
 
 	//get second side jack
 	turn(80);
@@ -419,12 +416,12 @@ task pillowAuton() {
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(7, true, 40, 95, -30);
+	driveStraight(8, true, 40, 95, -30);
 	while (driveData.isDriving) EndTimeSlice();
 	wait1Msec(500);
 	turn(autoSign * 35, true, 40, 100, -30); //turn to face fence
 	while (turnData.isTurning) EndTimeSlice();
-	driveStraight(28, true, 60, 127, -20); // drive up to wall
+	driveStraight(33, true, 60, 127, -20); // drive up to wall
 	waitForMovementToFinish();
 	wait1Msec(750);
 
@@ -435,7 +432,7 @@ task pillowAuton() {
 	moveClawTo(OPEN); //release pillow
 	wait1Msec(1500); //wait for pillow to fall
 	moveClawTo(CLOSED);
-	driveStraight(-8); //back up
+	driveStraight(-9); //back up
 	moveClawTo(HYPEREXTENDED);
 	/*liftTo(MAX);
 	setClawState(HYPEREXTENDED);
@@ -444,20 +441,20 @@ task pillowAuton() {
 	liftTo(TOP);*/
 
 	//push jacks over
- 	driveStraight(9);
+ 	driveStraight(10.5);
  	moveClawTo(CLOSED);
 
  	setClawState(HYPEREXTENDED);
 
  	//drive to other wall
  	setTargetPosition(lift, liftPositions[TOP]+100);
- 	driveStraight(-10, true);
+ 	driveStraight(-12, true);
  	while (driveData.isDriving) EndTimeSlice();
  	turn(autoSign * 65, true, 60, 127, -20);
  	waitForMovementToFinish();
- 	driveStraight(45);
+ 	driveStraight(53);
  	turn(autoSign * -65, false, 40, 120, -40);
- 	driveStraight(20);
+ 	driveStraight(24);
 
  	moveClawTo(CLOSED);
  	liftTo(MAX);
@@ -469,39 +466,40 @@ task dumpyAuton() {
 	initialPillow();
 
 	liftTo(MIDDLE);
-	driveStraight(9);
+	driveStraight(11);
 
-	turnDriveDump(autoSign * -100, -17, 7, 45, 100, -20);
+	turnDriveDump(autoSign * -100, -24, 7, 45, 100, -20);
 	wait1Msec(100);
 	ramToRealign();
 
 	setLiftState(BOTTOM);
 	setClawState(HYPEREXTENDED);
 	waitForMovementToFinish();
-	driveStraight(fenceToWallDist+5);
-	grabNdump(0, 33, 750);
-	driveToWall();
-	grabNdump(0, 33, 750);
+	driveStraight(fenceToWallDist+6);
+	grabNdump(0, fenceToWallDist, 750);
+	liftTo(BOTTOM);
+	driveStraight(fenceToWallDist);
+	grabNdump(0, fenceToWallDist, 750);
 
 	liftTo(BOTTOM);
 }
 
 task oneSideAuton() {
 	setTargetPosition(lift, liftPositions[TOP]-450); //lift to near top
-	driveStraight(-5, true); //drive away from wall
+	driveStraight(-6, true); //drive away from wall
 	while(driveData.isDriving) EndTimeSlice();
 
 	turn(autoSign * 30, true);
 	while (turnData.isTurning) EndTimeSlice();
 
-	driveStraight(-12, true);
+	driveStraight(-14, true);
 	waitForMovementToFinish(false);
 
 	turn(autoSign * -30, true); //turn toward wall
 	waitForMovementToFinish();
 
 	//knock off jacks
-	driveStraight(-25);
+	driveStraight(-30);
 	liftTo(MAX);
 	moveClawTo(CLOSED);
 
@@ -510,9 +508,9 @@ task oneSideAuton() {
 	setLiftState(BOTTOM);
 	waitForMovementToFinish();
 	//turn(autoSign * -3);
-	driveStraight(29);
+	driveStraight(34);
 	moveClawTo(CLOSED);
-	turnDriveDump(autoSign * 0, -35, 20);
+	turnDriveDump(autoSign * 0, -41, 20);
 }
 
 task autonomous() {
