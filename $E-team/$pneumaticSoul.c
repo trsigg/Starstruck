@@ -26,14 +26,20 @@
 //#endregion
 
 //#region buttons
-#define autoDumpOnBtn			Btn8U	//claw
+	//#subregion claw
+#define autoDumpOnBtn			Btn8U
 #define autoDumpOffBtn		Btn8D
-#define maydayBtn					Btn7R
+#define clawForwardBtn		Btn7R	//directly sets claw power to clawDefPower
+#define clawBackwardBtn		Btn7L	//directly sets claw power to -clawDefPower
+#define clawNeutralBtn		Btn7U	//directly sets claw power to 0
 #define openClawBtn				Btn6U
 #define closeClawBtn			Btn6D
 #define hyperExtendBtn		Btn7D
-#define liftUpBtn					Btn5U //lift
-#define liftDownBtn				Btn5D
+	//#endsubregion
+	//#subregion lift
+#define liftUpBtn		Btn5U
+#define liftDownBtn	Btn5D
+	//#endsubregion
 //#endregion
 
 //#region enums
@@ -42,18 +48,19 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 1050, 1650, 2300, 2425, 2950 };	//same order as corresponding enums
+int liftPositions[5] = { 1050, 1650, 2400, 2425, 2950 };	//same order as corresponding enums
 int clawPositions[3] = { 400, 1150, 2000 };
 //#endregion
 
 //#region constants
-#define liftStillSpeed 10	//still speeds
+#define liftStillSpeed 10
+#define clawDefPower 80	//power used in manual control
 #define liftErrorMargin 150	//margins of error
 #define clawErrorMargin 50
-#define maxStationarySpeed	100	//max error decrease in claw PID error (per second) where claw is considered not to be moving
-#define fenceToWallDist 28	//distances
+#define maxStationarySpeed	100	//max error decrease in claw PID error (per second) where claw is considered not to be moving (CURRENTLY UNUSED)
+#define fenceToWallDist 28
 #define clawDiff 0					//difference between claw potentiometers when at the same angle (left - right)
-#define liftDriftDist	300	//estimated distance lift drifts after button is released
+#define liftDriftDist	300	//estimated distance lift drifts after button is released (for setting lift PID target during drive control)
 //#endregion
 
 //#region config
@@ -166,11 +173,20 @@ void setClawTargets(int targetPos) {
 	setTargetPosition(rightClaw, targetPos);
 }
 
+void setClawPower(int power, bool setTargets=true) {
+	setPower(leftClaw, power);
+	setPower(rightClaw, power);
+
+	if (setTargets) setClawTargets(getPosition(rightClaw));
+}
+
 void clawControl() {
-	if (vexRT[maydayBtn] == 1) {
-		setPower(leftClaw, -80);
-		setPower(rightClaw, -80);
-		setClawTargets(getPosition(rightClaw));
+	if (vexRT[clawNeutralBtn] == 1) {
+		setClawPower(0);
+	} else if (vexRT[forwardBtn] == 1) {
+		setPower(clawDefPower);
+	} else	if (vexRT[backwardBtn] == 1) {
+		setPower(-clawDefPower);
 	} else if (vexRT[openClawBtn]==1 && currentState!=OPEN)
 		setClawState(OPEN);
 	else if (vexRT[closeClawBtn]==1 && currentState!=CLOSED)
@@ -293,6 +309,7 @@ void ramToRealign(int duration=500) {
 
 	setDrivePower(drive, -127, -127); //realign using wall
 	wait1Msec(duration);
+	setDrivePower(drive, 0, 0);
 }
 
 void initialPillow() {
@@ -313,12 +330,6 @@ void initialPillow() {
 }
 
 task skillz() {
-	/*turnDriveDump(0, -fenceToWallDist-10, 15);
-	setClawState(CLOSED);
-	while (!(errorLessThan(rightClaw, clawErrorMargin) && errorLessThan(leftClaw, clawErrorMargin)));
-	setClawState(OPEN);
-	liftTo(BOTTOM);
-	driveStraight(fenceToWallDist);*/
 	setClawState(OPEN);
 	driveStraight(-11, true);
 	while(driveData.isDriving);
@@ -390,7 +401,7 @@ task skillz() {
 	driveStraight(7);
 
 	//get second side jack
-	turn(90);
+	turn(80);
 	driveStraight(fenceToWallDist);
 	grabNdump(0);
 
@@ -408,21 +419,29 @@ task pillowAuton() {
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(7, true, 40, 110, -30);
+	driveStraight(7, true, 40, 95, -30);
 	while (driveData.isDriving) EndTimeSlice();
-	turn(autoSign * 26, true, 40, 90, -25); //turn to face fence
+	wait1Msec(500);
+	turn(autoSign * 35, true, 40, 100, -30); //turn to face fence
 	while (turnData.isTurning) EndTimeSlice();
-	driveStraight(26, true); // drive up to wall
+	driveStraight(28, true, 60, 127, -20); // drive up to wall
 	waitForMovementToFinish();
 	wait1Msec(750);
 
-	if (blocking)
-		while (time1(autonTimer) < 7000) EndTimeSlice();
+	if (blocking) {
+		setDrivePower(drive, 15, 15);
+		while (time1(autonTimer) < 15000) EndTimeSlice();
+	}
 	moveClawTo(OPEN); //release pillow
-	wait1Msec(2000); //wait for pillow to fall
+	wait1Msec(1500); //wait for pillow to fall
 	moveClawTo(CLOSED);
 	driveStraight(-8); //back up
 	moveClawTo(HYPEREXTENDED);
+	/*liftTo(MAX);
+	setClawState(HYPEREXTENDED);
+	driveStraight(-10, true); //back up
+	waitForMovementToFinish();
+	liftTo(TOP);*/
 
 	//push jacks over
  	driveStraight(9);
@@ -434,9 +453,9 @@ task pillowAuton() {
  	setTargetPosition(lift, liftPositions[TOP]+100);
  	driveStraight(-10, true);
  	while (driveData.isDriving) EndTimeSlice();
- 	turn(autoSign * 70, true, 60, 127, -20);
+ 	turn(autoSign * 65, true, 60, 127, -20);
  	waitForMovementToFinish();
- 	driveStraight(40);
+ 	driveStraight(45);
  	turn(autoSign * -65, false, 40, 120, -40);
  	driveStraight(20);
 
@@ -452,14 +471,14 @@ task dumpyAuton() {
 	liftTo(MIDDLE);
 	driveStraight(9);
 
-	turnDriveDump(autoSign * -90, -17, 7, 45, 100, -20);
+	turnDriveDump(autoSign * -100, -17, 7, 45, 100, -20);
 	wait1Msec(100);
 	ramToRealign();
 
 	setLiftState(BOTTOM);
 	setClawState(HYPEREXTENDED);
 	waitForMovementToFinish();
-	driveStraight(fenceToWallDist);
+	driveStraight(fenceToWallDist+5);
 	grabNdump(0, 33, 750);
 	driveToWall();
 	grabNdump(0, 33, 750);
@@ -509,12 +528,10 @@ task autonomous() {
 	//start appropriate autonomous task
 	if (1150<sidePos && sidePos<2415) {
 		startTask(skillz);
-	} else if (modePos < 300) {
+	} else if (modePos < 1130) {
 		startTask(pillowAuton);
-	} else if (modePos < 1960) {
+	} else if (modePos < 2525) {
 		startTask(dumpyAuton);
-	} else if (modePos < 3475) {
-		startTask(oneSideAuton);
 	}
 
 	while (true) EndTimeSlice();
