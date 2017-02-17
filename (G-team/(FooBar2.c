@@ -43,8 +43,8 @@
 #define hyperExtendBtn Btn7D
 
 //Lift Potentiometer Positions - Called to set lift to specific value ie goToPosition - Called from motorGroup.c
-#define liftBottom 3119
-#define liftMax 865
+#define liftBottom 3049
+#define liftMax 904
 
 enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 enum clawState { CLOSED, OPEN, HYPEREXTENDED };
@@ -143,7 +143,7 @@ void pre_auton() { //INITIALIZATIONS
 
   initializeGroup(claw, 2, clawMotorL, clawMotorR); //USES MOTOR GROUP ARRAY IN INCLUDES
   configureButtonInput(claw, openClawBtn, closeClawBtn, clawStillSpeed, 127, -127);
-  addSensor(claw, clawPotL, false);
+  addSensor(claw, clawPotL, true);
   //addSensor(claw, clawPotR, true);
 
 }
@@ -203,7 +203,7 @@ void liftControl() {
 }
 
 void autoRelease() {
-	if (SensorValue[liftPot] <= 900)
+	if (SensorValue[liftPot] <= 870)
 	{
 		//goToPosition(claw, clawOpenPillowL);
 		setPower(claw, 60);
@@ -406,14 +406,16 @@ task pillowAutonRight() { //Put true to run 2 things at once
 
 
 
-
- 	driveStraight(7);
- 	goToPosition(claw, clawClosedPosPillowL2);
- 	goToPosition(lift, liftBottom + 40);
+	setDrivePower(drive, 127, 127);
+	wait1Msec(600);
+	setDrivePower(drive, 0, 0);
+ 	//driveStraight(10);
+ 	//goToPosition(claw, clawClosedPosPillowL);
+ 	//goToPosition(lift, liftBottom - 40);
  	setDrivePower(drive, 127, -127);
- 	wait1Msec(3500);
+ 	wait1Msec(500);
  	setDrivePower(drive, 0, 0);
- 	goToPosition(lift, liftMax);
+ 	//goToPosition(lift, liftMax);
  	goToPosition(claw, clawOpenPosR);
 
 
