@@ -5,7 +5,7 @@
 #pragma config(Sensor, in5,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, in6,    sidePot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
-#pragma config(Sensor, dgtl5,  leftEnc,        sensorQuadEncoder)
+#pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           moveable1,     tmotorVex393_HBridge, openLoop)
 #pragma config(Motor,  port2,           lift1,         tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port3,           rd1,           tmotorVex393_MC29, openLoop, reversed)
@@ -50,7 +50,7 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 1050, 1650, 2400, 2425, 2950 };	//same order as corresponding enums
+int liftPositions[5] = { 1160, 1650, 2400, 2425, 2950 };	//same order as corresponding enums
 int clawPositions[3] = { 400, 1150, 2000 };
 //#endregion
 
@@ -111,7 +111,7 @@ void pre_auton() {
 
 	//finish configuring drive
 	attachEncoder(drive, leftEnc, LEFT);
-	attachEncoder(drive, rightEnc, RIGHT, false, 2.75);
+	attachEncoder(drive, rightEnc, RIGHT, false, 3.25);
 	attachGyro(drive, hyro);
 
 	//finish configuring lift
@@ -319,7 +319,7 @@ void ramToRealign(int duration=500) {
 void initialPillow() {
 	if (straightToCube) {
 		driveStraight(26, true);
-		while (driveData.totalDist < 13);
+		while (driveData.totalDist < 17);
 		setClawState(OPEN);
 		while (driveData.isDriving);
 	} else {
@@ -357,17 +357,18 @@ task skillz() {
 	//get and dump front center jacks
 	setTargetPosition(lift, liftPositions[MIDDLE]+10);
 	setClawState(OPEN);
-	driveStraight(5, true);
+	driveStraight(5.5, true);
 	waitForMovementToFinish(false);
-	turn(-60, true, 40, 90, -20);
+	turn(-70, true, 40, 90, -20);
 	waitForMovementToFinish();
 	liftTo(BOTTOM);
-	driveStraight(34);
+	driveStraight(35);
 	moveClawTo(CLOSED);
 	wait1Msec(500);
 	liftTo(MIDDLE);
-	//driveStraight(-6);
-	turnDriveDump(65, 0, 30, 40, 100, -20);
+	driveStraight(-3);
+	wait1Msec(500);
+	turnDriveDump(63, 0, 30, 40, 90, -20);
 
 	//get and dump pillow in center of field
 	setLiftState(MIDDLE);
@@ -387,11 +388,11 @@ task skillz() {
 
 	//get and dump right side pillow
 	setLiftState(BOTTOM);
-	turn(-18, true);
+	turn(-25, true);
 	waitForMovementToFinish();
 	driveStraight(44);
 	moveClawTo(CLOSED);
-	turnDriveDump(18, -35, 10);
+	turnDriveDump(25, -35, 10);
 
 	//for redundancy
 	ramToRealign();
@@ -402,12 +403,12 @@ task skillz() {
 	setLiftState(MIDDLE);
 	driveStraight(5, true);
 	waitForMovementToFinish();
-	turn(-90);
+	turn(-80);
 	liftTo(BOTTOM);
 	driveStraight(8);
 
 	//get second side jack
-	turn(90);
+	turn(80);
 	driveStraight(fenceToWallDist);
 	grabNdump(0);
 
@@ -425,12 +426,12 @@ task pillowAuton() {
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(10, true, 40, 95, -30);
+	driveStraight(9, true, 40, 95, -30);
 	while (driveData.isDriving) EndTimeSlice();
 	wait1Msec(500);
-	turn(autoSign * 55, true, 40, 100, -30); //turn to face fence
+	turn(autoSign * 50, true, 40, 100, -30); //turn to face fence
 	while (turnData.isTurning) EndTimeSlice();
-	driveStraight(33, true, 60, 127, -20); // drive up to wall
+	driveStraight(30, true, 60, 127, -20); // drive up to wall
 	waitForMovementToFinish();
 	wait1Msec(750);
 
@@ -439,9 +440,9 @@ task pillowAuton() {
 		while (time1(autonTimer) < 15000) EndTimeSlice();
 	}
 	moveClawTo(OPEN); //release pillow
-	wait1Msec(1500); //wait for pillow to fall
+	wait1Msec(750); //wait for pillow to fall
 	moveClawTo(CLOSED);
-	driveStraight(-9); //back up
+	driveStraight(-10); //back up
 	moveClawTo(HYPEREXTENDED);
 	/*liftTo(MAX);
 	setClawState(HYPEREXTENDED);
@@ -450,7 +451,7 @@ task pillowAuton() {
 	liftTo(TOP);*/
 
 	//push jacks over
- 	driveStraight(10.5);
+ 	driveStraight(11);
  	moveClawTo(CLOSED);
 
  	setClawState(HYPEREXTENDED);
@@ -459,14 +460,14 @@ task pillowAuton() {
  	setTargetPosition(lift, liftPositions[TOP]+100);
  	driveStraight(-12, true);
  	while (driveData.isDriving) EndTimeSlice();
- 	turn(autoSign * 70, true, 60, 127, -20);
+ 	turn(autoSign * 65, true, 60, 127, -20);
  	waitForMovementToFinish();
  	driveStraight(49);
- 	turn(autoSign * -70, false, 40, 120, -40);
- 	driveStraight(24);
+ 	turn(autoSign * -65, false, 40, 120, -40);
+ 	//driveStraight(24);
 
  	moveClawTo(CLOSED);
- 	liftTo(MAX);
+ 	//liftTo(MAX);
  	//driveStraight(-10);
  	//liftTo(BOTTOM);
 }
@@ -531,9 +532,6 @@ task autonomous() {
 	int modePos = SensorValue[modePot];
 
 	autoSign = sgn(1770 - sidePos);
-
-	startTask(skillz);
-	while (true);
 
 	//start appropriate autonomous task
 	if (1150<sidePos && sidePos<2415) {
