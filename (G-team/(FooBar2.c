@@ -1,4 +1,5 @@
 #pragma config(Sensor, in1,    gyro,           sensorGyro)
+#pragma config(Sensor, in2,    clawPotR,       sensorPotentiometer)
 #pragma config(Sensor, in3,    clawPotL,       sensorPotentiometer)
 #pragma config(Sensor, in4,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, in5,    liftPot,        sensorPotentiometer)
@@ -29,6 +30,8 @@
 #include "..\Includes\motorGroup.c"
 #include "..\Includes\pd_autoMove.c"
 #include "..\Includes\buttonTracker.c"
+
+#include "..\(G-team\BackOver Functions.c"
 
 //Button Config - Used to call to control the lift/claw see lines 158-174, 571-581
 #define openClawBtn Btn6D
@@ -191,6 +194,7 @@ void liftControl() {
 		if (vexRT[liftUpBtn] == 1) {
 			setPower(lift, 127);
 			setTargetPosition(lift, limit(getPosition(lift)+liftDriftDist, liftPositions[BOTTOM], liftPositions[MAX]));
+			setPower(claw, 30);
 		} else if (vexRT[liftDownBtn] == 1) {
 			setPower(lift, -127);
 			setTargetPosition(lift, limit(getPosition(lift)-liftDriftDist, liftPositions[BOTTOM], liftPositions[MAX]));
@@ -198,8 +202,14 @@ void liftControl() {
 			maintainTargetPos(lift);
 		}
 	} else {
-		lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1 );
+		//lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1 );
 		//|| getPosition(lift)>liftPositions[BOT] ? -1 : 1);
+
+		if  (getPosition(lift)<liftPositions[MAX] && getPosition(lift)>liftPositions[BOT] ) {
+			lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1 );
+		} else if (getPosition(lift)<liftPositions[BOT] ) {
+		lift.stillSpeed = liftStillSpeed * 2;
+	}
 
 		takeInput(lift);
 	}
