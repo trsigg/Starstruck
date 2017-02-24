@@ -1,14 +1,14 @@
 #pragma config(Sensor, in1,    gyro,           sensorGyro)
-#pragma config(Sensor, in2,    clawPotR,       sensorPotentiometer)
-#pragma config(Sensor, in3,    clawPotL,       sensorPotentiometer)
+#pragma config(Sensor, in2,    RclawPot,       sensorPotentiometer)
+#pragma config(Sensor, in3,    LclawPot,       sensorPotentiometer)
 #pragma config(Sensor, in4,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, in5,    liftPot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  leftEnc,        sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  rightEnc,       sensorQuadEncoder)
 #pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           rfd,           tmotorVex393_MC29, openLoop, reversed)
-#pragma config(Motor,  port3,           clawMotorR,    tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port4,           clawMotorL,    tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port3,           Rclaw,         tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port4,           Lclaw,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port5,           lift1,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port6,           lift2,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port7,           lift3,         tmotorVex393_MC29, openLoop, reversed)
@@ -113,6 +113,8 @@ int clawPositions[3] = { 680, 1500, 3000 };
 #define liftStillSpeed 5
 #define clawStillSpeed 0
 
+int autoThrow = 1;
+
 //Varibles
 bool clawOpen = false;
 //short autoSign; - old variable, maybe still useable, just leave deactivated
@@ -146,10 +148,10 @@ void pre_auton() { //INITIALIZATIONS
   //setAbsolutes(lift, liftBottom, 0);
   addSensor(lift, liftPot);
 
-  initializeGroup(claw, 2, clawMotorL, clawMotorR); //USES MOTOR GROUP ARRAY IN INCLUDES
+  initializeGroup(claw, 2, Lclaw, Rclaw); //USES MOTOR GROUP ARRAY IN INCLUDES
   configureButtonInput(claw, openClawBtn, closeClawBtn, clawStillSpeed, 127, -127);
-  addSensor(claw, clawPotL, false);
-  //addSensor(claw, clawPotR, true);
+  addSensor(claw, LclawPot, false);
+  addSensor(claw, RclawPot, true);
 
 }
 
@@ -208,7 +210,7 @@ void liftControl() {
 		if  (getPosition(lift)<liftPositions[MAX] && getPosition(lift)>liftPositions[BOT] ) {
 			lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1 );
 		} else if (getPosition(lift)<liftPositions[BOT] ) {
-		lift.stillSpeed = liftStillSpeed * 2;
+		lift.stillSpeed = 1;
 	}
 
 		takeInput(lift);
@@ -216,7 +218,7 @@ void liftControl() {
 }
 
 void autoRelease() {
-	if (SensorValue[liftPot] <= 1150 && SensorValue[clawPotL] < 570)
+	if (SensorValue[liftPot] <= 1150 && SensorValue[LclawPot] < 570 && autoThrow == 1)
 	{
 		goToPosition(claw, 635); //1135
 	/*	setPower(claw, 60);
@@ -656,7 +658,7 @@ task autonomous() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
+/*
 //old
 void clawControl() {
 	if (vexRT[closeClawBtn] == 1) {
@@ -671,7 +673,7 @@ void clawControl() {
 	}
 
 }
-//
+//*/
 
 
 
@@ -727,11 +729,11 @@ task usercontrol() {
 
     takeInput(lift); //Uses lift function to control the lift and how and where it lifts too
 
-    clawControl(); //Uses claw function to control claw - defined on lines 620-640
+ //   clawControl(); //Uses claw function to control claw - defined on lines 620-640
 
     liftControl(); //Uses liftControl function defined from lines 186-202
 
-   autoRelease();
+
 
     //TEST FOR PUSH BUTTON///////////////////////////////////////////////////
 /*
@@ -748,6 +750,52 @@ task usercontrol() {
 */
 
 
+	pinchRRequestedValue = SensorValue[RclawPot];	//setting initial value for the Arm and Pinch
+	pinchLRequestedValue = SensorValue[LclawPot];	//
+	startTask( pinchRController );								//
+	startTask( pinchLController );
+//-----------claw-------------------------
+
+		/*In Driver control, this part of the code is used to move the claw to set postions. This way you can
+	control where the claw goes to and it wont go past the set postion.*/
+
+				if( vexRT[ Btn6U ] == 1 )								// if button 6U is pressed, move claw to posstion
+		{
+			pinchRRequestedValue = 400;								// set Right motor's pot. to 400
+			pinchLRequestedValue = 400;								// Set Left motor's pot. to 400
+		}
+
+		else if( vexRT[ Btn6D ] == 1)								// if button 6D is pressed, move claw to posstion
+		{
+			pinchRRequestedValue = 1150;							// set Right motor's pot. to 1150
+			pinchLRequestedValue = 1150;							// set Left motor's pot. to 1150
+		}
+		else if(vexRT[Btn8D] == 1)									// if button 7D is pressed, move claw to posstion
+		{
+			pinchRRequestedValue = 2000;							// set Right motor's pot. to 2000
+			pinchLRequestedValue = 2000;							// set Left motor's pot. to 2000
+		}
+		else if(vexRT[Btn8R] == 1)
+		{
+			pinchRRequestedValue = 2300;							// set Right motor's pot. to 2300
+			pinchLRequestedValue = 2300;							// set Left motor's pot. to 2300
+		}
+
+
+
+
+		if (vexRT[Btn7L] == 1 && autoThrow == 1)
+		{
+			autoThrow = 0;
+		}
+		else if (vexRT[Btn7L] == 1 && autoThrow == 0)
+		{
+			autoThrow = 1;
+		}
+
+
+
+		   autoRelease();
 
 
   }
