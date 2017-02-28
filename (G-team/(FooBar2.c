@@ -1,13 +1,14 @@
 #pragma config(Sensor, in1,    gyro,           sensorGyro)
-#pragma config(Sensor, in3,    clawPotL,       sensorPotentiometer)
+#pragma config(Sensor, in2,    RclawPot,       sensorPotentiometer)
+#pragma config(Sensor, in3,    LclawPot,       sensorPotentiometer)
 #pragma config(Sensor, in4,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, in5,    liftPot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  leftEnc,        sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  rightEnc,       sensorQuadEncoder)
 #pragma config(Motor,  port1,           rbd,           tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           rfd,           tmotorVex393_MC29, openLoop, reversed)
-#pragma config(Motor,  port3,           clawMotorR,    tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port4,           clawMotorL,    tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port3,           Rclaw,         tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port4,           Lclaw,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port5,           lift1,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port6,           lift2,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port7,           lift3,         tmotorVex393_MC29, openLoop, reversed)
@@ -30,6 +31,8 @@
 #include "..\Includes\pd_autoMove.c"
 #include "..\Includes\buttonTracker.c"
 
+#include "..\(G-team\BackOver Functions.c"
+
 //Button Config - Used to call to control the lift/claw see lines 158-174, 571-581
 #define openClawBtn Btn6D
 #define closeClawBtn Btn6U
@@ -45,11 +48,13 @@
 //Lift Potentiometer Positions - Called to set lift to specific value ie goToPosition - Called from motorGroup.c
 #define liftBottom 3049
 #define liftMax 904
+#define liftTurn (4095-2950)
+#define liftDeploy (4095-2307)
 
-enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
+enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX, BOT };
 enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 
-int liftPositions[5] = { 3727, 3000, 1800, 1200, 1387 };	//same order as corresponding enums
+int liftPositions[6] = { 2935, 1705, 938, 915, 818, 2800 };	//same order as corresponding enums
 int clawPositions[3] = { 680, 1500, 3000 };
 
 
@@ -59,22 +64,22 @@ int clawPositions[3] = { 680, 1500, 3000 };
 //KEEPING IN BECAUSE WE MAY HAVE TO RETUNE POT VALUES AGAIN
 //ARE 4095- BECAUSE THE POTENTIOMETER WAS TRYING TO MOVE THE WRONG WAY TO ACHIEVE ITS VALUES
 ///*
-#define clawClosedPosL (4095-680) //3595
-#define clawOpenPosL (4095-1504)
-#define clawMaxL (4095-4027)
-#define clawPushL (4095-1613)
-#define clawClosedPosPillowL (4095-953) //******
-#define clawOpenPillowL (4095-1614) //??????
-#define clawStriaghtL (4095-2097)
+#define clawClosedPos 680
+#define clawOpenPos 1504
+#define clawMax 4027
+#define clawPush 1613
+#define clawClosedPosPillow 953
+#define clawOpenPillow 16142//??????
+#define clawStriaght 2097
 //
 
-#define clawClosedPosR (4095-257) //3595
-#define clawOpenPosR (4095-1170)
-#define clawMaxR (4095-3599)
-#define clawPushR (4095-2080)
-#define clawClosedPosPillowR (4095-591) //******
-#define clawOpenPillowR (4095-1620) //??????
-#define clawStraightR (4095-545)
+#define clawClosedPosR (4095-680) //3595
+#define clawOpenPosR (4095-1508)
+#define clawMaxR (4095-4027)
+#define clawPushR (4095-1613)
+#define clawClosedPosPillowR (4095-953) //******
+#define clawOpenPillowR (4095-1612) //??????
+#define clawStraightR (4095-2097)
 //*/
 
 //POTENTIOMETER VALUES
@@ -82,13 +87,13 @@ int clawPositions[3] = { 680, 1500, 3000 };
 //Called in the functions to allow the robot to move to certain values
 //LEFT SIDE VALUES - TWO POTS
 /*
-#define clawClosedPosR 3058 //3595
-#define clawOpenPosR 3181
-#define clawMaxR 3905
-#define clawPushR 3480
-#define clawClosedPosPillowR 3143
-#define clawOpenPillowR 3266
-#define clawStriaghtR 3109
+#define clawClosedPosR 257 //3595
+#define clawOpenPosR 1170
+#define clawMaxR 3599
+#define clawPushR 2080
+#define clawClosedPosPillowR 591
+#define clawOpenPillowR 1620
+#define clawStriaghtR 545
 
 //Right Side Pot Values
 #define clawClosedPosL 680
@@ -105,8 +110,10 @@ int clawPositions[3] = { 680, 1500, 3000 };
 #define liftDriftDist 300
 
 //Still Speed Constants
-#define liftStillSpeed 1
+#define liftStillSpeed 5
 #define clawStillSpeed 0
+
+int autoThrow = 1;
 
 //Varibles
 bool clawOpen = false;
@@ -141,10 +148,10 @@ void pre_auton() { //INITIALIZATIONS
   //setAbsolutes(lift, liftBottom, 0);
   addSensor(lift, liftPot);
 
-  initializeGroup(claw, 2, clawMotorL, clawMotorR); //USES MOTOR GROUP ARRAY IN INCLUDES
+  initializeGroup(claw, 2, Lclaw, Rclaw); //USES MOTOR GROUP ARRAY IN INCLUDES
   configureButtonInput(claw, openClawBtn, closeClawBtn, clawStillSpeed, 127, -127);
-  addSensor(claw, clawPotL, true);
-  //addSensor(claw, clawPotR, true);
+  addSensor(claw, LclawPot, false);
+  addSensor(claw, RclawPot, true);
 
 }
 
@@ -189,6 +196,7 @@ void liftControl() {
 		if (vexRT[liftUpBtn] == 1) {
 			setPower(lift, 127);
 			setTargetPosition(lift, limit(getPosition(lift)+liftDriftDist, liftPositions[BOTTOM], liftPositions[MAX]));
+			setPower(claw, 30);
 		} else if (vexRT[liftDownBtn] == 1) {
 			setPower(lift, -127);
 			setTargetPosition(lift, limit(getPosition(lift)-liftDriftDist, liftPositions[BOTTOM], liftPositions[MAX]));
@@ -196,22 +204,31 @@ void liftControl() {
 			maintainTargetPos(lift);
 		}
 	} else {
-		lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1);
+		//lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1 );
+		//|| getPosition(lift)>liftPositions[BOT] ? -1 : 1);
+
+		if  (getPosition(lift)<liftPositions[MAX] && getPosition(lift)>liftPositions[BOT] ) {
+			lift.stillSpeed = liftStillSpeed * (getPosition(lift)<liftPositions[MIDDLE] ? -1 : 1 );
+		} else if (getPosition(lift)<liftPositions[BOT] ) {
+		lift.stillSpeed = 1;
+	}
 
 		takeInput(lift);
 	}
 }
 
 void autoRelease() {
-	if (SensorValue[liftPot] <= 870)
+	if (SensorValue[liftPot] <= 1150 && SensorValue[LclawPot] < 570 && autoThrow == 1)
 	{
-		//goToPosition(claw, clawOpenPillowL);
-		setPower(claw, 60);
-		wait1Msec(50);
+		goToPosition(claw, 635); //1135
+	/*	setPower(claw, 60);
+		wait1Msec(100);
 		setPower(claw, 0);
 		setPower(lift, -127);
 		wait1Msec(20);
 		setPower(lift, 0);
+		*/
+
 	}
 }
 
@@ -256,7 +273,8 @@ void deploy(int waitAtEnd=250) { //THIS IS THE DEPLOY FUNCTION
 	wait1Msec(200);
 	setDrivePower(drive, 0, 0);
 	//goToPosition(lift, liftBottom + 200, liftStillSpeed);
-goToPosition(claw, clawOpenPosL);
+         //goToPosition(claw, clawOpenPosL);
+	 	//goToPosition(claw, clawOpenPosR);
 //setPower(claw, 0);
 //goToPosition(claw, clawOpenPosR, -clawStillSpeed);
 	//goToPosition(lift, liftBottom  + 30, liftStillSpeed);
@@ -266,9 +284,9 @@ goToPosition(claw, clawOpenPosL);
 //LETS THE CLAW BE ABLE TO OPEN AND CLOSE - CALLABLE FUNCTION
 void setClawStateManeuverL(bool open = !clawOpen) { //toggles by default
 	if (open) {
-		createManeuver(claw, clawOpenPosL, -clawStillSpeed);
+		createManeuver(claw, clawOpenPos, -clawStillSpeed);
 	} else {
-		createManeuver(claw, clawClosedPosL, -clawStillSpeed);
+		createManeuver(claw, clawClosedPos, -clawStillSpeed);
 	}
 
 	clawOpen = open;
@@ -286,11 +304,11 @@ void setClawStateManeuverR(bool open = !clawOpen) { //toggles by default
 }
 
 void openClawL(bool stillSpeed=true) {
-	goToPosition(claw, clawOpenPosL, (stillSpeed ? clawStillSpeed : 0));  //OPEN CLAW FUNCTION
+	goToPosition(claw, clawOpenPos, (stillSpeed ? clawStillSpeed : 0));  //OPEN CLAW FUNCTION
 }
 
 void closeClawL(bool stillSpeed=true) {
-	goToPosition(claw, clawClosedPosL, (stillSpeed ? -clawStillSpeed : 0)); //CLOSE CLAW FUNCTION
+	goToPosition(claw, clawClosedPos, (stillSpeed ? -clawStillSpeed : 0)); //CLOSE CLAW FUNCTION
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -309,7 +327,7 @@ void closeClawR(bool stillSpeed=true) {
 
 void dump() {
 	goToPosition(lift, liftMax);
-	goToPosition(claw, clawOpenPosL, -clawStillSpeed);
+	goToPosition(claw, clawOpenPos, -clawStillSpeed);
 	goToPosition(claw, clawOpenPosR, -clawStillSpeed);
  }
 
@@ -403,19 +421,34 @@ task pillowAutonRight() { //Put true to run 2 things at once
  	//goToPosition(lift, liftPush); //push jacks over
  	*/
 
-
-
-
+ 	//goToPosition(lift, liftDeploy);
+ 	//goToPosition(lift, liftBottom);
+ 		setPower(lift, 127);
+	wait1Msec(700);
+	setPower(lift, 0);
+		setPower(lift, -127);
+	wait1Msec(700);
+	setPower(lift, 0);
+	setDrivePower(drive, 127, 127);
+	wait1Msec(600);
+	setDrivePower(drive, 0, 0);
+	goToPosition(claw, clawOpenPosR);
 	setDrivePower(drive, 127, 127);
 	wait1Msec(600);
 	setDrivePower(drive, 0, 0);
  	//driveStraight(10);
  	//goToPosition(claw, clawClosedPosPillowL);
- 	//goToPosition(lift, liftBottom - 40);
+ 	//goToPosition(lift, liftTurn);
+	setPower(lift, 127);
+	wait1Msec(200);
+	setPower(lift, 0);
  	setDrivePower(drive, 127, -127);
- 	wait1Msec(500);
+ 	wait1Msec(1200);
  	setDrivePower(drive, 0, 0);
  	//goToPosition(lift, liftMax);
+ 		setPower(lift, 127);
+	wait1Msec(900);
+	setPower(lift, 0);
  	goToPosition(claw, clawOpenPosR);
 
 
@@ -429,7 +462,7 @@ task pillowAutonLeft() { //Put true to run 2 things at once
 
 
 
-setClawStateManeuverL(true); //open claw
+/*setClawStateManeuverL(true); //open claw
 setClawStateManeuverR(true); //open claws other side
   //goToPosition(claw, clawOpenPos);
 	goToPosition(claw, clawOpenPosL, -clawStillSpeed);
@@ -494,7 +527,26 @@ setClawStateManeuverR(true); //open claws other side
  	//driveStraight(7);
 
  	//goToPosition(lift, liftPush); //push jacks over
-}
+*/
+
+	goToPosition(claw, clawClosedPos);
+	setDrivePower(drive, 127, 127);
+	wait1Msec(1200);
+	setDrivePower(drive, 0, 0);
+	setDrivePower(drive, 127, -127);
+	wait1Msec(1000);
+	setDrivePower(drive, 0, 0);
+	goToPosition(claw, clawClosedPos);
+	setPower(lift, 127);
+	wait1Msec(900);
+	setPower(lift, 0);
+	goToPosition(claw, clawOpenPosR);
+
+
+
+
+
+ 	}
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -606,7 +658,7 @@ task autonomous() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-///*
+/*
 //old
 void clawControl() {
 	if (vexRT[closeClawBtn] == 1) {
@@ -616,7 +668,8 @@ void clawControl() {
 		setPower(claw, -127);
 		clawOpen = true;
 	} else {
-		setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
+		//setPower(claw, clawStillSpeed * (clawOpen ? -1 : 1));
+		setPower(claw, 0);
 	}
 
 }
@@ -625,9 +678,9 @@ void clawControl() {
 
 
 
-
-//new
 /*
+//new
+
 void clawControl() {
 	if (vexRT[maydayBtn] == 1) {
 		setPower(claw, -80);
@@ -649,9 +702,9 @@ void clawControl() {
 	else if (vexRT[autoDumpOffBtn] == 1)
 		autoDumping = false;
 }
-*/
 
 
+//*/
 
 
 
@@ -676,11 +729,11 @@ task usercontrol() {
 
     takeInput(lift); //Uses lift function to control the lift and how and where it lifts too
 
-    clawControl(); //Uses claw function to control claw - defined on lines 620-640
+ //   clawControl(); //Uses claw function to control claw - defined on lines 620-640
 
     liftControl(); //Uses liftControl function defined from lines 186-202
 
-   autoRelease();
+
 
     //TEST FOR PUSH BUTTON///////////////////////////////////////////////////
 /*
@@ -697,6 +750,52 @@ task usercontrol() {
 */
 
 
+	pinchRRequestedValue = SensorValue[RclawPot];	//setting initial value for the Arm and Pinch
+	pinchLRequestedValue = SensorValue[LclawPot];	//
+	startTask( pinchRController );								//
+	startTask( pinchLController );
+//-----------claw-------------------------
+
+		/*In Driver control, this part of the code is used to move the claw to set postions. This way you can
+	control where the claw goes to and it wont go past the set postion.*/
+
+				if( vexRT[ Btn6U ] == 1 )								// if button 6U is pressed, move claw to posstion
+		{
+			pinchRRequestedValue = 400;								// set Right motor's pot. to 400
+			pinchLRequestedValue = 400;								// Set Left motor's pot. to 400
+		}
+
+		else if( vexRT[ Btn6D ] == 1)								// if button 6D is pressed, move claw to posstion
+		{
+			pinchRRequestedValue = 1150;							// set Right motor's pot. to 1150
+			pinchLRequestedValue = 1150;							// set Left motor's pot. to 1150
+		}
+		else if(vexRT[Btn8D] == 1)									// if button 7D is pressed, move claw to posstion
+		{
+			pinchRRequestedValue = 2000;							// set Right motor's pot. to 2000
+			pinchLRequestedValue = 2000;							// set Left motor's pot. to 2000
+		}
+		else if(vexRT[Btn8R] == 1)
+		{
+			pinchRRequestedValue = 2300;							// set Right motor's pot. to 2300
+			pinchLRequestedValue = 2300;							// set Left motor's pot. to 2300
+		}
+
+
+
+
+		if (vexRT[Btn7L] == 1 && autoThrow == 1)
+		{
+			autoThrow = 0;
+		}
+		else if (vexRT[Btn7L] == 1 && autoThrow == 0)
+		{
+			autoThrow = 1;
+		}
+
+
+
+		   autoRelease();
 
 
   }
