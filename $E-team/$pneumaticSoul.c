@@ -1,9 +1,9 @@
 #pragma config(Sensor, in1,    hyro,           sensorGyro)
 #pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
-#pragma config(Sensor, in3,    clawPotR,       sensorPotentiometer)
-#pragma config(Sensor, in4,    clawPotL,       sensorPotentiometer)
 #pragma config(Sensor, in5,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, in6,    sidePot,        sensorPotentiometer)
+#pragma config(Sensor, in7,    clawPotR,       sensorPotentiometer)
+#pragma config(Sensor, in8,    clawPotL,       sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           moveable1,     tmotorVex393_HBridge, openLoop)
@@ -100,7 +100,7 @@ void pre_auton() {
 	driveDefaults.rampConst3 = -20;
 
 	//configure drive and lift motors
-	initializeDrive(drive);
+	initializeDrive(drive, true);
 	#ifdef SKILLS
 		setDriveMotors(drive, 4, ld1, ld1, rd1, rd2);
 		initializeGroup(lift, 5, lift1, lift2, lift3, moveable1, moveable2);
@@ -531,15 +531,17 @@ task autonomous() {
 	int sidePos = SensorValue[sidePot];
 	int modePos = SensorValue[modePot];
 
-	autoSign = sgn(1770 - sidePos);
+	autoSign = sgn(1580 - sidePos);
 
 	//start appropriate autonomous task
-	if (1150<sidePos && sidePos<2415) {
+	if (1105<sidePos && sidePos<2295) {
 		startTask(skillz);
-	} else if (modePos < 1130) {
+	} else if (modePos < 590) {
 		startTask(pillowAuton);
-	} else if (modePos < 2525) {
+	} else if (modePos < 1845) {
 		startTask(dumpyAuton);
+	} else if (modePos < 3475) {
+		startTask(oneSideAuton);
 	}
 
 	while (true) EndTimeSlice();
