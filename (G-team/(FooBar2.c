@@ -50,6 +50,9 @@
 #define liftMax 904
 #define liftTurn (4095-2950)
 #define liftDeploy (4095-2307)
+#define liftBOT (4095-2300)
+#define liftMiddle (4095-1705)
+#define liftMiddle2 1705
 
 enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX, BOT };
 enum clawState { CLOSED, OPEN, HYPEREXTENDED };
@@ -110,7 +113,7 @@ int clawPositions[3] = { 680, 1500, 3000 };
 #define liftDriftDist 300
 
 //Still Speed Constants
-#define liftStillSpeed 5
+#define liftStillSpeed 8
 #define clawStillSpeed 0
 
 int autoThrow = 1;
@@ -125,6 +128,16 @@ clawState currentState;
 //Initializes Motor Groups - Calls from motorGroup.c
 motorGroup lift;
 motorGroup claw;
+
+
+
+
+void ClawOC(int Clawvalue)
+{
+	pinchRRequestedValue = Clawvalue;
+	pinchLRequestedValue = Clawvalue;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -146,12 +159,17 @@ void pre_auton() { //INITIALIZATIONS
   initializeGroup(lift, 4, lift1, lift2, lift3, lift4); //USES MOTOR GROUP ARRAY IN INCLUDES
   configureButtonInput(lift, liftUpBtn, liftDownBtn, liftStillSpeed, 127, -100);
   //setAbsolutes(lift, liftBottom, 0);
-  addSensor(lift, liftPot);
+  addSensor(lift, liftPot, true);
 
   initializeGroup(claw, 2, Lclaw, Rclaw); //USES MOTOR GROUP ARRAY IN INCLUDES
   configureButtonInput(claw, openClawBtn, closeClawBtn, clawStillSpeed, 127, -127);
-  addSensor(claw, LclawPot, false);
+  addSensor(claw, LclawPot);
   addSensor(claw, RclawPot, true);
+
+  pinchRRequestedValue = SensorValue[RclawPot]; // setting initial value for the Arm and Pinch
+	pinchLRequestedValue = SensorValue[LclawPot]; //							?
+	startTask( pinchRController );								//
+	startTask( pinchLController );
 
 }
 
@@ -218,9 +236,9 @@ void liftControl() {
 }
 
 void autoRelease() {
-	if (SensorValue[liftPot] <= 1150 && SensorValue[LclawPot] < 570 && autoThrow == 1)
+	if (SensorValue[liftPot] <= 1450 && SensorValue[LclawPot] < 570 && autoThrow == 1)
 	{
-		goToPosition(claw, 635); //1135
+//		goToPosition(claw, 635); //1135
 	/*	setPower(claw, 60);
 		wait1Msec(100);
 		setPower(claw, 0);
@@ -228,8 +246,39 @@ void autoRelease() {
 		wait1Msec(20);
 		setPower(lift, 0);
 		*/
+		ClawOC(1150);
 
 	}
+}
+
+void autoThrowing() {
+		if (vexRT[Btn7R] == 1)
+		{
+			ClawOC(400);
+			setDrivePower(drive, -127, -127);
+			wait1Msec(2000);
+			setDrivePower(drive, 0, 0);
+
+			setPower(lift, 127);
+			wait1Msec(900);
+			setPower(lift, 0);
+
+		if (SensorValue[liftPot] <= 1450 && SensorValue[LclawPot] < 700)
+	{
+		ClawOC(1150);
+	}
+	else {
+	}
+
+			setDrivePower(drive, 127, 127);
+			wait1Msec(500);
+			setDrivePower(drive, 0, 0);
+
+			setPower(lift, -127);
+			wait1Msec(800);
+			setPower(lift, 0);
+
+}
 }
 
 task maneuvers() {
@@ -267,11 +316,40 @@ void deploy(int waitAtEnd=250) { //THIS IS THE DEPLOY FUNCTION
 //wait1Msec(1000);
 //setDrivePower(drive, 0, 0);
 
-//NEW DEPLOY FOR SOLID CLAW
-	//driveStraight(3);
-	setDrivePower(drive, 127, 127);
-	wait1Msec(200);
+	if (SensorValue[modePot] < 1830 && SensorValue[modePot] > 501) { //COMMENT ALL OF THIS FOR SKILLZZZZZZZZZZ
+
+				setDrivePower(drive, 127, 127);
+	wait1Msec(300);
 	setDrivePower(drive, 0, 0);
+
+	 		setPower(lift, 127);
+	wait1Msec(700);
+	setPower(lift, 0);
+		ClawOC(750);         //TFW when the only differnce between this deploy and the next one is this one value
+		wait1Msec(900);
+		setPower(lift, -127); //because we need the claw to not open as much on only 1 of our autons
+	wait1Msec(700);          //so we have to disable this one when we need to run programming skills
+	setPower(lift, 0);
+} else {
+//DOWN TO HERE IS WHERE THE COMMENTS MUST GO
+
+
+	setDrivePower(drive, 127, 127);
+	wait1Msec(300);
+	setDrivePower(drive, 0, 0);
+
+	 		setPower(lift, 127);
+	wait1Msec(700);
+	setPower(lift, 0);
+		ClawOC(1150);
+		setPower(lift, -127);
+	wait1Msec(700);
+	setPower(lift, 0);
+
+
+} //COMMENT OUT FOR SKILLZ
+
+
 	//goToPosition(lift, liftBottom + 200, liftStillSpeed);
          //goToPosition(claw, clawOpenPosL);
 	 	//goToPosition(claw, clawOpenPosR);
@@ -337,7 +415,7 @@ void dump() {
 task pillowAutonRight() { //Put true to run 2 things at once
 
 //VERY CHANGED FROM ORIGINAL, REFERENCE LEFT FOR MORE ORIGINAL ENCODER DRIVING, THERE IS A CURRENT PROBLEM WITH ENCODERS - MAY NEED TO JUST REDOWNLOAD FROM GITHUB
-
+//OLD PROBLEM FIXED NOW
 	//setClawStateManeuver(true); //open claw
   //goToPosition(lift, liftBottom, liftStillSpeed);
 	//openClaw();
@@ -423,33 +501,100 @@ task pillowAutonRight() { //Put true to run 2 things at once
 
  	//goToPosition(lift, liftDeploy);
  	//goToPosition(lift, liftBottom);
- 		setPower(lift, 127);
-	wait1Msec(700);
-	setPower(lift, 0);
-		setPower(lift, -127);
-	wait1Msec(700);
-	setPower(lift, 0);
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ 	/*
 	setDrivePower(drive, 127, 127);
 	wait1Msec(600);
 	setDrivePower(drive, 0, 0);
-	goToPosition(claw, clawOpenPosR);
+	//goToPosition(claw, clawOpenPosR);
 	setDrivePower(drive, 127, 127);
-	wait1Msec(600);
+	wait1Msec(200);
 	setDrivePower(drive, 0, 0);
+
+
+	ClawOC(400);
+
+	wait1Msec(500);
  	//driveStraight(10);
  	//goToPosition(claw, clawClosedPosPillowL);
  	//goToPosition(lift, liftTurn);
-	setPower(lift, 127);
-	wait1Msec(200);
-	setPower(lift, 0);
- 	setDrivePower(drive, 127, -127);
- 	wait1Msec(1200);
+//	setPower(lift, 127);
+//	wait1Msec(200);
+//	setPower(lift, 0);
+
+	goToPosition(lift, liftMiddle2);
+
+ 	setDrivePower(drive, -127, 127);
+ 	wait1Msec(900);
  	setDrivePower(drive, 0, 0);
  	//goToPosition(lift, liftMax);
- 		setPower(lift, 127);
+
+ 	driveStraight(-20);
+ 	setPower(lift, 127);
 	wait1Msec(900);
 	setPower(lift, 0);
- 	goToPosition(claw, clawOpenPosR);
+
+	 if (SensorValue[liftPot] <= 1450 && SensorValue[LclawPot] < 700)
+	{
+		ClawOC(1150);
+	}
+	*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	setDrivePower(drive, 127, 127);
+	wait1Msec(600);
+	setDrivePower(drive, 0, 0);
+	//goToPosition(claw, clawOpenPosR);
+	setDrivePower(drive, 127, 127);
+	wait1Msec(200);
+	setDrivePower(drive, 0, 0);
+
+
+	ClawOC(400);
+
+	wait1Msec(500);
+ 	//driveStraight(10);
+ 	//goToPosition(claw, clawClosedPosPillowL);
+ 	//goToPosition(lift, liftTurn);
+//	setPower(lift, 127);
+//	wait1Msec(200);
+//	setPower(lift, 0);
+
+	goToPosition(lift, liftMiddle2);
+
+ 	setDrivePower(drive, -127, 127);
+ 	wait1Msec(700);
+ 	setDrivePower(drive, 0, 0);
+ 	//goToPosition(lift, liftMax);
+// 	setDrivePower(drive, -127, -127);
+// 	wait1Msec(500);
+// 	setDrivePower(drive, 0, 0);
+ 	driveStraight(-25);
+// 	setDrivePower(drive, 127, -127);
+// 	wait1Msec(700);
+// 	setDrivePower(drive, 0, 0);
+
+// 	driveStraight(-10);
+// 	 setDrivePower(drive, -127, 127);
+// 	wait1Msec(700);
+// 	setDrivePower(drive, 0, 0);
+	setPower(lift, 127);
+	wait1Msec(900);
+	setPower(lift, 0);
+
+	 if (SensorValue[liftPot] <= 1450 && SensorValue[LclawPot] < 700)
+	{
+		ClawOC(1150);
+	}
+
+
+
+
+
 
 
 
@@ -529,20 +674,42 @@ setClawStateManeuverR(true); //open claws other side
  	//goToPosition(lift, liftPush); //push jacks over
 */
 
-	goToPosition(claw, clawClosedPos);
+
 	setDrivePower(drive, 127, 127);
-	wait1Msec(1200);
+	wait1Msec(600);
 	setDrivePower(drive, 0, 0);
-	setDrivePower(drive, 127, -127);
-	wait1Msec(1000);
+	//goToPosition(claw, clawOpenPosR);
+	setDrivePower(drive, 127, 127);
+	wait1Msec(200);
 	setDrivePower(drive, 0, 0);
-	goToPosition(claw, clawClosedPos);
-	setPower(lift, 127);
+
+
+	ClawOC(400);
+
+	wait1Msec(500);
+ 	//driveStraight(10);
+ 	//goToPosition(claw, clawClosedPosPillowL);
+ 	//goToPosition(lift, liftTurn);
+//	setPower(lift, 127);
+//	wait1Msec(200);
+//	setPower(lift, 0);
+
+	goToPosition(lift, liftMiddle2);
+
+ 	setDrivePower(drive, 127, -127);
+ 	wait1Msec(900);
+ 	setDrivePower(drive, 0, 0);
+ 	//goToPosition(lift, liftMax);
+
+ 	driveStraight(-20);
+ 	setPower(lift, 127);
 	wait1Msec(900);
 	setPower(lift, 0);
-	goToPosition(claw, clawOpenPosR);
 
-
+	 if (SensorValue[liftPot] <= 1450 && SensorValue[LclawPot] < 700)
+	{
+		ClawOC(1150);
+	}
 
 
 
@@ -552,6 +719,8 @@ setClawStateManeuverR(true); //open claws other side
 
  task programmingSkills() {
 
+
+ //OLD SIX BAR AUTON
   //ONE SIDE AUTON
 	//goToPosition(claw, clawPush, -clawStillSpeed);
 	//goToPosition(lift, liftPushTop);
@@ -566,10 +735,13 @@ setClawStateManeuverR(true); //open claws other side
 
 // goToPosition(lift, liftPushTop, liftStillSpeed);
 // goToPosition(claw, clawPush, -clawStillSpeed + 5);
+ /*
  setDrivePower(drive, 127, 127);
  wait1Msec(1800);
  setDrivePower(drive, 0, 0);
+ */
 
+//////////////////////////////////////////////////////////////////////////////////////////
 
  /*
  //NEW BACK AUTON
@@ -632,6 +804,22 @@ setClawStateManeuverR(true); //open claws other side
  	goToPosition(claw, clawOpenPos, -clawStillSpeed);
  	driveStraight(-15);
  	//*/
+ 	//////////////////////////////////////////////////////////////////////////////////////
+
+ 	setDrivePower(drive, 127, 127);
+	wait1Msec(600);
+	setDrivePower(drive, 0, 0);
+
+	ClawOC(400);
+
+	setDrivePower(drive, -127, -110);
+	wait1Msec(1200);
+	setDrivePower(drive, 0, 0);
+
+
+
+
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -644,6 +832,7 @@ task autonomous() {
   deploy();
 
   //autoSign = (SensorValue[sidePot] < 1800) ? 1 : -1;
+
 
   //start appropriate autonomous task
   if (SensorValue[modePot] < 500 && SensorValue[modePot] > 0) {
@@ -718,8 +907,15 @@ void clawControl() {
 */
 
 task usercontrol() {
-	while (true) {
 
+
+	pinchRRequestedValue = SensorValue[RclawPot];	//setting initial value for the Arm and Pinch
+	pinchLRequestedValue = SensorValue[LclawPot];	//              ?
+	startTask( pinchRController );								//
+	startTask( pinchLController );
+
+
+	while (true) {
 
 
 
@@ -750,10 +946,6 @@ task usercontrol() {
 */
 
 
-	pinchRRequestedValue = SensorValue[RclawPot];	//setting initial value for the Arm and Pinch
-	pinchLRequestedValue = SensorValue[LclawPot];	//
-	startTask( pinchRController );								//
-	startTask( pinchLController );
 //-----------claw-------------------------
 
 		/*In Driver control, this part of the code is used to move the claw to set postions. This way you can
@@ -796,6 +988,8 @@ task usercontrol() {
 
 
 		   autoRelease();
+
+		   autoThrowing();
 
 
   }
