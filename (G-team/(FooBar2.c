@@ -113,7 +113,7 @@ int clawPositions[3] = { 680, 1500, 3000 };
 #define liftDriftDist 300
 
 //Still Speed Constants
-#define liftStillSpeed 8
+#define liftStillSpeed 13
 #define clawStillSpeed 0
 
 int autoThrow = 1;
@@ -139,6 +139,8 @@ void ClawOC(int Clawvalue)
 }
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void pre_auton() { //INITIALIZATIONS
@@ -166,13 +168,18 @@ void pre_auton() { //INITIALIZATIONS
   addSensor(claw, LclawPot);
   addSensor(claw, RclawPot, true);
 
-  pinchRRequestedValue = SensorValue[RclawPot]; // setting initial value for the Arm and Pinch
-	pinchLRequestedValue = SensorValue[LclawPot]; //							?
-	startTask( pinchRController );								//
-	startTask( pinchLController );
+  pinchRRequestedValue = SensorValue[RclawPot]; //setting variable pinchRRequestedValue and the valye from RclawPot
+	pinchLRequestedValue = SensorValue[LclawPot]; //setting variable pinchLRequestedValue and the valye from LclawPot
+	startTask( pinchRController );								//Call task pinchRController from "BackOver Functions.c"
+	startTask( pinchLController );                //Call task pinchLController from "BackOver Functions.c"
 
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //NEW TEST
 void inactivateTargets() {
@@ -236,7 +243,7 @@ void liftControl() {
 }
 
 void autoRelease() {
-	if (SensorValue[liftPot] <= 1450 && SensorValue[LclawPot] < 570 && autoThrow == 1)
+	if (SensorValue[liftPot] <= 1650 && SensorValue[LclawPot] < 570 && autoThrow == 1)
 	{
 //		goToPosition(claw, 635); //1135
 	/*	setPower(claw, 60);
@@ -246,28 +253,28 @@ void autoRelease() {
 		wait1Msec(20);
 		setPower(lift, 0);
 		*/
-		ClawOC(1150);
+		ClawOC(1350);
 
 	}
 }
 
-void autoThrowing() {
-		if (vexRT[Btn7R] == 1)
+void autoThrowing() {  //NEW AUTO THROWING FUNCTION
+		if (vexRT[Btn7R] == 1) //If Btn 7R is pressed, then...
 		{
-			ClawOC(400);
-			setDrivePower(drive, -127, -127);
-			wait1Msec(2000);
-			setDrivePower(drive, 0, 0);
+			ClawOC(400);         //Set claw to 400
+			setDrivePower(drive, -127, -127);      //Back up for
+			wait1Msec(2000);                       //2 Seconds
+			setDrivePower(drive, 0, 0);            //Stop
 
-			setPower(lift, 127);
-			wait1Msec(900);
-			setPower(lift, 0);
+			setPower(lift, 127);                   //Lift up for
+			wait1Msec(900);												 //.9 Seconds
+			setPower(lift, 0);										 //Stop
 
-		if (SensorValue[liftPot] <= 1450 && SensorValue[LclawPot] < 700)
-	{
-		ClawOC(1150);
+		if (SensorValue[liftPot] <= 1450 && SensorValue[LclawPot] < 700)  //If the lift is up and claw is closed
+	{																																		//Throw by
+		ClawOC(1150);																										  //Setting claw to 1150
 	}
-	else {
+	else {   //CHANGE THIS ON FRIDAY BUT I THINK IT SHOULDN'T REALLY MATTER
 	}
 
 			setDrivePower(drive, 127, 127);
@@ -502,16 +509,20 @@ task pillowAutonRight() { //Put true to run 2 things at once
  	//goToPosition(lift, liftDeploy);
  	//goToPosition(lift, liftBottom);
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////
 
+//HERE IS OUR NORMAL AUTON
+ //GRABS THE PILLOW AND THROWS IT OVER, STAYS THERE TO BLOCK ANYTHING AFTER
  	/*
-	setDrivePower(drive, 127, 127);
-	wait1Msec(600);
-	setDrivePower(drive, 0, 0);
+	setDrivePower(drive, 127, 127);          //Sets Drive Motor Power to 127 on Both Sides
+	wait1Msec(600);													 //Waits for 600 Miliseconds to drive for that long
+	setDrivePower(drive, 0, 0);              //Sets Drive Motor Power to 0 on Both Sides
 	//goToPosition(claw, clawOpenPosR);
-	setDrivePower(drive, 127, 127);
-	wait1Msec(200);
-	setDrivePower(drive, 0, 0);
+	setDrivePower(drive, 127, 127);          //Sets Drive Motor Power to 127 on Both Sides
+	wait1Msec(200);                          //Waits for 200 Miliseconds to drive for that long
+	setDrivePower(drive, 0, 0);              //Sets Drive Motor Power to 0 on Both Sides
 
 
 	ClawOC(400);
@@ -542,19 +553,19 @@ task pillowAutonRight() { //Put true to run 2 things at once
 	}
 	*/
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-	setDrivePower(drive, 127, 127);
-	wait1Msec(600);
-	setDrivePower(drive, 0, 0);
+	setDrivePower(drive, 127, 127);                   //Sets Drive Motor Power to 127 on Both Sides
+	wait1Msec(600);																		//Waits for 600 Miliseconds to drive for that long
+	setDrivePower(drive, 0, 0);											  //Sets Drive Motor Power to 0 on Both Sides
 	//goToPosition(claw, clawOpenPosR);
-	setDrivePower(drive, 127, 127);
-	wait1Msec(200);
-	setDrivePower(drive, 0, 0);
+	setDrivePower(drive, 127, 127);										//Sets Drive Motor Power to 127 on Both Sides
+	wait1Msec(200);                                   //Waits for 600 Miliseconds to drive for that long
+	setDrivePower(drive, 0, 0);                       //Sets Drive Motor Power to 127 on Both Sides
 
 
-	ClawOC(400);
+	ClawOC(400);                                      //Sets Claw Sides to 400 -> Potentiometer Value
 
 	wait1Msec(500);
  	//driveStraight(10);
@@ -804,7 +815,7 @@ setClawStateManeuverR(true); //open claws other side
  	goToPosition(claw, clawOpenPos, -clawStillSpeed);
  	driveStraight(-15);
  	//*/
- 	//////////////////////////////////////////////////////////////////////////////////////
+ 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
  	setDrivePower(drive, 127, 127);
 	wait1Msec(600);
@@ -822,7 +833,7 @@ setClawStateManeuverR(true); //open claws other side
 
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 task autonomous() {
 	lift.maneuverExecuting = false;
@@ -845,7 +856,7 @@ task autonomous() {
 }
 //end autonomous region
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 //old
@@ -951,13 +962,13 @@ task usercontrol() {
 		/*In Driver control, this part of the code is used to move the claw to set postions. This way you can
 	control where the claw goes to and it wont go past the set postion.*/
 
-				if( vexRT[ Btn6U ] == 1 )								// if button 6U is pressed, move claw to posstion
+				if( vexRT[ Btn6D ] == 1 )								// if button 6U is pressed, move claw to posstion
 		{
 			pinchRRequestedValue = 400;								// set Right motor's pot. to 400
 			pinchLRequestedValue = 400;								// Set Left motor's pot. to 400
 		}
 
-		else if( vexRT[ Btn6D ] == 1)								// if button 6D is pressed, move claw to posstion
+		else if( vexRT[ Btn6U ] == 1)								// if button 6D is pressed, move claw to posstion
 		{
 			pinchRRequestedValue = 1150;							// set Right motor's pot. to 1150
 			pinchLRequestedValue = 1150;							// set Left motor's pot. to 1150
