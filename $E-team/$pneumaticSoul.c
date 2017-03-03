@@ -318,8 +318,8 @@ void grabNdump(int delayDuration, int dist=fenceToWallDist, int closeTimeout=500
 	turnDriveDump(0, -dist); //dump pillow
 }
 
-void ramToRealign(int duration=500) {
-	liftTo(BOTTOM);
+void ramToRealign(int duration=500, bool liftToBottom=true) {
+	if (liftToBottom) liftTo(BOTTOM);
 
 	setDrivePower(drive, -127, -127); //realign using wall
 	wait1Msec(duration);
@@ -378,7 +378,7 @@ task skillz() {
 	//get and dump front center jacks
 	setTargetPosition(lift, liftPositions[MIDDLE]+100);
 	setClawTargets(clawPositions[OPEN]-50);
-	ramToRealign();
+	ramToRealign(500, false);
 	driveStraight(5.5, true);
 	waitForMovementToFinish(false);
 	turn(-65, true, 40, 90, -30);
@@ -390,6 +390,7 @@ task skillz() {
 	liftTo(MIDDLE);
 	//turn(55);
 	//driveStraight(10);
+	driveStraight(-4);
 	turnDriveDump(55, 0, 30, 40, 95, -30);
 
 	//get and dump pillow in center of field
@@ -409,7 +410,8 @@ task skillz() {
 	grabNdump(0, fenceToWallDist, 750);
 
 	//get and dump right side pillow
-	setLiftState(BOTTOM);
+	ramToRealign();
+	driveStraight(3);
 	turn(-17, true);
 	waitForMovementToFinish();
 	driveStraight(45);
