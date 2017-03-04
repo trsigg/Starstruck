@@ -62,9 +62,9 @@ void initializeAutoMovement() {
 	driveDefaults.rampConst1 = 40;
 	driveDefaults.rampConst2 = 120;
 	driveDefaults.rampConst3 = -15;
-	driveDefaults.kP_c = .5;
+	driveDefaults.kP_c = .55;
 	driveDefaults.kI_c = 0.007;
-	driveDefaults.kD_c = 0.01;
+	driveDefaults.kD_c = 0.15;
 	driveDefaults.minSpeed = 10;
 }
 //#endregion

@@ -16,20 +16,41 @@
 int minus = 0;
 int power = 127;
 
-/*include "parallelDrive.c"
+#include "..\Includes\motorGroup.c"
 
-initializeDrive(drive);
-setDriveMotors(drive, 4, ldrive, rdrive);
-attachEncoder(drive, leftEnc, LEFT);
-attachEncoder(drive, rightEnc, RIGHT, false, 4);*/
+#define liftDiff 900	//difference in lift pot values when at the same height (left - right)
 
+motorGroup leftLift;
+motorGroup rightLift;
 
+void pre_auton() {
+	initializeGroup(leftLift, 1, lift2);
+	addSensor(leftLift, pot2);
+	setTargetingPIDconsts(leftLift, 0.2, 0.001, 0.2, 25);
 
+	initializeGroup(rightLift, 1, lift1);
+	addSensor(rightLift, pot1);
+	setTargetingPIDconsts(rightLift, 0.2, 0.001, 0.2, 25);
+}
 
+void setLiftPower(int power) {
+	setPower(leftLift, power);
+	setPower(rightLift, power);
+}
+
+void setLiftTargets(int rightPosition) {
+	setTargetPosition(rightLift, rightPosition);
+	setTargetPosition(leftLift, rightPosition+liftDiff);
+}
+
+void maintainLiftTargets() {
+	maintainTargetPos(rightLift);
+	maintainTargetPos(leftLift);
+}
 
 void usercontrol()
 {
-
+	pre_auton();
 	while (1==1) {
 
 
@@ -44,25 +65,14 @@ void usercontrol()
 	  motor[rd4] = (vexRT[Ch4] + vexRT[Ch3])/2;
 
 //lift
-		if (vexRT[Btn6U] == 1) {
-			motor[lift1] = power;
+		if (vexRT[Btn5U] == 1) {
+			setLiftPower(127);
 
-		} else if (vexRT[Btn6D] == 1) {
-			motor[lift1] = -power;
-
-		} else {
-			motor[lift1] = 15;
-
-		}
-			if (vexRT[Btn5U] == 1) {
-
-			motor[lift2] = power;
 		} else if (vexRT[Btn5D] == 1) {
-
-			motor[lift2] = -power;
+			setLiftPower(-127);
 		} else {
-
-			motor[lift2] = 15;
+			//maintainLiftTargets();
+			setLiftPower(15);
 		}
 
 

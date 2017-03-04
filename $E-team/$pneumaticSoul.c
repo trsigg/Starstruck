@@ -63,7 +63,7 @@ int clawPositions[3] = { 450, 1200, 2000 };
 #define liftErrorMargin 150	//margins of error
 #define clawErrorMargin 100
 #define maxStationarySpeed	100	//max error decrease in claw PID error (per second) where claw is considered not to be moving (CURRENTLY UNUSED)
-#define fenceToWallDist 33
+#define fenceToWallDist 30
 #define clawDiff 0					//difference between claw potentiometers when at the same angle (left - right)
 #define liftDriftDist	300	//estimated distance lift drifts after button is released (for setting lift PID target during drive control)
 //#endregion
@@ -327,6 +327,7 @@ void ramToRealign(int duration=500, bool liftToBottom=true) {
 }
 
 void initialPillow() {
+	setLiftState(BOTTOM);
 	if (straightToCube) {
 		driveStraight(26, true);
 		while (driveData.totalDist < 17);
@@ -379,7 +380,7 @@ task skillz() {
 	setTargetPosition(lift, liftPositions[MIDDLE]+100);
 	setClawTargets(clawPositions[OPEN]-50);
 	ramToRealign(500, false);
-	driveStraight(5.5, true);
+	driveStraight(6, true);
 	waitForMovementToFinish(false);
 	turn(-65, true, 40, 90, -30);
 	waitForMovementToFinish();
@@ -395,28 +396,28 @@ task skillz() {
 
 	//get and dump pillow in center of field
 	setLiftState(MIDDLE);
-	ramToRealign();
+	ramToRealign(500, false);
 	setLiftState(BOTTOM);
 	waitForMovementToFinish();
-	driveStraight(9);
+	driveStraight(13);
 	moveClawTo(CLOSED); //grab pillow
-	turnDriveDump(0, -12);
+	turnDriveDump(0, -15);
 
 	//grab and dump center back jacks
 	setClawState(HYPEREXTENDED);
 	liftTo(BOTTOM);
 	driveStraight(fenceToWallDist+2, true);
 	waitForMovementToFinish();
-	grabNdump(0, fenceToWallDist, 750);
+	grabNdump(0, fenceToWallDist+10, 750);
 
 	//get and dump right side pillow
 	ramToRealign();
 	driveStraight(3);
-	turn(-17, true);
+	turn(-14, true);
 	waitForMovementToFinish();
 	driveStraight(45);
 	moveClawTo(CLOSED);
-	turnDriveDump(17, -fenceToWallDist, 10);
+	turnDriveDump(14, -fenceToWallDist, 10);
 
 	//for redundancy
 	ramToRealign();
@@ -437,13 +438,11 @@ task skillz() {
 	grabNdump(0);
 
 	//for redundancy
-	for (int i=1; i<2; i++) {
+	while (true) {
 		ramToRealign();
 		driveStraight(fenceToWallDist);
 		grabNdump(500);
 	}
-
-	liftTo(BOTTOM);
 }
 
 task pillowAuton() {
@@ -452,10 +451,10 @@ task pillowAuton() {
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(9, true, 40, 95, -30);
+	driveStraight(8, true, 40, 95, -30);
 	while (driveData.isDriving) EndTimeSlice();
 	wait1Msec(500);
-	turn(autoSign * 37, true, 40, 100, -30); //turn to face fence
+	turn(autoSign * 45, true, 40, 100, -30); //turn to face fence
 	while (turnData.isTurning) EndTimeSlice();
 	driveStraight(30, true, 60, 127, -20); // drive up to wall
 	waitForMovementToFinish();
@@ -478,13 +477,13 @@ task pillowAuton() {
  	setClawState(HYPEREXTENDED);
 
  	//drive to other wall
- 	setTargetPosition(lift, liftPositions[TOP]+100);
+ 	setTargetPosition(lift, liftPositions[TOP]+150);
  	driveStraight(-13, true);
  	while (driveData.isDriving) EndTimeSlice();
- 	turn(autoSign * 50, true, 60, 127, -20);
+ 	turn(autoSign * 60, true, 60, 127, -20);
  	waitForMovementToFinish();
  	driveStraight(49);
- 	turn(autoSign * -50, false, 60, 127, -20);
+ 	turn(autoSign * -60, false, 60, 127, -20);
  	driveStraight(9);
 
  	moveClawTo(CLOSED);
@@ -497,7 +496,7 @@ task dumpyAuton() {
 	liftTo(MIDDLE);
 	driveStraight(8.5, false, 40, 95, -20);
 
-	turnDriveDump(autoSign * (dumpToSide ? -70 : -95), -24, 7, 45, 100, -20);
+	turnDriveDump(autoSign * (dumpToSide ? -70 : -105), -24, 7, 45, 100, -20);
 	if (dumpToSide) {
 		driveStraight(24);
 		turn(autoSign * -12);
@@ -519,8 +518,8 @@ task dumpyAuton() {
 
 task oneSideAuton() {
 	setClawState(HYPEREXTENDED);
-	setTargetPosition(lift, liftPositions[TOP]+150);
-	driveStraight(55);
+	setTargetPosition(lift, liftPositions[TOP]+175);
+	driveStraight(60);
 	moveClawTo(CLOSED);
 	driveStraight(-10);
 	turn(autoSign * 120, true, 50, 127, -20);
