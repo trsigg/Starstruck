@@ -54,7 +54,7 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 
 //#region positions
 int liftPositions[5] = { 1095, 1700, 2400, 2425, 2950 };	//same order as corresponding enums
-int clawPositions[3] = { 450, 1200, 2000 };
+int clawPositions[3] = { 370, 1200, 2000 };
 //#endregion
 
 //#region constants
@@ -72,6 +72,7 @@ int clawPositions[3] = { 450, 1200, 2000 };
 #define dumpToSide false
 #define straightToCube true
 #define blocking false
+#define agressiveClose false
 //#endregion
 
 //#region timers
@@ -249,7 +250,7 @@ bool clawIsClosed(int maxSpeed=maxStationarySpeed) {
 bool liftNotReady() { return !errorLessThan(lift, liftErrorMargin); }
 
 bool clawNotReady() {
-	if (rightClaw.posPID.target < clawPositions[OPEN])	//assuming this is representative of both claw sides
+	if (rightClaw.posPID.target == clawPositions[CLOSED])	//assuming this is representative of both claw sides
 		return !clawIsClosed();
 	else
 		return !(errorLessThan(rightClaw, clawErrorMargin) || errorLessThan(leftClaw, clawErrorMargin));
@@ -328,9 +329,10 @@ void ramToRealign(int duration=500, bool liftToBottom=true) {
 
 void initialPillow() {
 	setLiftState(BOTTOM);
+	if (agressiveClose) setClawState(OPEN);
 	if (straightToCube) {
-		driveStraight(26, true);
-		while (driveData.totalDist < 17);
+		driveStraight(24, true);
+		while (driveData.totalDist < 14);
 		setClawState(OPEN);
 		while (driveData.isDriving);
 	} else {
@@ -365,34 +367,21 @@ task skillz() {
 
 	ramToRealign();
 
-	//-----get and dump central pillow
-	/*setLiftState(BOTTOM);
-	driveStraight(fenceToWallDist / 1.25);
-	turn(-55, true);
-	waitForMovementToFinish();
-	driveStraight(17);
-	moveClawTo(CLOSED);
-	setLiftState(MIDDLE);
-	driveStraight(-17);
-	turnDriveDump(55, -fenceToWallDist/1.25, 5);*/
-
 	//get and dump front center jacks
 	setTargetPosition(lift, liftPositions[MIDDLE]+100);
-	setClawTargets(clawPositions[OPEN]-50);
+	setClawTargets(clawPositions[OPEN]-100);
 	ramToRealign(500, false);
 	driveStraight(6, true);
 	waitForMovementToFinish(false);
-	turn(-65, true, 40, 90, -30);
+	turn(-55, true, 40, 90, -30);
 	waitForMovementToFinish();
 	liftTo(BOTTOM);
 	driveStraight(40);
 	moveClawTo(CLOSED);
 	wait1Msec(500);
-	liftTo(MIDDLE);
-	//turn(55);
-	//driveStraight(10);
-	driveStraight(-4);
-	turnDriveDump(55, 0, 30, 40, 95, -30);
+	setTargetPosition(lift, liftPositions[MIDDLE]+250);
+	driveStraight(-6);
+	turnDriveDump(68, -5, 0, 40, 95, -30);
 
 	//get and dump pillow in center of field
 	setLiftState(MIDDLE);
@@ -405,7 +394,7 @@ task skillz() {
 
 	//grab and dump center back jacks
 	setClawState(HYPEREXTENDED);
-	liftTo(BOTTOM);
+	ramToRealign();
 	driveStraight(fenceToWallDist+2, true);
 	waitForMovementToFinish();
 	grabNdump(0, fenceToWallDist+10, 750);
@@ -413,34 +402,34 @@ task skillz() {
 	//get and dump right side pillow
 	ramToRealign();
 	driveStraight(3);
-	turn(-14, true);
+	turn(-17, true);
 	waitForMovementToFinish();
-	driveStraight(45);
+	driveStraight(50);
 	moveClawTo(CLOSED);
-	turnDriveDump(14, -fenceToWallDist, 10);
+	turnDriveDump(22, -fenceToWallDist, 10);
 
 	//for redundancy
 	ramToRealign();
-	driveStraight(fenceToWallDist);
-	grabNdump(500);
+	//driveStraight(fenceToWallDist);
+	//grabNdump(500);
 
 	//get first right side jack
 	setLiftState(MIDDLE);
 	driveStraight(5, true);
 	waitForMovementToFinish();
-	turn(-80);
+	turn(-55);
 	liftTo(BOTTOM);
-	driveStraight(8);
+	driveStraight(10);
 
 	//get second side jack
-	turn(80);
+	turn(70);
 	driveStraight(fenceToWallDist);
 	grabNdump(0);
 
 	//for redundancy
-	while (true) {
+	for (int i=0; i>=0; i+=5) {
 		ramToRealign();
-		driveStraight(fenceToWallDist);
+		driveStraight(fenceToWallDist + i);
 		grabNdump(500);
 	}
 }
@@ -451,10 +440,10 @@ task pillowAuton() {
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(8, true, 40, 95, -30);
+	driveStraight(8.5, true, 40, 95, -30);
 	while (driveData.isDriving) EndTimeSlice();
 	wait1Msec(500);
-	turn(autoSign * 45, true, 40, 100, -30); //turn to face fence
+	turn(autoSign * 40, true, 40, 100, -30); //turn to face fence
 	while (turnData.isTurning) EndTimeSlice();
 	driveStraight(30, true, 60, 127, -20); // drive up to wall
 	waitForMovementToFinish();
@@ -467,7 +456,7 @@ task pillowAuton() {
 	moveClawTo(OPEN); //release pillow
 	wait1Msec(500); //wait for pillow to fall
 	moveClawTo(CLOSED);
-	driveStraight(-10); //back up
+	driveStraight(-10.5); //back up
 	moveClawTo(HYPEREXTENDED);
 
 	//push jacks over
@@ -478,16 +467,16 @@ task pillowAuton() {
 
  	//drive to other wall
  	setTargetPosition(lift, liftPositions[TOP]+150);
- 	driveStraight(-13, true);
+ 	driveStraight(-10.5, true);
  	while (driveData.isDriving) EndTimeSlice();
- 	turn(autoSign * 60, true, 60, 127, -20);
+ 	turn(autoSign * 61, true, 60, 127, -20);
  	waitForMovementToFinish();
- 	driveStraight(49);
- 	turn(autoSign * -60, false, 60, 127, -20);
- 	driveStraight(9);
+ 	driveStraight(50);
+ 	turn(autoSign * -61, false, 60, 127, -20);
+ 	driveStraight(6);
 
  	moveClawTo(CLOSED);
- 	liftTo(MAX);
+ 	//liftTo(MAX);
 }
 
 task dumpyAuton() {
@@ -496,10 +485,10 @@ task dumpyAuton() {
 	liftTo(MIDDLE);
 	driveStraight(8.5, false, 40, 95, -20);
 
-	turnDriveDump(autoSign * (dumpToSide ? -70 : -105), -24, 7, 45, 100, -20);
+	turnDriveDump(autoSign * (dumpToSide ? -70 : -95), -24, 7, 45, 100, -20);
 	if (dumpToSide) {
 		driveStraight(24);
-		turn(autoSign * -12);
+		turn(autoSign * -12.5);
 	} else {
 		ramToRealign();
 	}
@@ -509,7 +498,7 @@ task dumpyAuton() {
 	waitForMovementToFinish();
 	driveStraight(fenceToWallDist + (dumpToSide ? -15 : 6));
 	grabNdump(0, fenceToWallDist, 750);
-	liftTo(BOTTOM);
+	ramToRealign();
 	driveStraight(fenceToWallDist);
 	grabNdump(0, fenceToWallDist, 750);
 
@@ -519,10 +508,11 @@ task dumpyAuton() {
 task oneSideAuton() {
 	setClawState(HYPEREXTENDED);
 	setTargetPosition(lift, liftPositions[TOP]+175);
-	driveStraight(60);
+	driveStraight(57.5);
 	moveClawTo(CLOSED);
+	wait1Msec(500);
 	driveStraight(-10);
-	turn(autoSign * 120, true, 50, 127, -20);
+	turn(autoSign * 113, true, 50, 127, -20);
 	waitForMovementToFinish();
 
 	setLiftState(BOTTOM);
