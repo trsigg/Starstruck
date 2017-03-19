@@ -11,7 +11,7 @@ typedef struct {
 		float prevError;
 } PID;
 
-void initializePID(PID *pid, float target, float kP, float kI, float kD, int minSampleTime=30, bool inputUpdated=true, float integralMin=0, float integralMax=0) {
+void initializePID(PID *pid, float target, float kP, float kI, float kD, int minSampleTime=30, float integralMin=0, float integralMax=0) {
 	pid->kP = kP;
 	pid->kI = kI;
 	pid->kD = kD;
@@ -25,11 +25,24 @@ void initializePID(PID *pid, float target, float kP, float kI, float kD, int min
 	pid->prevError = 0;
 }
 
-void changeTarget(PID *pid, float target) {
+void changeTarget(PID *pid, float target, int resetIntegral=true) {
 	pid->prevError += target - pid->target;
-	pid->integral = 0;
+	if (resetIntegral) pid->integral = 0;	//TODO: add more options?
 	pid->lastUpdated = nPgmTime;
 	pid->target = target;
+}
+
+void changeGains(PID *pid, float kP, float kI, float kD) {
+	pid->kP = kP;
+	pid->kI = kI;
+	pid->kD = kD;
+}
+
+void setIntegralLimits(PID *pid, float min, float max) {
+	pid->hasMin = true;
+	pid->hasMax = true;
+	pid->integralMin = min;
+	pid->integralMax = max;
 }
 
 float PID_runtime(PID *pid, float input) {
@@ -41,9 +54,9 @@ float PID_runtime(PID *pid, float input) {
 
 		float error = pid->target - input;
 
-		pid->integral += (!pid->hasMin || error>pid->integralMin) && (!pid->hasMax || error>pid->integralMax) ? error : 0; //update integral if within bounds of integralMin and integralMax
+		pid->integral += (!pid->hasMin || error>pid->integralMin) && (!pid->hasMax || error>pid->integralMax) ? pid->kI*error : 0; //update integral if within bounds of integralMin and integralMax
 
-		pid->output = pid->kP*error + pid->kI*pid->integral + pid->kD*(error - pid->prevError);
+		pid->output = pid->kP*error + pid->integral + pid->kD*(error - pid->prevError);	//kI factored in above (to avoid problems when resetting gain values)
 		pid->prevError = error;
 	}
 

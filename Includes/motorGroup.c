@@ -179,8 +179,8 @@ int setPower(motorGroup *group, int power, bool overrideAbsolutes=false) {
 
 //#region position movement
 	//#subregion maintainPos
-	void setTargetingPIDconsts(motorGroup *group, float kP, float kI, float kD, int minSampleTime=0) {
-		initializePID(group->posPID, 0, kP, kI, kD, minSampleTime);
+	void setTargetingPIDconsts(motorGroup *group, float kP, float kI, float kD, int minSampleTime=0, int integralMin=-127, int integralMax=127) {
+		initializePID(group->posPID, 0, kP, kI, kD, minSampleTime, integralMin, integralMax);
 	}
 
 	void setTargetPosition(motorGroup *group, int position) {
