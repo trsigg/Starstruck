@@ -15,6 +15,7 @@ typedef struct {
 	angleType defAngleType;
 	bool runAsTask;
 	bool useGyro;
+	bool reversed;	//reverses all turns (for mirroring auton routines)
 	int brakePower;
 	int waitAtEnd;
 	int brakeDuration;
@@ -43,6 +44,7 @@ void initializeAutoMovement() {
 	turnDefaults.defAngleType = DEGREES;
 	turnDefaults.runAsTask = false;
 	turnDefaults.useGyro = true;
+	turnDefaults.reversed = false;
 	turnDefaults.brakePower = 20;
 	turnDefaults.waitAtEnd = 100;
 	turnDefaults.brakeDuration = 100;
@@ -118,6 +120,7 @@ task turnTask() {
 
 void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefaults.rampConst1, float in2=turnDefaults.rampConst2, float in3=turnDefaults.rampConst3, angleType angleType=turnDefaults.defAngleType, bool useGyro=turnDefaults.useGyro, int brakePower=turnDefaults.brakePower, int waitAtEnd=turnDefaults.waitAtEnd, int brakeDuration=turnDefaults.brakeDuration) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
 	//initialize variables
+	if (turnDefaults.reversed) angle *= -1;
 	float formattedAngle = convertAngle(abs(angle), DEGREES, angleType);
 	turnData.angle = (useGyro ? formattedAngle : PI*autoDrive.width*formattedAngle/360.);
 	initializeRampHandler(turnData.ramper, angle, in1, in2, in3);
