@@ -16,9 +16,11 @@ typedef struct {
 	bool runAsTask;
 	bool useGyro;
 	bool reversed;	//reverses all turns (for mirroring auton routines)
+	int timeout;
 	int brakePower;
 	int waitAtEnd;
 	int brakeDuration;
+	float error;
 	float rampConst1, rampConst2,rampConst3; // initialPower/0; maxPower/kP; finalPower/kD
 } turnDefsStruct;
 
@@ -48,9 +50,10 @@ void initializeAutoMovement() {
 	turnDefaults.brakePower = 20;
 	turnDefaults.waitAtEnd = 100;
 	turnDefaults.brakeDuration = 100;
-	turnDefaults.rampConst1 = 40; // initialPower/0
-	turnDefaults.rampConst2 = 100; // maxPower/kP
-	turnDefaults.rampConst3 = -40;
+	turnDefaults.rampConst1 = 40;		// initialPower/kP
+	turnDefaults.rampConst2 = 100;	// maxPower/kD
+	turnDefaults.rampConst3 = -40;	// finalPower/error
+	driveDefaults.rampConst4 = 0;		// 0/timeout
 
 	//driving
 	driveDefaults.defCorrectionType = AUTO;
@@ -75,6 +78,9 @@ void initializeAutoMovement() {
 typedef struct {
 	float angle; //positive for clockwise, negative for counterclockwise
 	rampHandler ramper; //used for ramping motor powers
+	float error;	//allowable deviation from target value
+	int timeout;	//time robot is required to be within <error> of the target before continuing
+	long timer;	//tracks timeout state
 	int waitAtEnd; //delay after finishing turn (default 100ms for braking)
 	int brakeDuration; //maximum duration of braking at end of turn
 	int brakePower; //the motor power while braking
@@ -90,13 +96,21 @@ float turnProgress() {
 }
 
 bool turnIsComplete() {
-	return abs(turnProgress()) >= turnData.angle;
+	if (ramper->algorithm == PID)
+		return time(turnData.timer) > turnData.timeout;
+	else	//algorithm is QUAD
+		return abs(turnProgress()) >= turnData.angle;
 }
 
 void turnRuntime() {
-	int power = rampRuntime(turnData.ramper, abs(turnProgress()));
+	float progress = turnProgress();
+
+	int power = rampRuntime(turnData.ramper, abs(progress()));
 
 	setDrivePower(autoDrive, turnData.direction*power, -turnData.direction*power);
+
+	if (abs(progress - turnData.angle) > turnData.error)	//track timeout state
+		turnData.timer = resetTimer;
 }
 
 void turnEnd() {
@@ -118,17 +132,25 @@ task turnTask() {
 	turnEnd();
 }
 
-void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefaults.rampConst1, float in2=turnDefaults.rampConst2, float in3=turnDefaults.rampConst3, angleType angleType=turnDefaults.defAngleType, bool useGyro=turnDefaults.useGyro, int brakePower=turnDefaults.brakePower, int waitAtEnd=turnDefaults.waitAtEnd, int brakeDuration=turnDefaults.brakeDuration) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
+void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefaults.rampConst1, float in2=turnDefaults.rampConst2, float in3=turnDefaults.rampConst3, int in4=turnDefaults.rampConst4, angleType angleType=turnDefaults.defAngleType, bool useGyro=turnDefaults.useGyro, int brakePower=turnDefaults.brakePower, int waitAtEnd=turnDefaults.waitAtEnd, int brakeDuration=turnDefaults.brakeDuration) { //for PD, in1=kP, in2=kD, in3=error, in4=timeout; for quad ramping, in1=initial, in2=maximum, in3=final, and in4=0
 	//initialize variables
 	if (turnDefaults.reversed) angle *= -1;
 	float formattedAngle = convertAngle(abs(angle), DEGREES, angleType);
 	turnData.angle = (useGyro ? formattedAngle : PI*autoDrive.width*formattedAngle/360.);
-	initializeRampHandler(turnData.ramper, angle, in1, in2, in3);
 	turnData.direction = sgn(angle);
 	turnData.waitAtEnd = waitAtEnd;
 	turnData.brakeDuration = brakeDuration;
 	turnData.usingGyro = useGyro;
 	turnData.isTurning = true;
+
+	if (in4 == 0) {
+		initializeRampHandler(turnData.ramper, formattedAngle, in1, 0, in2);
+		turnData.error = in3;
+		turnData.timeout = in4;
+		turnData.timer = resetTimer();
+	} else {
+		initializeRampHandler(turnData.ramper, formattedAngle, in1, in2, in3);
+	}
 
 	resetGyro(autoDrive);
 
