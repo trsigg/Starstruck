@@ -276,15 +276,15 @@ int handleButtonInput(motorGroup *group) {
 
 int handleJoystickInput(motorGroup *group) {
 	int input = vexRT[group->posInput];
+	int currentPower = motor[ group->motors[0] ];
 	int power = sgn(input) * group->coeff * abs(pow(input, group->powMap)) / pow(127, group->powMap-1);
 
 	if (abs(power) < group->deadband) power = 0;
 
 	//handle ramping
-	if (group->isRamped) {
+	if (group->isRamped && abs(power) > abs(currentPower)) {	//only ramp up in absolute value
 		long now = nPgmTime;
 		int elapsed = now - group->lastUpdated;
-		int currentPower = motor[ group->motors[0] ];
 
 		if (elapsed > group->msPerPowerChange) {
 			int maxDiff = elapsed / group->msPerPowerChange;
