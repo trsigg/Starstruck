@@ -21,7 +21,7 @@ typedef struct {
 	int waitAtEnd;
 	int brakeDuration;
 	float error;
-	float rampConst1, rampConst2,rampConst3; // initialPower/0; maxPower/kP; finalPower/kD
+	float rampConst1, rampConst2, rampConst3, rampConst4; // initialPower/kP; maxPower/kD; finalPower/error; 0/timeout
 } turnDefsStruct;
 
 typedef struct {
@@ -29,11 +29,12 @@ typedef struct {
 	bool runAsTask;
 	bool rawValue;
 	int brakeDuration;
+	int pdTimeout;
 	int timeout;
 	int brakePower, brakeDuration;
 	int waitAtEnd;
 	int sampleTime;
-	float rampConst1, rampConst2, rampConst3;
+	float rampConst1, rampConst2, rampConst3, rampConst4;
 	float kP_c, kI_c, kD_c; //correction PID constants
 	float minSpeed;
 } driveDefsStruct;
@@ -50,10 +51,11 @@ void initializeAutoMovement() {
 	turnDefaults.brakePower = 20;
 	turnDefaults.waitAtEnd = 100;
 	turnDefaults.brakeDuration = 100;
+	turnDefaults.error = 2;
 	turnDefaults.rampConst1 = 40;		// initialPower/kP
 	turnDefaults.rampConst2 = 100;	// maxPower/kD
 	turnDefaults.rampConst3 = -40;	// finalPower/error
-	driveDefaults.rampConst4 = 0;		// 0/timeout
+	turnDefaults.rampConst4 = 0;		// 0/timeout
 
 	//driving
 	driveDefaults.defCorrectionType = AUTO;
@@ -67,6 +69,7 @@ void initializeAutoMovement() {
 	driveDefaults.rampConst1 = 40;
 	driveDefaults.rampConst2 = 120;
 	driveDefaults.rampConst3 = -15;
+	driveDefaults.rampConst4 = 0;
 	driveDefaults.kP_c = .55;
 	driveDefaults.kI_c = 0.007;
 	driveDefaults.kD_c = 0.15;
@@ -172,6 +175,8 @@ typedef struct {
 	float distance;
 	bool rawValue; //whether distance is measured in encoder clicks or inches
 	float minSpeed; //minimum speed during maneuver to prevent timeout (distance per 100ms)
+	float error;	//allowable deviation from target value
+	int pdTimeout;	//time robot is required to be within <error> of the target before continuing
 	int timeout; //amount of time after which a drive action sensing lower speed than minSpeed ceases (ms)
 	int sampleTime; //time between motor power adjustments
 	int waitAtEnd; //duration of pause at end of driving
@@ -184,7 +189,8 @@ typedef struct {
 	rampHandler ramper;
 	float leftDist, rightDist, totalDist; //distance traveled by each side of the drive (and their average)
 	int direction; //sign of distance
-	long timer; //for tracking timeout
+	long pdTimer;	//for tracking pd timeout
+	long timer; //for tracking timeout (time without movement)
 } driveStruct;
 
 driveStruct driveData;
