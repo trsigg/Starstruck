@@ -194,13 +194,13 @@ void setClawPower(int power, bool setTargets=true) {
 }
 
 void clawControl() {
-	if (vexRT[clawNeutralBtn] == 1) {
+	if (vexRT[clawNeutralBtn] == 1)
 		setClawPower(0);
-	} else if (vexRT[clawForwardBtn] == 1) {
+	else if (vexRT[clawForwardBtn] == 1)
 		setClawPower(clawDefPower);
-	} else	if (vexRT[clawBackwardBtn] == 1) {
+	else	if (vexRT[clawBackwardBtn] == 1)
 		setClawPower(-clawDefPower);
-	} else if (vexRT[openClawBtn]==1 && currentState!=OPEN)
+	else if (vexRT[openClawBtn]==1 && currentState!=OPEN)
 		setClawState(OPEN);
 	else if (vexRT[closeClawBtn]==1 && currentState!=CLOSED)
 		setClawState(CLOSED);
@@ -208,9 +208,8 @@ void clawControl() {
 		setClawState(HYPEREXTENDED);
 	else if (getPosition(lift)>liftPositions[THROW] && currentState!=OPEN && autoDumping)
 		setClawState(OPEN);
-	else {
+	else
 		executeClawPIDs();
-	}
 
 	if (vexRT[autoDumpOnBtn] == 1)
 		autoDumping = true;
