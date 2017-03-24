@@ -62,7 +62,7 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 
 //#region positions
 int liftPositions[5] = { 1175, 1700, 2400, 2425, 2950 };	//same order as corresponding enums
-int clawPositions[3] = { 450, 1200, 2000 };
+int clawPositions[3] = { 500, 1285, 1900 };
 //#endregion
 
 //#region constants
