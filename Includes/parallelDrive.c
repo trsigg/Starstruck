@@ -30,7 +30,7 @@ typedef struct {
 } parallel_drive;
 
 
-void initializeDrive(parallel_drive *drive, bool isRamped=false, int maxAcc100ms=20, int deadband=10, float powMap=1, float maxPow=127, float initialX=0, float initialY=0, float initialTheta=PI/2, float width=16, int minSampleTime=50, TVexJoysticks leftInput=Ch3, TVexJoysticks rightInput=Ch2) {
+void initializeDrive(parallel_drive *drive, bool isRamped=false, int maxAcc100ms=60, int deadband=10, float powMap=1, float maxPow=127, float initialX=0, float initialY=0, float initialTheta=PI/2, float width=16, int minSampleTime=50, TVexJoysticks leftInput=Ch3, TVexJoysticks rightInput=Ch2) {
 	//initialize drive variables
 	configureJoystickInput(drive->leftDrive, leftInput, deadband, isRamped, maxAcc100ms, powMap, maxPow);
 	configureJoystickInput(drive->rightDrive, rightInput, deadband, isRamped, maxAcc100ms, powMap, maxPow);
