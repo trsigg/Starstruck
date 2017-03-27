@@ -27,7 +27,9 @@
 #define straightToCube true
 #define blocking false
 #define agressiveClose false
-//#define TUNING	//uncommented if tuning auton PIDs
+	//#endsubregion
+	//#subregion tuning
+//#define TUNING	//uncommented if tuning auton PIDs (not routines)
 	//#endsubregion
 //#endregion
 
@@ -64,6 +66,10 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 int liftPositions[5] = { 1095, 1695, 2340, 2160, 2905 };	//same order as corresponding enums
 int clawPositions[3] = { 500, 1285, 1900 };
 //#endregion
+
+#ifdef TUNING
+	int targets[4] = { liftPositions[MIDDLE], clawPositions[OPEN], 0, 0 };	//lift, claw, turn, drive
+#endif
 
 //#region constants
 #define liftStillSpeed 15
@@ -519,7 +525,6 @@ task autonomous() {
 	startTask(maneuvers);
 
 	#ifdef TUNING
-	int targets[4] = { liftPositions[MIDDLE], clawPositions[OPEN], 0, 0 };	//lift, claw, turn, drive
 	bool abortDrive = false;	//set to true to stop drive maneuver
 
 	while (true) {
