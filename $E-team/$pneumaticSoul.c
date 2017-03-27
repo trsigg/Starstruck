@@ -2,8 +2,8 @@
 #pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
 #pragma config(Sensor, in3,    clawPotL,       sensorPotentiometer)
 #pragma config(Sensor, in4,    clawPotR,       sensorPotentiometer)
-#pragma config(Sensor, in5,    modePot,        sensorPotentiometer)
-#pragma config(Sensor, in6,    sidePot,        sensorPotentiometer)
+#pragma config(Sensor, in5,    sidePot,        sensorPotentiometer)
+#pragma config(Sensor, in6,    modePot,        sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           rDrive1,       tmotorVex393_HBridge, openLoop, reversed)
@@ -27,7 +27,7 @@
 #define straightToCube true
 #define blocking false
 #define agressiveClose false
-#define TUNING	//uncommented if tuning auton PIDs
+//#define TUNING	//uncommented if tuning auton PIDs
 	//#endsubregion
 //#endregion
 
@@ -61,7 +61,7 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 1175, 1700, 2400, 2425, 2950 };	//same order as corresponding enums
+int liftPositions[5] = { 1095, 1695, 2340, 2160, 2905 };	//same order as corresponding enums
 int clawPositions[3] = { 500, 1285, 1900 };
 //#endregion
 
@@ -322,10 +322,15 @@ void ramToRealign(int duration=500, bool liftToBottom=true) {
 
 void initialPillow() {
 	setLiftState(BOTTOM);
-	if (agressiveClose) setClawState(OPEN);
+
+	if (agressiveClose)
+		setClawState(OPEN);
+	else
+		setClawTargets(3950);	//open claw a little so it doesn't drag on wheels
+
 	if (straightToCube) {
-		driveStraight(24);//, true);
-		//while (driveData.totalDist < 20);
+		driveStraight(26, true);
+		while (driveData.totalDist < 22);
 		setClawState(OPEN);
 		while (driveData.isDriving);
 	} else {
@@ -429,7 +434,7 @@ task pillowAuton() {
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(8, true, 40, 95, -30);
+	driveStraight(9, true, 40, 95, -30);
 	while (driveData.isDriving) EndTimeSlice();
 	wait1Msec(500);
 	turn(49, true, 40, 100, -30); //turn to face fence
@@ -454,19 +459,13 @@ task pillowAuton() {
 
  	setClawState(HYPEREXTENDED);
 
- 	//drive to other wall
- 	setTargetPosition(lift, liftPositions[TOP]+150);
- 	driveStraight(-10, true);
- 	while (driveData.isDriving) EndTimeSlice();
- 	turn(70, true, 60, 127, -20);
- 	waitForMovementToFinish();
- 	driveStraight(50);
- 	turn(-40, false, 60, 127, -20);
- 	driveStraight(11);
+ 	driveStraight(-5);
+ 	turn(125);
+ 	liftTo(BOTTOM);
+ 	driveStraight(fenceToWallDist);
+ 	grabNdump(0);
 
- 	moveClawTo(CLOSED);
- 	liftTo(MAX);
- 	driveStraight(-2);
+ 	liftTo(BOTTOM);
 }
 
 task dumpyAuton() {
@@ -475,7 +474,7 @@ task dumpyAuton() {
 	liftTo(MIDDLE);
 	driveStraight(8.5, false, 40, 95, -20);
 
-	turnDriveDump((dumpToSide ? -70 : -95), -24, 7, 45, 100, -20);
+	turnDriveDump((dumpToSide ? -160 : -95), -24, 7, 45, 100, -20);
 	if (dumpToSide) {
 		driveStraight(24);
 		turn(-12.5);
@@ -502,7 +501,7 @@ task oneSideAuton() {
 	moveClawTo(CLOSED);
 	wait1Msec(500);
 	driveStraight(-10);
-	turn(113, true, 50, 127, -20);
+	turn(105, true, 50, 127, -20);
 	waitForMovementToFinish();
 
 	setLiftState(BOTTOM);
@@ -518,11 +517,6 @@ task autonomous() {
 	inactivateTargets();
 	setLiftPIDmode(true);
 	startTask(maneuvers);
-
-	int sidePos = SensorValue[sidePot];
-	int modePos = SensorValue[modePot];
-
-	turnDefaults.reversed = sidePos >= 2295;
 
 	#ifdef TUNING
 	int targets[4] = { liftPositions[MIDDLE], clawPositions[OPEN], 0, 0 };	//lift, claw, turn, drive
@@ -552,20 +546,28 @@ task autonomous() {
 			}
 		}
 	}
-	#endif
+
+	#else
+
+	int sidePos = SensorValue[sidePot];
+	int modePos = SensorValue[modePot];
+
+	turnDefaults.reversed = sidePos >= 2585;
 
 	//start appropriate autonomous task
-	if (1105<sidePos && sidePos<2295) {
+	if (1260<sidePos && sidePos<2585) {
 		startTask(skillz);
-	} else if (modePos < 590) {
+	} else if (modePos < 450) {
 		startTask(pillowAuton);
-	} else if (modePos < 1845) {
+	} else if (modePos < 1970) {
 		startTask(dumpyAuton);
-	} else if (modePos < 3475) {
+	} else if (modePos < 3645) {
 		startTask(oneSideAuton);
 	}
 
 	while (true) EndTimeSlice();
+
+	#endif
 }
 //#endregion
 
