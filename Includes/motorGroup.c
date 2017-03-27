@@ -276,7 +276,6 @@ int handleButtonInput(motorGroup *group) {
 
 int handleJoystickInput(motorGroup *group) {
 	int input = vexRT[group->posInput];
-	int currentPower = motor[ group->motors[0] ];
 	int power = sgn(input) * group->coeff * abs(pow(input / 127.0, group->powMap)) * 127;
 
 	if (abs(power) < group->deadband) power = 0;
@@ -285,6 +284,7 @@ int handleJoystickInput(motorGroup *group) {
 	if (group->isRamped) {
 		long now = nPgmTime;
 		int elapsed = now - group->lastUpdated;
+		int currentPower = motor[ group->motors[0] ];
 
 		if (elapsed >= group->msPerPowerChange) {
 			group->lastUpdated = now;
