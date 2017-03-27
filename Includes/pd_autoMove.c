@@ -83,7 +83,7 @@ typedef struct {
 	rampHandler ramper; //used for ramping motor powers
 	float error;	//allowable deviation from target value
 	int timeout;	//time robot is required to be within <error> of the target before continuing
-	long timer;	//tracks timeout state
+	long timer;	//tracks timeout state - TODO: movement timer, completion timer
 	int waitAtEnd; //delay after finishing turn (default 100ms for braking)
 	int brakeDuration; //maximum duration of braking at end of turn
 	int brakePower; //the motor power while braking

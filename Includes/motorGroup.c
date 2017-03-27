@@ -282,22 +282,24 @@ int handleJoystickInput(motorGroup *group) {
 	if (abs(power) < group->deadband) power = 0;
 
 	//handle ramping
-	if (group->isRamped && abs(power) > abs(currentPower)) {	//only ramp up in absolute value
+	if (group->isRamped) {
 		long now = nPgmTime;
 		int elapsed = now - group->lastUpdated;
 
-		if (elapsed > group->msPerPowerChange) {
-			int maxDiff = elapsed / group->msPerPowerChange;
+		if (elapsed >= group->msPerPowerChange) {
+			group->lastUpdated = now;
 
-			if (abs(currentPower - power) < maxDiff) {
-				group->lastUpdated = now;
-			} else {
-				power = (power>currentPower ? currentPower+maxDiff : currentPower-maxDiff);
-				group->lastUpdated = now - (elapsed % group->msPerPowerChange);
+			if (abs(power) > abs(currentPower)) {	//only ramp up in absolute value
+				int maxDiff = elapsed / group->msPerPowerChange;
+
+				if (abs(currentPower - power) > maxDiff) {
+					group->lastUpdated = now - (elapsed % group->msPerPowerChange);
+					return (power>currentPower ? currentPower+maxDiff : currentPower-maxDiff);
+				}
 			}
-		} else {
-			power = currentPower;
 		}
+
+		return currentPower;
 	}
 
 	return power;
