@@ -29,7 +29,7 @@
 #define agressiveClose false
 	//#endsubregion
 	//#subregion tuning
-//#define TUNING	//uncommented if tuning auton PIDs (not routines)
+#define TUNING	//uncommented if tuning auton PIDs (not routines)
 	//#endsubregion
 //#endregion
 
@@ -63,12 +63,13 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 1095, 1695, 2340, 2160, 2905 };	//same order as corresponding enums
+int liftPositions[5] = { 1060, 1695, 2340, 2160, 2905 };	//same order as corresponding enums
 int clawPositions[3] = { 500, 1285, 1900 };
 //#endregion
 
 #ifdef TUNING
 	int targets[4] = { liftPositions[MIDDLE], clawPositions[OPEN], 0, 0 };	//lift, claw, turn, drive
+	bool abortDrive = false;	//set to true to stop drive maneuver
 #endif
 
 //#region constants
@@ -525,14 +526,12 @@ task autonomous() {
 	startTask(maneuvers);
 
 	#ifdef TUNING
-	bool abortDrive = false;	//set to true to stop drive maneuver
-
 	while (true) {
 		if (targets[0] != lift.posPID.target)
 			setTargetPosition(lift, targets[0]);
 
 		if (targets[1] != rightClaw.posPID.target)
-			setClawTargets(targets[1];
+			setClawTargets(targets[1]);
 
 		if (abortDrive) {
 			abortDrive = false;
