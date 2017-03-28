@@ -99,7 +99,7 @@ float turnProgress() {
 }
 
 bool turnIsComplete() {
-	if (turnData.ramper.algorithm == PID)
+	if (turnData.ramper.algorithm == PD)
 		return time(turnData.pdTimer) > turnData.pdTimeout;
 	else	//algorithm is QUAD
 		return abs(turnProgress()) >= turnData.angle;
@@ -277,15 +277,15 @@ void setCorrectionType(correctionType type) {
 	}
 }
 
-void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float in1=driveDefaults.rampConst1, float in2=driveDefaults.rampConst2, float in3=driveDefaults.rampConst3, float in4=driveDefaults.rampConst4, float kP=driveDefaults.kP_c, float kI=driveDefaults.kI_c, float kD=driveDefaults.kD_c, correctionType correctionType=driveDefaults.defCorrectionType, bool rawValue=driveDefaults.rawValue, float minSpeed=driveDefaults.minSpeed, int movementTimeout=driveDefaults.movementTimeout, int brakePower=driveDefaults.brakePower, int waitAtEnd=driveDefaults.waitAtEnd, int sampleTime=driveDefaults.sampleTime) { //for PD, in1=kP, in2=kD, in3=error, in4=pd timeout; for quad ramping, in1=initial, in2=maximum, in3=final, and in4=0
+void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float in1=driveDefaults.rampConst1, float in2=driveDefaults.rampConst2, float in3=driveDefaults.rampConst3, float in4=driveDefaults.rampConst4, float kP=driveDefaults.kP_c, float kI=driveDefaults.kI_c, float kD=driveDefaults.kD_c, correctionType correctionType=driveDefaults.defCorrectionType, bool rawValue=driveDefaults.rawValue, float minSpeed=driveDefaults.minSpeed, int movementTimeout=driveDefaults.movementTimeout, int brakePower=driveDefaults.brakePower, int waitAtEnd=driveDefaults.waitAtEnd) { //for PD, in1=kP, in2=kD, in3=error, in4=pd timeout; for quad ramping, in1=initial, in2=maximum, in3=final, and in4=0
 	//initialize variables
 	driveData.distance = abs(distance);
 	driveData.direction = sgn(distance);
 	driveData.rawValue = rawValue;
-	driveData.minSpeed = minSpeed * sampleTime / 1000;
+	driveData.minSpeed = minSpeed * driveData.sampleTime / 1000;
 	driveData.movementTimeout = movementTimeout;
 	driveData.waitAtEnd = waitAtEnd;
-	driveData.sampleTime = sampleTime;
+	driveData.sampleTime = driveDefaults.sampleTime;
 	driveData.brakeDuration = driveDefaults.brakeDuration;
 	driveData.isDriving = true;
 	initializePID(driveData.pid, 0, kP, kI, kD);
