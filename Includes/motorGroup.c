@@ -297,9 +297,9 @@ int handleJoystickInput(motorGroup *group) {
 					return (power>currentPower ? currentPower+maxDiff : currentPower-maxDiff);
 				}
 			}
+		} else {
+			return currentPower;
 		}
-
-		return currentPower;
 	}
 
 	return power;

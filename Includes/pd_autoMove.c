@@ -100,19 +100,19 @@ float turnProgress() {
 
 bool turnIsComplete() {
 	if (turnData.ramper.algorithm == PD)
-		return time(turnData.pdTimer) > turnData.pdTimeout;
+		return time(turnData.pdTimer) >= turnData.pdTimeout;
 	else	//algorithm is QUAD
 		return abs(turnProgress()) >= turnData.angle;
 }
 
 void turnRuntime() {
-	float progress = turnProgress();
+	float progress = abs(turnProgress());
 
-	int power = rampRuntime(turnData.ramper, abs(progress));
+	int power = rampRuntime(turnData.ramper, progress);
 
 	setDrivePower(autoDrive, turnData.direction*power, -turnData.direction*power);
 
-	if (abs(progress - turnData.angle) > turnData.error)	//track timeout state
+	if (turnData.ramper.algorithm==PD && abs(progress - turnData.angle) > turnData.error)	//track timeout state
 		turnData.pdTimer = resetTimer();
 }
 
@@ -147,12 +147,12 @@ void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefa
 	turnData.isTurning = true;
 
 	if (in4 == 0) {	//QUAD ramping
+		initializeRampHandler(turnData.ramper, formattedAngle, in1, in2, in3);
+	} else {	//PD ramping
 		initializeRampHandler(turnData.ramper, formattedAngle, in1, 0, in2);
 		turnData.error = in3;
 		turnData.pdTimeout = in4;
 		turnData.pdTimer = resetTimer();
-	} else {	//PD ramping
-		initializeRampHandler(turnData.ramper, formattedAngle, in1, in2, in3);
 	}
 
 	resetGyro(autoDrive);
@@ -196,13 +196,13 @@ typedef struct {
 driveStruct driveData;
 
 bool drivingComplete() {
-	if (time(driveData.movementTimer) > driveData.movementTimeout)
+	if (time(driveData.movementTimer) >= driveData.movementTimeout)
 		return true;
 
 	if (driveData.ramper.algorithm == PD)
-		return time(driveData.pdTimer) > driveData.pdTimeout
+		return time(driveData.pdTimer) >= driveData.pdTimeout
 	else	//algorithm is QUAD
-		return driveData.totalDist > driveData.distance;
+		return driveData.totalDist >= driveData.distance;
 }
 
 void driveStraightRuntime() {
@@ -211,7 +211,7 @@ void driveStraightRuntime() {
 	driveData.totalDist = (driveData.leftDist + driveData.rightDist) / 2;
 
 	//track timeout states
-	if (driveEncoderVal(autoDrive) > driveData.minSpeed)
+	if (driveEncoderVal(autoDrive) >= driveData.minSpeed)
 		driveData.movementTimer = resetTimer();
 	if (driveData.ramper.algorithm==PD && abs(driveData.totalDist - driveData.distance) < driveData.error)
 		driveData.pdTimer = resetTimer();
@@ -295,12 +295,12 @@ void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float
 	driveData.totalDist = 0;
 
 	if (in4 == 0) {	//QUAD ramping
+		initializeRampHandler(driveData.ramper, driveData.distance, in1, in2, in3);
+	} else {	//PD ramping
 		initializeRampHandler(driveData.ramper, driveData.distance, in1, 0, in2);
 		driveData.error = in3;
 		driveData.pdTimeout = in4;
 		driveData.pdTimer = resetTimer();
-	} else {	//PD ramping
-		initializeRampHandler(driveData.ramper, driveData.distance, in1, in2, in3);
 	}
 
 	if (correctionType == AUTO) {
