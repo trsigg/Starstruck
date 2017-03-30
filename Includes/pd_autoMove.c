@@ -20,7 +20,6 @@ typedef struct {
 	int brakePower;
 	int waitAtEnd;
 	int brakeDuration;
-	float error;
 	float rampConst1, rampConst2, rampConst3, rampConst4; // initialPower/kP; maxPower/kD; finalPower/error; 0/timeout
 } turnDefsStruct;
 
@@ -51,11 +50,10 @@ void initializeAutoMovement() {
 	turnDefaults.brakePower = 20;
 	turnDefaults.waitAtEnd = 100;
 	turnDefaults.brakeDuration = 100;
-	turnDefaults.error = 2;
-	turnDefaults.rampConst1 = 40;		// initialPower/kP
-	turnDefaults.rampConst2 = 100;	// maxPower/kD
-	turnDefaults.rampConst3 = -40;	// finalPower/error
-	turnDefaults.rampConst4 = 0;		// 0/pd timeout
+	turnDefaults.rampConst1 = 1;		// initialPower/kP
+	turnDefaults.rampConst2 = 0.25;	// maxPower/kD
+	turnDefaults.rampConst3 = 5;	// finalPower/error
+	turnDefaults.rampConst4 = 1000;		// 0/pd timeout
 
 	//driving
 	driveDefaults.defCorrectionType = AUTO;
@@ -149,7 +147,7 @@ void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefa
 	if (in4 == 0) {	//QUAD ramping
 		initializeRampHandler(turnData.ramper, formattedAngle, in1, in2, in3);
 	} else {	//PD ramping
-		initializeRampHandler(turnData.ramper, formattedAngle, in1, 0, in2);
+		initializeRampHandler(turnData.ramper, formattedAngle, 0, in1, in2);
 		turnData.error = in3;
 		turnData.pdTimeout = in4;
 		turnData.pdTimer = resetTimer();
@@ -297,7 +295,7 @@ void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float
 	if (in4 == 0) {	//QUAD ramping
 		initializeRampHandler(driveData.ramper, driveData.distance, in1, in2, in3);
 	} else {	//PD ramping
-		initializeRampHandler(driveData.ramper, driveData.distance, in1, 0, in2);
+		initializeRampHandler(driveData.ramper, driveData.distance, 0, in1, in2);
 		driveData.error = in3;
 		driveData.pdTimeout = in4;
 		driveData.pdTimer = resetTimer();

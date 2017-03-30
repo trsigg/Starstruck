@@ -103,14 +103,6 @@ void pre_auton() {
 
 	initializeAutoMovement();
 
-	turnDefaults.rampConst1 = 40;
-	turnDefaults.rampConst2 = 127;
-	turnDefaults.rampConst3 = -30;
-
-	driveDefaults.rampConst1 = 50;
-	driveDefaults.rampConst2 = 120;
-	driveDefaults.rampConst3 = -20;
-
 	//configure drive
 	initializeDrive(drive, true);
 	setDriveMotors(drive, 6, LDrive1, LDrive2, LDrive3, rDrive1, rDrive2, rDrive2);
@@ -146,7 +138,7 @@ void setLiftState(liftState state) {
 
 void setLiftPIDmode(bool auto) {
 	if (auto)
-		setTargetingPIDconsts(lift, 0.4, 0.001, 0.6, 25);
+		setTargetingPIDconsts(lift, 0.4, 0.001, 0.4, 25);
 	else
 		setTargetingPIDconsts(lift, 0.2, 0.001, 0.2, 25);
 }
