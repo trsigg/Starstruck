@@ -92,6 +92,7 @@ int clawPositions[3] = { 350, 1285, 1900 };
 bool autoDumping = false;
 clawState currentState;
 int liftDirection;
+bool autonVariant = false; //whether using standard or variant auton routine
 
 motorGroup lift;
 motorGroup rightClaw;
@@ -346,6 +347,29 @@ void initialPillow() {
 	moveClawTo(CLOSED, 500); //clamp pillow
 }
 
+void initialSide() {
+  //back up
+  driveStraight(-10, true);
+  //while (driveData.totalDist < 1) TODO
+  setLiftState(MIDDLE);
+  setClawState(HYPEREXTENDED);
+  waitForMovementToFinish();
+
+  //get corner jacks
+  setLiftState(BOTTOM);
+  setClawState(OPEN);
+  turn(-30);
+  driveStraight(15);
+  waitForMovementToFinish();
+  moveClawTo(CLOSED);
+  //while (getPosition(rightClaw) > 600)  TODO
+
+  //dump
+  setLiftState(MIDDLE);
+  driveStraight(-15);
+  turnDriveDump(30, -20);
+}
+
 task skillz() {
 	driveStraight(-13);
 	setClawState(OPEN);
@@ -494,22 +518,41 @@ task dumpyAuton() {
 }
 
 task oneSideAuton() {
-	setClawState(HYPEREXTENDED);
-	setTargetPosition(lift, liftPositions[TOP]+175);
-	driveStraight(57.5);
-	moveClawTo(CLOSED);
-	wait1Msec(500);
-	driveStraight(-10);
-	turn(105, true, 50, 127, -20);
-	waitForMovementToFinish();
+  initialSide();
 
-	setLiftState(BOTTOM);
-	setClawState(OPEN);
-	waitForMovementToFinish();
-	driveStraight(fenceToWallDist);
-	setClawState(CLOSED);
-	while (getPosition(rightClaw) > 600);	//TODO: don't do this
-	turnDriveDump(0, -fenceToWallDist-5, fenceToWallDist-20);
+  if (autonVariant) {
+    //drive to back
+    setClawState(OPEN); //TODO: less?
+    setLiftState(MIDDLE);
+    driveStraight(fenceToWallDist + 10);
+    turn(80);
+
+    //get and dump back center jacks
+    setLiftState(BOTTOM);
+    driveStraight(30);
+    moveClawTo(CLOSED);
+    //while (driveData.totalDist < 1) TODO
+    setLiftState(MIDDLE);
+    driveStraight(-30);
+    turnDriveDump(-80, fenceToWallDist+10, 7);
+  }
+}
+
+task fatAngel() {
+  initialSide();
+
+  //center cube
+  setLiftState(BOTTOM);
+  turn(30);
+  waitForMovementToFinish();
+  driveStraight(20);
+  moveClawTo(CLOSED);
+  turnDriveDump(-30, -10);
+
+  //center back jacks
+  setLiftState(BOTTOM); //TODO: protect against not reaching bottom by end of drive
+  moveClawTo(CLOSED);
+  turnDriveDump(0, fenceToWallDist+5, 1);
 }
 
 task autonomous() {
