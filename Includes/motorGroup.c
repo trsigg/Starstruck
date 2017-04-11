@@ -62,7 +62,7 @@ void configureButtonInput(motorGroup *group, TVexJoysticks posBtn, TVexJoysticks
 	group->downPower = downPower;
 }
 
-void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadband=10, bool isRamped=false, int maxAcc100ms=20, float powMap=1, int maxPow=127) {
+void configureJoystickInput(motorGroup *group, TVexJoysticks joystick, int deadband=10, bool isRamped=false, int maxAcc100ms=60, float powMap=1, int maxPow=127) {
 	group->controlType = JOYSTICK;
 	group->posInput = joystick;
 	group->deadband = deadband;

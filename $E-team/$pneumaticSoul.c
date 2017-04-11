@@ -1,11 +1,11 @@
 #pragma config(Sensor, in1,    hyro,           sensorGyro)
 #pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
-#pragma config(Sensor, in3,    clawPotL,       sensorPotentiometer)
-#pragma config(Sensor, in4,    clawPotR,       sensorPotentiometer)
 #pragma config(Sensor, in5,    sidePot,        sensorPotentiometer)
 #pragma config(Sensor, in6,    modePot,        sensorPotentiometer)
-#pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
-#pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
+#pragma config(Sensor, in7,    clawPotL,       sensorPotentiometer)
+#pragma config(Sensor, in8,    clawPotR,       sensorPotentiometer)
+#pragma config(Sensor, dgtl10, rightEnc,       sensorQuadEncoder)
+#pragma config(Sensor, dgtl12, leftEnc,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           rDrive1,       tmotorVex393_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           lift1,         tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port3,           LDrive1,       tmotorVex393_MC29, openLoop)
@@ -29,7 +29,7 @@
 #define agressiveClose false
 	//#endsubregion
 	//#subregion tuning
-#define TUNING	//uncommented if tuning auton PIDs (not routines)
+//#define TUNING	//uncommented if tuning auton PIDs (not routines)
 	//#endsubregion
 //#endregion
 
@@ -64,7 +64,7 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 
 //#region positions
 int liftPositions[5] = { 1050, 1695, 2340, 2160, 2905 };	//same order as corresponding enums
-int clawPositions[3] = { 500, 1285, 1900 };
+int clawPositions[3] = { 350, 1285, 1900 };
 //#endregion
 
 #ifdef TUNING
@@ -79,7 +79,7 @@ int clawPositions[3] = { 500, 1285, 1900 };
 #define clawErrorMargin 100
 #define maxStationarySpeed	100	//max error decrease in claw PID error (per second) where claw is considered not to be moving (CURRENTLY UNUSED)
 #define fenceToWallDist 30
-#define clawDiff 0					//difference between claw potentiometers when at the same angle (left - right)
+#define clawDiff 120					//difference between claw potentiometers when at the same angle (left - right)
 #define liftDriftDist	300	//estimated distance lift drifts after button is released (for setting lift PID target during drive control)
 //#endregion
 
