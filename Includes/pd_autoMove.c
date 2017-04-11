@@ -135,7 +135,7 @@ task turnTask() {
 	turnEnd();
 }
 
-void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefaults.rampConst1, float in2=turnDefaults.rampConst2, float in3=turnDefaults.rampConst3, int in4=turnDefaults.rampConst4, in5=turnDefaults.rampConst5, angleType angleType=turnDefaults.defAngleType, bool useGyro=turnDefaults.useGyro, int brakePower=turnDefaults.brakePower, int waitAtEnd=turnDefaults.waitAtEnd, int brakeDuration=turnDefaults.brakeDuration) { //for PD, in1=kP, in2=kD, in3=error, in4=pd timeout, in5=kI; for quad ramping, in1=initial, in2=maximum, in3=final, and in4=0
+void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefaults.rampConst1, float in2=turnDefaults.rampConst2, float in3=turnDefaults.rampConst3, int in4=turnDefaults.rampConst4, float in5=turnDefaults.rampConst5, angleType angleType=turnDefaults.defAngleType, bool useGyro=turnDefaults.useGyro, int brakePower=turnDefaults.brakePower, int waitAtEnd=turnDefaults.waitAtEnd, int brakeDuration=turnDefaults.brakeDuration) { //for PD, in1=kP, in2=kD, in3=error, in4=pd timeout, in5=kI; for quad ramping, in1=initial, in2=maximum, in3=final, and in4=0
 	//initialize variables
 	if (turnDefaults.reversed) angle *= -1;
 	float formattedAngle = convertAngle(abs(angle), DEGREES, angleType);
@@ -149,7 +149,7 @@ void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefa
 	if (in4 == 0) {	//QUAD ramping
 		initializeRampHandler(turnData.ramper, QUAD, formattedAngle, in1, in2, in3);
 	} else {	//PD ramping
-		initializeRampHandler(turnData.ramper, PID, formattedAngle, in1, in5, in2);
+		initializeRampHandler(turnData.ramper, PD, formattedAngle, in1, in5, in2);
 		turnData.error = in3;
 		turnData.pdTimeout = in4;
 		turnData.pdTimer = resetTimer();
@@ -200,7 +200,7 @@ bool drivingComplete() {
 		return true;
 
 	if (driveData.ramper.algorithm == PD)
-		return time(driveData.pdTimer) >= driveData.pdTimeout
+		return time(driveData.pdTimer) >= driveData.pdTimeout;
 	else	//algorithm is QUAD
 		return driveData.totalDist >= driveData.distance;
 }
@@ -298,7 +298,7 @@ void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float
 	if (in4 == 0) {	//QUAD ramping
 		initializeRampHandler(driveData.ramper, QUAD, driveData.distance, in1, in2, in3);
 	} else {	//PD ramping
-		initializeRampHandler(driveData.ramper, PID, driveData.distance, in1, in5, in2);
+		initializeRampHandler(driveData.ramper, PD, driveData.distance, in1, in5, in2);
 		driveData.error = in3;
 		driveData.pdTimeout = in4;
 		driveData.pdTimer = resetTimer();
