@@ -63,7 +63,7 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 1060, 1695, 2340, 2160, 2905 };	//same order as corresponding enums
+int liftPositions[5] = { 1050, 1695, 2340, 2160, 2905 };	//same order as corresponding enums
 int clawPositions[3] = { 500, 1285, 1900 };
 //#endregion
 
@@ -433,10 +433,10 @@ task pillowAuton() {
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(9, true, 40, 95, -30);
+	driveStraight(10, true, 40, 95, -30);
 	while (driveData.isDriving) EndTimeSlice();
 	wait1Msec(500);
-	turn(49, true, 40, 100, -30); //turn to face fence
+	turn(39, true, 40, 100, -30); //turn to face fence
 	while (turnData.isTurning) EndTimeSlice();
 	driveStraight(30, true, 60, 127, -20); // drive up to wall
 	waitForMovementToFinish();
@@ -459,7 +459,7 @@ task pillowAuton() {
  	setClawState(HYPEREXTENDED);
 
  	driveStraight(-5);
- 	turn(125);
+ 	turn(120);
  	liftTo(BOTTOM);
  	driveStraight(fenceToWallDist);
  	grabNdump(0);
@@ -473,7 +473,7 @@ task dumpyAuton() {
 	liftTo(MIDDLE);
 	driveStraight(8.5, false, 40, 95, -20);
 
-	turnDriveDump((dumpToSide ? -160 : -95), -24, 7, 45, 100, -20);
+	turnDriveDump((dumpToSide ? -145 : -95), -24, 7, 45, 100, -20);
 	if (dumpToSide) {
 		driveStraight(24);
 		turn(-12.5);
