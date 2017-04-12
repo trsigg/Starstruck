@@ -62,7 +62,7 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 //#endregion
 
 //#region positions
-int liftPositions[5] = { 1050, 1695, 2340, 2160, 2905 };	//same order as corresponding enums
+int liftPositions[5] = { 1050, 1860, 2340, 2160, 2905 };	//same order as corresponding enums
 int clawPositions[3] = { 350, 1285, 1900 };
 //#endregion
 
@@ -174,15 +174,14 @@ void executeClawPIDs() {
 	maintainTargetPos(rightClaw);
 }
 
-void setClawState(clawState state) {
-	setTargetPosition(leftClaw, clawPositions[state]+clawDiff);
-	setTargetPosition(rightClaw, clawPositions[state]);
-	currentState = state;
-}
-
 void setClawTargets(int targetPos) {
 	setTargetPosition(leftClaw, targetPos+clawDiff);
 	setTargetPosition(rightClaw, targetPos);
+}
+
+void setClawState(clawState state) {
+	setClawTargets(clawPositions[state]);
+	currentState = state;
 }
 
 void setClawPower(int power, bool setTargets=true) {
@@ -324,12 +323,10 @@ void initialPillow() {
 
 	if (agressiveClose)
 		setClawState(OPEN);
-	else
-		setClawTargets(3950);	//open claw a little so it doesn't drag on wheels
 
 	if (straightToCube) {
 		driveStraight(26, true);
-		while (driveData.totalDist < 22);
+		while (driveData.totalDist < 17);
 		setClawState(OPEN);
 		while (driveData.isDriving);
 	} else {
@@ -348,16 +345,15 @@ void initialPillow() {
 
 void initialSide(bool preloadFirst) {	//dumps preload and corner jack first if preloadFirst is true
   //back up
-  driveStraight(-10, true);
-  //while (driveData.totalDist < 1) TODO
+  driveStraight(-25, true);
   setLiftState(MIDDLE);
   setClawState(HYPEREXTENDED);
   waitForMovementToFinish();
 
   //get corner jacks
   setLiftState(BOTTOM);
-  setClawState(OPEN);
-  turn(-30);
+  setClawTargets(clawPositions[OPEN] - 350);
+  turn(-27);
   driveStraight(15);
   waitForMovementToFinish();
   moveClawTo(CLOSED);
@@ -366,7 +362,7 @@ void initialSide(bool preloadFirst) {	//dumps preload and corner jack first if p
   //dump
   setLiftState(MIDDLE);
   driveStraight(-15);
-  turnDriveDump(30, -20);
+  turnDriveDump(27, -30, 5);
 }
 
 task skillz() {
@@ -456,7 +452,7 @@ task blockingAuton() {	//variant blocks for nearly entire autonomous period
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(10, true, 40, 95, -30);
+	driveStraight(12, true, 40, 95, -30);
 	while (driveData.isDriving) EndTimeSlice();
 	wait1Msec(500);
 	turn(39, true, 40, 100, -30); //turn to face fence
@@ -484,7 +480,7 @@ task blockingAuton() {	//variant blocks for nearly entire autonomous period
  	driveStraight(-5);
  	turn(120);
  	liftTo(BOTTOM);
- 	driveStraight(fenceToWallDist);
+ 	driveStraight(fenceToWallDist + 1.5);
  	grabNdump(0);
 
  	liftTo(BOTTOM);
@@ -494,20 +490,20 @@ task dumpyAuton() {	//variant dumps to side
 	initialPillow();
 
 	liftTo(MIDDLE);
-	driveStraight(8.5, false, 40, 95, -20);
+	driveStraight(8.5, false, 40, 95, -30);
 
-	turnDriveDump((autonVariant ? -145 : -95), -24, 7, 45, 100, -20);
+	turnDriveDump((autonVariant ? -80 : -95), -24, 7, 45, 100, -20);
 	if (autonVariant) {
+		setLiftState(BOTTOM);
 		driveStraight(24);
-		turn(-12.5);
+		turn(-17);
 	} else {
 		ramToRealign();
 	}
 
-	setLiftState(BOTTOM);
 	setClawState(HYPEREXTENDED);
 	waitForMovementToFinish();
-	driveStraight(fenceToWallDist + (autonVariant ? -15 : 6));
+	driveStraight(fenceToWallDist + (autonVariant ? -11 : 6));
 	grabNdump(0, fenceToWallDist, 750);
 	ramToRealign();
 	driveStraight(fenceToWallDist);
@@ -521,10 +517,10 @@ task oneSideAuton() {	//variant gets center back jacks
 
   if (autonVariant) {
     //drive to back
-    setClawState(OPEN); //TODO: less?
+    setClawTargets(clawPositions[OPEN] - 200);
     setLiftState(MIDDLE);
-    driveStraight(fenceToWallDist + 10);
-    turn(80);
+    driveStraight(fenceToWallDist + 15);
+    turn(50);
 
     //get and dump back center jacks
     setLiftState(BOTTOM);
@@ -533,7 +529,7 @@ task oneSideAuton() {	//variant gets center back jacks
     //while (driveData.totalDist < 1) TODO
     setLiftState(MIDDLE);
     driveStraight(-30);
-    turnDriveDump(-80, fenceToWallDist+10, 7);
+    turnDriveDump(-80, -fenceToWallDist-15, 13);
   }
 }
 
@@ -590,8 +586,8 @@ task autonomous() {
 	int sidePos = SensorValue[sidePot];
 	int modePos = SensorValue[modePot];
 
-	turnDefaults.reversed = sidePos >= 2585;
-	autonVariant = 630<sidePos && sidePos<3340;	//true if in upper half of potentiometer	TODO: check vals
+	turnDefaults.reversed = sidePos <= 2585;
+	autonVariant = 400<sidePos && sidePos<3600;	//true if in upper half of potentiometer
 
 	//start appropriate autonomous task
 	if (skills) {
