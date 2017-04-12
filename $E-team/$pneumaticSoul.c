@@ -23,10 +23,9 @@
 //#define DRIVER_PID	//uncommented if using PID instead of still speeds during user control
 	//#endsubregion
 	//#subregion auton
-#define dumpToSide false
-#define straightToCube true
-#define blocking false
-#define agressiveClose false
+#define straightToCube true	//whether initialPillow() drives straight to cube
+#define agressiveClose false	//determines the point at which the claw begins to close in initialPillow()
+#define skills false	//whether autonomous mode runs skills routine
 	//#endsubregion
 	//#subregion tuning
 //#define TUNING	//uncommented if tuning auton PIDs (not routines)
@@ -347,7 +346,7 @@ void initialPillow() {
 	moveClawTo(CLOSED, 500); //clamp pillow
 }
 
-void initialSide() {
+void initialSide(bool preloadFirst) {	//dumps preload and corner jack first if preloadFirst is true
   //back up
   driveStraight(-10, true);
   //while (driveData.totalDist < 1) TODO
@@ -451,7 +450,7 @@ task skillz() {
 	}
 }
 
-task pillowAuton() {
+task blockingAuton() {	//variant blocks for nearly entire autonomous period
 	clearTimer(autonTimer);
 	initialPillow();
 
@@ -466,9 +465,9 @@ task pillowAuton() {
 	waitForMovementToFinish();
 	wait1Msec(750);
 
-	if (blocking) {
+	if (autonVariant) {
 		setDrivePower(drive, 15, 15);
-		while (time1(autonTimer) < 15000) EndTimeSlice();
+		while (time1(autonTimer) < 14000) EndTimeSlice();
 	}
 	moveClawTo(OPEN); //release pillow
 	wait1Msec(500); //wait for pillow to fall
@@ -491,14 +490,14 @@ task pillowAuton() {
  	liftTo(BOTTOM);
 }
 
-task dumpyAuton() {
+task dumpyAuton() {	//variant dumps to side
 	initialPillow();
 
 	liftTo(MIDDLE);
 	driveStraight(8.5, false, 40, 95, -20);
 
-	turnDriveDump((dumpToSide ? -145 : -95), -24, 7, 45, 100, -20);
-	if (dumpToSide) {
+	turnDriveDump((autonVariant ? -145 : -95), -24, 7, 45, 100, -20);
+	if (autonVariant) {
 		driveStraight(24);
 		turn(-12.5);
 	} else {
@@ -508,7 +507,7 @@ task dumpyAuton() {
 	setLiftState(BOTTOM);
 	setClawState(HYPEREXTENDED);
 	waitForMovementToFinish();
-	driveStraight(fenceToWallDist + (dumpToSide ? -15 : 6));
+	driveStraight(fenceToWallDist + (autonVariant ? -15 : 6));
 	grabNdump(0, fenceToWallDist, 750);
 	ramToRealign();
 	driveStraight(fenceToWallDist);
@@ -517,8 +516,8 @@ task dumpyAuton() {
 	liftTo(BOTTOM);
 }
 
-task oneSideAuton() {
-  initialSide();
+task oneSideAuton() {	//variant gets center back jacks
+  initialSide(false);
 
   if (autonVariant) {
     //drive to back
@@ -538,8 +537,8 @@ task oneSideAuton() {
   }
 }
 
-task fatAngel() {
-  initialSide();
+task fatAngel() {	//no variant
+  initialSide(true);
 
   //center cube
   setLiftState(BOTTOM);
@@ -592,16 +591,21 @@ task autonomous() {
 	int modePos = SensorValue[modePot];
 
 	turnDefaults.reversed = sidePos >= 2585;
+	autonVariant = 630<sidePos && sidePos<3340;	//true if in upper half of potentiometer	TODO: check vals
 
 	//start appropriate autonomous task
-	if (1260<sidePos && sidePos<2585) {
+	if (skills) {
 		startTask(skillz);
-	} else if (modePos < 450) {
-		startTask(pillowAuton);
-	} else if (modePos < 1970) {
-		startTask(dumpyAuton);
-	} else if (modePos < 3645) {
-		startTask(oneSideAuton);
+	} else	if (1500<sidePos || sidePos>2200) {
+		if (modePos < 450) {
+			startTask(blockingAuton);
+		} else if (modePos < 1970) {
+			startTask(dumpyAuton);
+		} else if (modePos < 3645) {
+			startTask(oneSideAuton);
+		} else {
+			startTask(fatAngel);
+		}
 	}
 
 	while (true) EndTimeSlice();
