@@ -16,10 +16,11 @@ typedef struct {
 	bool runAsTask;
 	bool useGyro;
 	bool reversed;	//reverses all turns (for mirroring auton routines)
+	int pdTimeout;
 	int brakePower;
 	int waitAtEnd;
 	int brakeDuration;
-	float rampConst1, rampConst2,rampConst3; // initialPower/0; maxPower/kP; finalPower/kD
+	float rampConst1, rampConst2, rampConst3, rampConst4, rampConst5; // initialPower/kP; maxPower/kD; finalPower/error; 0/timeout
 } turnDefsStruct;
 
 typedef struct {
@@ -27,11 +28,12 @@ typedef struct {
 	bool runAsTask;
 	bool rawValue;
 	int brakeDuration;
-	int timeout;
+	int pdTimeout;
+	int movementTimeout;
 	int brakePower, brakeDuration;
 	int waitAtEnd;
 	int sampleTime;
-	float rampConst1, rampConst2, rampConst3;
+	float rampConst1, rampConst2, rampConst3, rampConst4, rampConst5;
 	float kP_c, kI_c, kD_c; //correction PID constants
 	float minSpeed;
 } driveDefsStruct;
@@ -48,22 +50,26 @@ void initializeAutoMovement() {
 	turnDefaults.brakePower = 20;
 	turnDefaults.waitAtEnd = 100;
 	turnDefaults.brakeDuration = 100;
-	turnDefaults.rampConst1 = 40; // initialPower/0
-	turnDefaults.rampConst2 = 100; // maxPower/kP
-	turnDefaults.rampConst3 = -40;
+	turnDefaults.rampConst1 = 40;			// initialPower/kP
+	turnDefaults.rampConst2 = 127;		// maxPower/kD
+	turnDefaults.rampConst3 = -30;		// finalPower/error
+	turnDefaults.rampConst4 = 0;			// 0/pd timeout
+	turnDefaults.rampConst5 = 0.005;	// irrelevant/kI
 
 	//driving
 	driveDefaults.defCorrectionType = AUTO;
 	driveDefaults.runAsTask = false;
 	driveDefaults.rawValue = false;
 	driveDefaults.brakeDuration = 100;
-	driveDefaults.timeout = 1000;
+	driveDefaults.movementTimeout = 1000;
 	driveDefaults.brakePower = 30;
 	driveDefaults.waitAtEnd = 100;
 	driveDefaults.sampleTime = 50;
-	driveDefaults.rampConst1 = 40;
+	driveDefaults.rampConst1 = 50;	//same as above
 	driveDefaults.rampConst2 = 120;
-	driveDefaults.rampConst3 = -15;
+	driveDefaults.rampConst3 = -20;
+	driveDefaults.rampConst4 = 0;
+	driveDefaults.rampConst5 = 0.05;
 	driveDefaults.kP_c = .55;
 	driveDefaults.kI_c = 0.007;
 	driveDefaults.kD_c = 0.15;
@@ -75,6 +81,9 @@ void initializeAutoMovement() {
 typedef struct {
 	float angle; //positive for clockwise, negative for counterclockwise
 	rampHandler ramper; //used for ramping motor powers
+	float error;	//allowable deviation from target value
+	int pdTimeout;	//time robot is required to be within <error> of the target before continuing
+	long pdTimer;	//tracks timeout state when PD ramping
 	int waitAtEnd; //delay after finishing turn (default 100ms for braking)
 	int brakeDuration; //maximum duration of braking at end of turn
 	int brakePower; //the motor power while braking
@@ -90,13 +99,21 @@ float turnProgress() {
 }
 
 bool turnIsComplete() {
-	return abs(turnProgress()) >= turnData.angle;
+	if (turnData.ramper.algorithm == PD)
+		return time(turnData.pdTimer) >= turnData.pdTimeout;
+	else	//algorithm is QUAD
+		return abs(turnProgress()) >= turnData.angle;
 }
 
 void turnRuntime() {
-	int power = rampRuntime(turnData.ramper, abs(turnProgress()));
+	float progress = abs(turnProgress());
+
+	int power = rampRuntime(turnData.ramper, progress);
 
 	setDrivePower(autoDrive, turnData.direction*power, -turnData.direction*power);
+
+	if (turnData.ramper.algorithm==PD && abs(progress - turnData.angle) > turnData.error)	//track timeout state
+		turnData.pdTimer = resetTimer();
 }
 
 void turnEnd() {
@@ -118,17 +135,25 @@ task turnTask() {
 	turnEnd();
 }
 
-void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefaults.rampConst1, float in2=turnDefaults.rampConst2, float in3=turnDefaults.rampConst3, angleType angleType=turnDefaults.defAngleType, bool useGyro=turnDefaults.useGyro, int brakePower=turnDefaults.brakePower, int waitAtEnd=turnDefaults.waitAtEnd, int brakeDuration=turnDefaults.brakeDuration) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
+void turn(float angle, bool runAsTask=turnDefaults.runAsTask, float in1=turnDefaults.rampConst1, float in2=turnDefaults.rampConst2, float in3=turnDefaults.rampConst3, int in4=turnDefaults.rampConst4, float in5=turnDefaults.rampConst5, angleType angleType=turnDefaults.defAngleType, bool useGyro=turnDefaults.useGyro, int brakePower=turnDefaults.brakePower, int waitAtEnd=turnDefaults.waitAtEnd, int brakeDuration=turnDefaults.brakeDuration) { //for PD, in1=kP, in2=kD, in3=error, in4=pd timeout, in5=kI; for quad ramping, in1=initial, in2=maximum, in3=final, and in4=0
 	//initialize variables
 	if (turnDefaults.reversed) angle *= -1;
 	float formattedAngle = convertAngle(abs(angle), DEGREES, angleType);
 	turnData.angle = (useGyro ? formattedAngle : PI*autoDrive.width*formattedAngle/360.);
-	initializeRampHandler(turnData.ramper, angle, in1, in2, in3);
 	turnData.direction = sgn(angle);
 	turnData.waitAtEnd = waitAtEnd;
 	turnData.brakeDuration = brakeDuration;
 	turnData.usingGyro = useGyro;
 	turnData.isTurning = true;
+
+	if (in4 == 0) {	//QUAD ramping
+		initializeRampHandler(turnData.ramper, QUAD, formattedAngle, in1, in2, in3);
+	} else {	//PD ramping
+		initializeRampHandler(turnData.ramper, PD, formattedAngle, in1, in5, in2);
+		turnData.error = in3;
+		turnData.pdTimeout = in4;
+		turnData.pdTimer = resetTimer();
+	}
 
 	resetGyro(autoDrive);
 
@@ -150,7 +175,9 @@ typedef struct {
 	float distance;
 	bool rawValue; //whether distance is measured in encoder clicks or inches
 	float minSpeed; //minimum speed during maneuver to prevent timeout (distance per 100ms)
-	int timeout; //amount of time after which a drive action sensing lower speed than minSpeed ceases (ms)
+	float error;	//allowable deviation from target value
+	int pdTimeout;	//time robot is required to be within <error> of the target before continuing
+	int movementTimeout; //amount of time after which a drive action sensing lower speed than minSpeed ceases (ms)
 	int sampleTime; //time between motor power adjustments
 	int waitAtEnd; //duration of pause at end of driving
 	int brakeDuration; //maximum duration of braking at end of turn
@@ -162,13 +189,20 @@ typedef struct {
 	rampHandler ramper;
 	float leftDist, rightDist, totalDist; //distance traveled by each side of the drive (and their average)
 	int direction; //sign of distance
-	long timer; //for tracking timeout
+	long pdTimer;	//for tracking pd timeout
+	long movementTimer; //for tracking timeout (time without movement)
 } driveStruct;
 
 driveStruct driveData;
 
 bool drivingComplete() {
-	return driveData.totalDist>driveData.distance  || time(driveData.timer)>driveData.timeout;
+	if (time(driveData.movementTimer) >= driveData.movementTimeout)
+		return true;
+
+	if (driveData.ramper.algorithm == PD)
+		return time(driveData.pdTimer) >= driveData.pdTimeout;
+	else	//algorithm is QUAD
+		return driveData.totalDist >= driveData.distance;
 }
 
 void driveStraightRuntime() {
@@ -176,7 +210,12 @@ void driveStraightRuntime() {
 	driveData.rightDist += abs(driveEncoderVal(autoDrive, RIGHT, driveData.rawValue));
 	driveData.totalDist = (driveData.leftDist + driveData.rightDist) / 2;
 
-	if (driveEncoderVal(autoDrive) > driveData.minSpeed) driveData.timer = resetTimer(); //track timeout state
+	//track timeout states
+	if (driveEncoderVal(autoDrive) >= driveData.minSpeed)
+		driveData.movementTimer = resetTimer();
+	if (driveData.ramper.algorithm==PD && abs(driveData.totalDist - driveData.distance) < driveData.error)
+		driveData.pdTimer = resetTimer();
+
 	resetDriveEncoders(autoDrive);
 
 	//calculate error value and correction coefficient
@@ -238,16 +277,16 @@ void setCorrectionType(correctionType type) {
 	}
 }
 
-void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float in1=driveDefaults.rampConst1, float in2=driveDefaults.rampConst2, float in3=driveDefaults.rampConst3, float kP=driveDefaults.kP_c, float kI=driveDefaults.kI_c, float kD=driveDefaults.kD_c, correctionType correctionType=driveDefaults.defCorrectionType, bool rawValue=driveDefaults.rawValue, float minSpeed=driveDefaults.minSpeed, int timeout=driveDefaults.timeout, int brakePower=driveDefaults.brakePower, int waitAtEnd=driveDefaults.waitAtEnd, int sampleTime=driveDefaults.sampleTime) { //for PD, in1=0, in2=kP, in3=kD; for quad ramping, in1=initial, in2=maximum, and in3=final
+void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float in1=driveDefaults.rampConst1, float in2=driveDefaults.rampConst2, float in3=driveDefaults.rampConst3, float in4=driveDefaults.rampConst4, float in5=driveDefaults.rampConst5, float kP=driveDefaults.kP_c, float kI=driveDefaults.kI_c, float kD=driveDefaults.kD_c, correctionType correctionType=driveDefaults.defCorrectionType, bool rawValue=driveDefaults.rawValue, float minSpeed=driveDefaults.minSpeed, int movementTimeout=driveDefaults.movementTimeout, int waitAtEnd=driveDefaults.waitAtEnd) { //for PD, in1=kP, in2=kD, in3=error, in4=pd timeout, in5=kI; for quad ramping, in1=initial, in2=maximum, in3=final, and in4=0
 	//initialize variables
 	driveData.distance = abs(distance);
-	initializeRampHandler(driveData.ramper, distance, in1, in2, in3);
 	driveData.direction = sgn(distance);
 	driveData.rawValue = rawValue;
-	driveData.minSpeed = minSpeed * sampleTime / 1000;
-	driveData.timeout = timeout;
+	driveData.minSpeed = minSpeed * driveData.sampleTime / 1000;
+	driveData.movementTimeout = movementTimeout;
 	driveData.waitAtEnd = waitAtEnd;
-	driveData.sampleTime = sampleTime;
+	driveData.sampleTime = driveDefaults.sampleTime;
+	driveData.brakePower = driveDefaults.brakePower;
 	driveData.brakeDuration = driveDefaults.brakeDuration;
 	driveData.isDriving = true;
 	initializePID(driveData.pid, 0, kP, kI, kD);
@@ -255,6 +294,15 @@ void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float
 	driveData.leftDist = 0;
 	driveData.rightDist = 0;
 	driveData.totalDist = 0;
+
+	if (in4 == 0) {	//QUAD ramping
+		initializeRampHandler(driveData.ramper, QUAD, driveData.distance, in1, in2, in3);
+	} else {	//PD ramping
+		initializeRampHandler(driveData.ramper, PD, driveData.distance, in1, in5, in2);
+		driveData.error = in3;
+		driveData.pdTimeout = in4;
+		driveData.pdTimer = resetTimer();
+	}
 
 	if (correctionType == AUTO) {
 		setCorrectionType(ENCODER);
@@ -269,7 +317,7 @@ void driveStraight(float distance, bool runAsTask=driveDefaults.runAsTask, float
 	//initialize sensors
 	resetDriveEncoders(autoDrive);
 
-	driveData.timer = resetTimer();
+	driveData.movementTimer = resetTimer();
 
 	if (runAsTask) {
 		startTask(driveStraightTask);

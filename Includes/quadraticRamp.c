@@ -3,7 +3,7 @@ typedef struct {
 } quadraticRamp;
 
 void initializeQuadraticRamp(quadraticRamp *ramp, float target, float initial, float maximum, float final) { //maximum input and initial, maximum, and final output
-  ramp->a = (pow(target, 2) * (final+initial-2*maximum) - 2*sqrt(pow(target, 4) * (final-maximum) * (initial-maximum))) / pow(target, 4);
+  ramp->a = ((final + initial - 2*maximum) - 2*sqrt((final-maximum) * (initial-maximum))) / pow(target, 2);
 	ramp->b = ((final-initial)/target - ramp->a*target) * sgn(target);
   ramp->c = initial;
 }

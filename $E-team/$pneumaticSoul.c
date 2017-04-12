@@ -1,9 +1,9 @@
 #pragma config(Sensor, in1,    hyro,           sensorGyro)
 #pragma config(Sensor, in2,    liftPot,        sensorPotentiometer)
-#pragma config(Sensor, in3,    clawPotL,       sensorPotentiometer)
-#pragma config(Sensor, in4,    clawPotR,       sensorPotentiometer)
 #pragma config(Sensor, in5,    sidePot,        sensorPotentiometer)
 #pragma config(Sensor, in6,    modePot,        sensorPotentiometer)
+#pragma config(Sensor, in7,    clawPotL,       sensorPotentiometer)
+#pragma config(Sensor, in8,    clawPotR,       sensorPotentiometer)
 #pragma config(Sensor, dgtl1,  rightEnc,       sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftEnc,        sensorQuadEncoder)
 #pragma config(Motor,  port1,           rDrive1,       tmotorVex393_HBridge, openLoop, reversed)
@@ -23,10 +23,9 @@
 //#define DRIVER_PID	//uncommented if using PID instead of still speeds during user control
 	//#endsubregion
 	//#subregion auton
-#define dumpToSide false
-#define straightToCube true
-#define blocking false
-#define agressiveClose false
+#define straightToCube true	//whether initialPillow() drives straight to cube
+#define agressiveClose false	//determines the point at which the claw begins to close in initialPillow()
+#define skills false	//whether autonomous mode runs skills routine
 	//#endsubregion
 	//#subregion tuning
 //#define TUNING	//uncommented if tuning auton PIDs (not routines)
@@ -64,11 +63,12 @@ enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 
 //#region positions
 int liftPositions[5] = { 1050, 1695, 2340, 2160, 2905 };	//same order as corresponding enums
-int clawPositions[3] = { 500, 1285, 1900 };
+int clawPositions[3] = { 350, 1285, 1900 };
 //#endregion
 
 #ifdef TUNING
 	int targets[4] = { liftPositions[MIDDLE], clawPositions[OPEN], 0, 0 };	//lift, claw, turn, drive
+	bool abortDrive = false;	//set to true to stop drive maneuver
 #endif
 
 //#region constants
@@ -78,7 +78,7 @@ int clawPositions[3] = { 500, 1285, 1900 };
 #define clawErrorMargin 100
 #define maxStationarySpeed	100	//max error decrease in claw PID error (per second) where claw is considered not to be moving (CURRENTLY UNUSED)
 #define fenceToWallDist 30
-#define clawDiff 0					//difference between claw potentiometers when at the same angle (left - right)
+#define clawDiff 120					//difference between claw potentiometers when at the same angle (left - right)
 #define liftDriftDist	300	//estimated distance lift drifts after button is released (for setting lift PID target during drive control)
 //#endregion
 
@@ -91,6 +91,7 @@ int clawPositions[3] = { 500, 1285, 1900 };
 bool autoDumping = false;
 clawState currentState;
 int liftDirection;
+bool autonVariant = false; //whether using standard or variant auton routine
 
 motorGroup lift;
 motorGroup rightClaw;
@@ -101,14 +102,6 @@ void pre_auton() {
 	bStopTasksBetweenModes = true;
 
 	initializeAutoMovement();
-
-	turnDefaults.rampConst1 = 40;
-	turnDefaults.rampConst2 = 127;
-	turnDefaults.rampConst3 = -30;
-
-	driveDefaults.rampConst1 = 50;
-	driveDefaults.rampConst2 = 120;
-	driveDefaults.rampConst3 = -20;
 
 	//configure drive
 	initializeDrive(drive, true);
@@ -145,7 +138,7 @@ void setLiftState(liftState state) {
 
 void setLiftPIDmode(bool auto) {
 	if (auto)
-		setTargetingPIDconsts(lift, 0.4, 0.001, 0.6, 25);
+		setTargetingPIDconsts(lift, 0.4, 0.001, 0.4, 25);
 	else
 		setTargetingPIDconsts(lift, 0.2, 0.001, 0.2, 25);
 }
@@ -353,6 +346,29 @@ void initialPillow() {
 	moveClawTo(CLOSED, 500); //clamp pillow
 }
 
+void initialSide(bool preloadFirst) {	//dumps preload and corner jack first if preloadFirst is true
+  //back up
+  driveStraight(-10, true);
+  //while (driveData.totalDist < 1) TODO
+  setLiftState(MIDDLE);
+  setClawState(HYPEREXTENDED);
+  waitForMovementToFinish();
+
+  //get corner jacks
+  setLiftState(BOTTOM);
+  setClawState(OPEN);
+  turn(-30);
+  driveStraight(15);
+  waitForMovementToFinish();
+  moveClawTo(CLOSED);
+  //while (getPosition(rightClaw) > 600)  TODO
+
+  //dump
+  setLiftState(MIDDLE);
+  driveStraight(-15);
+  turnDriveDump(30, -20);
+}
+
 task skillz() {
 	driveStraight(-13);
 	setClawState(OPEN);
@@ -434,7 +450,7 @@ task skillz() {
 	}
 }
 
-task pillowAuton() {
+task blockingAuton() {	//variant blocks for nearly entire autonomous period
 	clearTimer(autonTimer);
 	initialPillow();
 
@@ -449,9 +465,9 @@ task pillowAuton() {
 	waitForMovementToFinish();
 	wait1Msec(750);
 
-	if (blocking) {
+	if (autonVariant) {
 		setDrivePower(drive, 15, 15);
-		while (time1(autonTimer) < 15000) EndTimeSlice();
+		while (time1(autonTimer) < 14000) EndTimeSlice();
 	}
 	moveClawTo(OPEN); //release pillow
 	wait1Msec(500); //wait for pillow to fall
@@ -474,14 +490,14 @@ task pillowAuton() {
  	liftTo(BOTTOM);
 }
 
-task dumpyAuton() {
+task dumpyAuton() {	//variant dumps to side
 	initialPillow();
 
 	liftTo(MIDDLE);
 	driveStraight(8.5, false, 40, 95, -20);
 
-	turnDriveDump((dumpToSide ? -145 : -95), -24, 7, 45, 100, -20);
-	if (dumpToSide) {
+	turnDriveDump((autonVariant ? -145 : -95), -24, 7, 45, 100, -20);
+	if (autonVariant) {
 		driveStraight(24);
 		turn(-12.5);
 	} else {
@@ -491,7 +507,7 @@ task dumpyAuton() {
 	setLiftState(BOTTOM);
 	setClawState(HYPEREXTENDED);
 	waitForMovementToFinish();
-	driveStraight(fenceToWallDist + (dumpToSide ? -15 : 6));
+	driveStraight(fenceToWallDist + (autonVariant ? -15 : 6));
 	grabNdump(0, fenceToWallDist, 750);
 	ramToRealign();
 	driveStraight(fenceToWallDist);
@@ -500,23 +516,42 @@ task dumpyAuton() {
 	liftTo(BOTTOM);
 }
 
-task oneSideAuton() {
-	setClawState(HYPEREXTENDED);
-	setTargetPosition(lift, liftPositions[TOP]+175);
-	driveStraight(57.5);
-	moveClawTo(CLOSED);
-	wait1Msec(500);
-	driveStraight(-10);
-	turn(105, true, 50, 127, -20);
-	waitForMovementToFinish();
+task oneSideAuton() {	//variant gets center back jacks
+  initialSide(false);
 
-	setLiftState(BOTTOM);
-	setClawState(OPEN);
-	waitForMovementToFinish();
-	driveStraight(fenceToWallDist);
-	setClawState(CLOSED);
-	while (getPosition(rightClaw) > 600);	//TODO: don't do this
-	turnDriveDump(0, -fenceToWallDist-5, fenceToWallDist-20);
+  if (autonVariant) {
+    //drive to back
+    setClawState(OPEN); //TODO: less?
+    setLiftState(MIDDLE);
+    driveStraight(fenceToWallDist + 10);
+    turn(80);
+
+    //get and dump back center jacks
+    setLiftState(BOTTOM);
+    driveStraight(30);
+    moveClawTo(CLOSED);
+    //while (driveData.totalDist < 1) TODO
+    setLiftState(MIDDLE);
+    driveStraight(-30);
+    turnDriveDump(-80, fenceToWallDist+10, 7);
+  }
+}
+
+task fatAngel() {	//no variant
+  initialSide(true);
+
+  //center cube
+  setLiftState(BOTTOM);
+  turn(30);
+  waitForMovementToFinish();
+  driveStraight(20);
+  moveClawTo(CLOSED);
+  turnDriveDump(-30, -10);
+
+  //center back jacks
+  setLiftState(BOTTOM); //TODO: protect against not reaching bottom by end of drive
+  moveClawTo(CLOSED);
+  turnDriveDump(0, fenceToWallDist+5, 1);
 }
 
 task autonomous() {
@@ -525,14 +560,12 @@ task autonomous() {
 	startTask(maneuvers);
 
 	#ifdef TUNING
-	bool abortDrive = false;	//set to true to stop drive maneuver
-
 	while (true) {
 		if (targets[0] != lift.posPID.target)
 			setTargetPosition(lift, targets[0]);
 
 		if (targets[1] != rightClaw.posPID.target)
-			setClawTargets(targets[1];
+			setClawTargets(targets[1]);
 
 		if (abortDrive) {
 			abortDrive = false;
@@ -558,16 +591,21 @@ task autonomous() {
 	int modePos = SensorValue[modePot];
 
 	turnDefaults.reversed = sidePos >= 2585;
+	autonVariant = 630<sidePos && sidePos<3340;	//true if in upper half of potentiometer	TODO: check vals
 
 	//start appropriate autonomous task
-	if (1260<sidePos && sidePos<2585) {
+	if (skills) {
 		startTask(skillz);
-	} else if (modePos < 450) {
-		startTask(pillowAuton);
-	} else if (modePos < 1970) {
-		startTask(dumpyAuton);
-	} else if (modePos < 3645) {
-		startTask(oneSideAuton);
+	} else	if (1500<sidePos || sidePos>2200) {
+		if (modePos < 450) {
+			startTask(blockingAuton);
+		} else if (modePos < 1970) {
+			startTask(dumpyAuton);
+		} else if (modePos < 3645) {
+			startTask(oneSideAuton);
+		} else {
+			startTask(fatAngel);
+		}
 	}
 
 	while (true) EndTimeSlice();
