@@ -28,7 +28,7 @@
 #define skills false	//whether autonomous mode runs skills routine
 	//#endsubregion
 	//#subregion tuning
-//#define TUNING	//uncommented if tuning auton PIDs (not routines)
+//#define TUNING	//uncommented to use tuning function
 	//#endsubregion
 //#endregion
 
@@ -56,19 +56,18 @@
 	//#endsubregion
 //#endregion
 
-//#region enums
+//#region positions
 enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 enum clawState { CLOSED, OPEN, HYPEREXTENDED };
-//#endregion
 
-//#region positions
-int liftPositions[5] = { 1050, 1860, 2340, 2160, 2800 };	//same order as corresponding enums
+int liftPositions[5] = { 1050, 1860, 2340, 2160, 2850 };	//same order as corresponding enums
 int clawPositions[3] = { 350, 1285, 1900 };
 //#endregion
 
 #ifdef TUNING
 	int targets[4] = { liftPositions[MIDDLE], clawPositions[OPEN], 0, 0 };	//lift, claw, turn, drive
 	bool abortDrive = false;	//set to true to stop drive maneuver
+	bool abortTuning = false;
 #endif
 
 //#region constants
@@ -316,6 +315,35 @@ void ramToRealign(int duration=500) {
 	setDrivePower(drive, 0, 0);
 }
 
+#ifdef TUNING
+void tuning() {
+	while (!abortTuning) {
+		if (targets[0] != lift.posPID.target)
+			setTargetPosition(lift, targets[0]);
+
+		if (targets[1] != rightClaw.posPID.target)
+			setClawTargets(targets[1]);
+
+		if (abortDrive) {
+			abortDrive = false;
+			driveData.isDriving = false;
+			turnData.isTurning = false;
+			setDrivePower(drive, 0, 0);
+		}
+
+		if (!(driveData.isDriving || turnData.isTurning)) {
+			if (targets[2] != 0) {
+				turn(targets[2], true);
+				targets[2] = 0;
+			} else if (targets[3] != 0) {
+				driveStraight(targets[3], true);
+				targets[3] = 0;
+			}
+		}
+	}
+}
+#endif
+
 void initialPillow() {
 	setLiftState(BOTTOM);
 
@@ -324,7 +352,7 @@ void initialPillow() {
 
 	if (straightToCube) {
 		driveStraight(26, true);
-		while (driveData.totalDist < 17);
+		while (driveData.totalDist < 15);
 		setClawState(OPEN);
 		while (driveData.isDriving);
 	} else {
@@ -345,12 +373,11 @@ void initialSide(bool preloadFirst) {	//dumps preload and corner jack first if p
   //back up
   driveStraight(-30, true);
   setLiftState(MIDDLE);
-  setClawState(HYPEREXTENDED);
-  waitForMovementToFinish();
+  setClawTargets(clawPositions[OPEN] - 350);
+  waitForMovementToFinish(false);
 
   //get corner jacks
   setLiftState(BOTTOM);
-  setClawTargets(clawPositions[OPEN] - 350);
   turn(-15);
   driveStraight(23);
   waitForMovementToFinish();
@@ -455,35 +482,35 @@ task blockingAuton() {	//variant blocks for nearly entire autonomous period
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(12, true, 40, 95, -30);
-	while (driveData.isDriving) EndTimeSlice();
-	wait1Msec(500);
-	turn(45, true, 40, 100, -30); //turn to face fence
-	while (turnData.isTurning) EndTimeSlice();
-	driveStraight(30, true, 60, 127, -20); // drive up to wall
+	driveStraight(12, false, 40, 95, -30);
+	wait1Msec(100);
+	turn(40, false, 40, 100, -30); //turn to face fence
+	driveStraight(30, false, 60, 127, -20); // drive up to wall
 	waitForMovementToFinish();
-	wait1Msec(750);
 
 	if (autonVariant) {
 		setDrivePower(drive, 15, 15);
 		while (time1(autonTimer) < 14000) EndTimeSlice();
 	}
+
 	moveClawTo(OPEN); //release pillow
 	wait1Msec(500); //wait for pillow to fall
-	moveClawTo(CLOSED);
-	driveStraight(-10.5); //back up
-	moveClawTo(HYPEREXTENDED);
+	setClawState(CLOSED);
+	driveStraight(-7, true); //back up
+	while (driveData.totalDist < 5);
+	setClawState(HYPEREXTENDED);
+	waitForMovementToFinish();
 
 	//push jacks over
- 	driveStraight(13);
- 	moveClawTo(CLOSED);
+ 	driveStraight(10);
+ 	moveClawTo(OPEN);
 
  	setClawState(HYPEREXTENDED);
 
  	driveStraight(-5);
- 	turn(125);
+ 	turn(135);
  	liftTo(BOTTOM);
- 	driveStraight(fenceToWallDist + 1.5);
+ 	driveStraight(fenceToWallDist + 2);
  	grabNdump(0);
 
  	liftTo(BOTTOM);
@@ -493,13 +520,13 @@ task dumpyAuton() {	//variant dumps to side
 	initialPillow();
 
 	liftTo(MIDDLE);
-	driveStraight(8.5, false, 40, 95, -30);
+	driveStraight(11, false, 40, 95, -30);
 
-	turnDriveDump((autonVariant ? -80 : -95), -24, 7, 45, 100, -20);
+	turnDriveDump((autonVariant ? -70 : -95), -24, 7, 45, 100, -20);
 	if (autonVariant) {
 		setLiftState(BOTTOM);
 		driveStraight(24);
-		turn(-17);
+		turn(-10);
 	} else {
 		setLiftState(BOTTOM);
 		ramToRealign();
@@ -507,7 +534,7 @@ task dumpyAuton() {	//variant dumps to side
 
 	setClawState(HYPEREXTENDED);
 	waitForMovementToFinish();
-	driveStraight(fenceToWallDist + (autonVariant ? -11 : 6));
+	driveStraight(autonVariant ? 15 : fenceToWallDist+6);
 	grabNdump(0, fenceToWallDist, 750);
 	setLiftState(BOTTOM);
 	ramToRealign();
@@ -545,50 +572,26 @@ task fatAngel() {	//no variant
 
   //center cube
   setLiftState(BOTTOM);
-  turn(30);
+  turn(43);
   waitForMovementToFinish();
-  driveStraight(20);
+  driveStraight(28);
   moveClawTo(CLOSED);
-  turnDriveDump(-30, -10);
+  liftTo(MIDDLE);
+  driveStraight(15, false, 40, 95, -20);
+  turnDriveDump(-43, -25);
 
   //center back jacks
-  setLiftState(BOTTOM); //TODO: protect against not reaching bottom by end of drive
+  setClawState(HYPEREXTENDED);
+  liftTo(BOTTOM);
+  driveStraight(fenceToWallDist);
   moveClawTo(CLOSED);
-  turnDriveDump(0, fenceToWallDist+5, 1);
+  turnDriveDump(0, -fenceToWallDist-5, 1);
 }
 
 task autonomous() {
 	inactivateTargets();
 	setLiftPIDmode(true);
 	startTask(maneuvers);
-
-	#ifdef TUNING
-	while (true) {
-		if (targets[0] != lift.posPID.target)
-			setTargetPosition(lift, targets[0]);
-
-		if (targets[1] != rightClaw.posPID.target)
-			setClawTargets(targets[1]);
-
-		if (abortDrive) {
-			abortDrive = false;
-			driveData.isDriving = false;
-			turnData.isTurning = false;
-			setDrivePower(drive, 0, 0);
-		}
-
-		if (!(driveData.isDriving || turnData.isTurning)) {
-			if (targets[2] != 0) {
-				turn(targets[2], true);
-				targets[2] = 0;
-			} else if (targets[3] != 0) {
-				driveStraight(targets[3], true);
-				targets[3] = 0;
-			}
-		}
-	}
-
-	#else
 
 	int sidePos = SensorValue[sidePot];
 	int modePos = SensorValue[modePot];
@@ -612,8 +615,6 @@ task autonomous() {
 	}
 
 	while (true) EndTimeSlice();
-
-	#endif
 }
 //#endregion
 

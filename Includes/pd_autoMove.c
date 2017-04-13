@@ -47,7 +47,7 @@ void initializeAutoMovement() {
 	turnDefaults.runAsTask = false;
 	turnDefaults.useGyro = true;
 	turnDefaults.reversed = false;
-	turnDefaults.brakePower = 20;
+	turnDefaults.brakePower = 15;
 	turnDefaults.waitAtEnd = 100;
 	turnDefaults.brakeDuration = 100;
 	turnDefaults.rampConst1 = 40;			// initialPower/kP
