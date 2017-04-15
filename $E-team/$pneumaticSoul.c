@@ -25,10 +25,10 @@
 	//#subregion auton
 #define straightToCube true	//whether initialPillow() drives straight to cube
 #define agressiveClose false	//determines the point at which the claw begins to close in initialPillow()
-#define skills false	//whether autonomous mode runs skills routine
+#define skills true	//whether autonomous mode runs skills routine
 	//#endsubregion
 	//#subregion tuning
-//#define TUNING	//uncommented to use tuning function
+#define TUNING	//uncommented to use tuning function
 	//#endsubregion
 //#endregion
 
@@ -60,7 +60,7 @@
 enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 
-int liftPositions[5] = { 1050, 1860, 2340, 2160, 2850 };	//same order as corresponding enums
+int liftPositions[5] = { 1050, 1860, 2340, 2160, 2820 };	//same order as corresponding enums
 int clawPositions[3] = { 350, 1285, 1900 };
 //#endregion
 
@@ -221,7 +221,10 @@ task maneuvers() {
 	while (true) {
 		executeClawPIDs();
 
-		maintainTargetPos(lift);
+		if (lift.posPID.target==liftPositions[BOTTOM] && errorLessThan(lift, liftErrorMargin))
+			setPower(lift, -liftStillSpeed);
+		else
+			maintainTargetPos(lift);
 
 		EndTimeSlice();
 	}
@@ -371,15 +374,15 @@ void initialPillow() {
 
 void initialSide(bool preloadFirst) {	//dumps preload and corner jack first if preloadFirst is true
   //back up
-  driveStraight(-30, true);
+  driveStraight(-35, true);
   setLiftState(MIDDLE);
   setClawTargets(clawPositions[OPEN] - 350);
   waitForMovementToFinish(false);
 
   //get corner jacks
   setLiftState(BOTTOM);
-  turn(-15);
-  driveStraight(23);
+  turn(-20);
+  driveStraight(26);
   waitForMovementToFinish();
   moveClawTo(CLOSED);
   while (getPosition(rightClaw) > 600);
@@ -387,7 +390,7 @@ void initialSide(bool preloadFirst) {	//dumps preload and corner jack first if p
   //dump
   setLiftState(MIDDLE);
   driveStraight(-15);
-  turnDriveDump(20, -20, 5);
+  turnDriveDump(17, -25, 7);
 }
 
 task skillz() {
@@ -549,7 +552,7 @@ task oneSideAuton() {	//variant doesn't get center back jacks
 
   if (!autonVariant) {
     //drive to back
-    setClawTargets(clawPositions[OPEN] - 200);
+    setClawTargets(clawPositions[OPEN] - 300);
     setLiftState(MIDDLE);
     ramToRealign();
     driveStraight(fenceToWallDist + 15);
@@ -557,13 +560,14 @@ task oneSideAuton() {	//variant doesn't get center back jacks
     //get and dump back center jacks
     turn(50);
     setLiftState(BOTTOM);
-    //driveStraight(-4);
-    driveStraight(40);
+    driveStraight(-4);
+    waitForMovementToFinish();
+    driveStraight(45);
     moveClawTo(CLOSED);
     while (getPosition(rightClaw) > 600);
     setLiftState(MIDDLE);
-    driveStraight(-35);
-    turnDriveDump(-60, -fenceToWallDist-15, 13);
+    driveStraight(-40);
+    turnDriveDump(-40, -fenceToWallDist-15, 13);
   }
 }
 
@@ -572,18 +576,18 @@ task fatAngel() {	//no variant
 
   //center cube
   setLiftState(BOTTOM);
-  turn(43);
+  turn(35);
   waitForMovementToFinish();
-  driveStraight(28);
+  driveStraight(30);
   moveClawTo(CLOSED);
   liftTo(MIDDLE);
-  driveStraight(15, false, 40, 95, -20);
-  turnDriveDump(-43, -25);
+  //driveStraight(5, false, 40, 100, -20);
+  turnDriveDump(-43, -20, 5);
 
   //center back jacks
   setClawState(HYPEREXTENDED);
   liftTo(BOTTOM);
-  driveStraight(fenceToWallDist);
+  driveStraight(fenceToWallDist + 5);
   moveClawTo(CLOSED);
   turnDriveDump(0, -fenceToWallDist-5, 1);
 }
@@ -598,6 +602,7 @@ task autonomous() {
 
 	turnDefaults.reversed = sidePos <= 2585;
 	autonVariant = 400<sidePos && sidePos<3600;	//true if in upper half of potentiometer
+	clearTimer(T4);	//debug
 
 	//start appropriate autonomous task
 	if (skills) {

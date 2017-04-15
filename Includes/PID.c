@@ -54,7 +54,7 @@ float PID_runtime(PID *pid, float input) {
 
 		float error = pid->target - input;
 
-		pid->integral += (!pid->hasMin || error>pid->integralMin) && (!pid->hasMax || error>pid->integralMax) ? pid->kI*error : 0; //update integral if within bounds of integralMin and integralMax
+		pid->integral += (!pid->hasMin || pid->output>pid->integralMin) && (!pid->hasMax || pid->output>pid->integralMax) ? pid->kI*error : 0; //update integral if within bounds of integralMin and integralMax
 
 		pid->output = pid->kP*error + pid->integral + pid->kD*(error - pid->prevError);	//kI factored in above (to avoid problems when resetting gain values)
 		pid->prevError = error;
