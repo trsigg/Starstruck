@@ -25,7 +25,7 @@
 	//#subregion auton
 #define straightToCube true	//whether initialPillow() drives straight to cube
 #define agressiveClose false	//determines the point at which the claw begins to close in initialPillow()
-#define skills true	//whether autonomous mode runs skills routine
+#define skills false	//whether autonomous mode runs skills routine
 	//#endsubregion
 	//#subregion tuning
 #define TUNING	//uncommented to use tuning function
@@ -372,7 +372,7 @@ void initialPillow() {
 	moveClawTo(CLOSED, 500); //clamp pillow
 }
 
-void initialSide(bool preloadFirst) {	//dumps preload and corner jack first if preloadFirst is true
+void initialSide(bool skillz=false) {	//dumps preload and corner jack first if preloadFirst is true
   //back up
   driveStraight(-35, true);
   setLiftState(MIDDLE);
@@ -389,19 +389,15 @@ void initialSide(bool preloadFirst) {	//dumps preload and corner jack first if p
 
   //dump
   setLiftState(MIDDLE);
-  driveStraight(-15);
-  turnDriveDump(17, -25, 7);
+  driveStraight(skillz ? -27 : -15);
+  turnDriveDump(17, (skillz ? -17 : -25), 7);
 }
 
 task skillz() {
-	driveStraight(-13);
-	setClawState(OPEN);
-	liftTo(MIDDLE);
-	liftTo(BOTTOM);
+	turnDefaults.reversed = true;
+	initialSide(true);
 
-	grabNdump(3000);
-
-	for (int i=0; i<2; i++) { //dump preload pillows
+	for (int i=0; i<3; i++) { //dump preload pillows
 		setLiftState(BOTTOM);
 		ramToRealign();
 
@@ -415,25 +411,25 @@ task skillz() {
 
 	//get and dump front center jacks
 	setTargetPosition(lift, liftPositions[MIDDLE]+100);	//TODO
-	setClawTargets(clawPositions[OPEN]-100);
+	setClawTargets(clawPositions[OPEN] - 300);
 	ramToRealign();
-	driveStraight(6, true);
+	driveStraight(3, true);
 	waitForMovementToFinish(false);
-	turn(-58, true, 40, 90, -30);
+	turn(75, true, 40, 90, -30);
 	waitForMovementToFinish();
 	liftTo(BOTTOM);
+	//setTargetPosition(lift, 1110);	//so claw rolls along bottom bar
 	driveStraight(42);
 	moveClawTo(CLOSED);
 	wait1Msec(500);
 	setTargetPosition(lift, liftPositions[MIDDLE]+250);
 	driveStraight(-6);
-	turnDriveDump(68, -5, 0, 40, 95, -30);
+	turnDriveDump(-75, -5, 0, 40, 95, -30);
 
 	//get and dump pillow in center of field
 	setLiftState(MIDDLE);
 	ramToRealign();
-	setLiftState(BOTTOM);
-	waitForMovementToFinish();
+	liftTo(BOTTOM);
 	driveStraight(13);
 	moveClawTo(CLOSED); //grab pillow
 	turnDriveDump(0, -15);
@@ -442,31 +438,31 @@ task skillz() {
 	setClawState(HYPEREXTENDED);
 	setLiftState(BOTTOM);
 	ramToRealign();
-	driveStraight(fenceToWallDist+3.5, true);
+	driveStraight(fenceToWallDist+1, true);
 	waitForMovementToFinish();
-	grabNdump(0, fenceToWallDist+10, 750);
+	grabNdump(0, fenceToWallDist+3, 750);
 
 	//get and dump right side pillow
 	setLiftState(BOTTOM);
 	ramToRealign();
 	driveStraight(3);
-	turn(-25, true);
+	turn(25, true);
 	waitForMovementToFinish();
-	driveStraight(50);
+	driveStraight(45);
 	moveClawTo(CLOSED);
-	turnDriveDump(25, -fenceToWallDist, 10);
+	turnDriveDump(-25, -fenceToWallDist, 10);
 
 	//get first right side jack
 	setLiftState(MIDDLE);
 	ramToRealign();
 	driveStraight(5, true);
 	waitForMovementToFinish();
-	turn(-50);
+	turn(50);
 	liftTo(BOTTOM);
 	driveStraight(10);
 
 	//get second side jack
-	turn(60);
+	turn(-60);
 	driveStraight(fenceToWallDist);
 	grabNdump(0);
 
@@ -578,16 +574,17 @@ task fatAngel() {	//no variant
   setLiftState(BOTTOM);
   turn(35);
   waitForMovementToFinish();
-  driveStraight(30);
+  driveStraight(33);
   moveClawTo(CLOSED);
   liftTo(MIDDLE);
-  //driveStraight(5, false, 40, 100, -20);
-  turnDriveDump(-43, -20, 5);
+  driveStraight(7, false, 40, 100, -20);
+  turnDriveDump(-35, -20, 5);
+  //turnDriveDump(-43, -20, 5);
 
   //center back jacks
   setClawState(HYPEREXTENDED);
   liftTo(BOTTOM);
-  driveStraight(fenceToWallDist + 5);
+  driveStraight(fenceToWallDist + 2);
   moveClawTo(CLOSED);
   turnDriveDump(0, -fenceToWallDist-5, 1);
 }
@@ -599,15 +596,15 @@ task autonomous() {
 
 	int sidePos = SensorValue[sidePot];
 	int modePos = SensorValue[modePot];
-
-	turnDefaults.reversed = sidePos <= 2585;
-	autonVariant = 400<sidePos && sidePos<3600;	//true if in upper half of potentiometer
 	clearTimer(T4);	//debug
 
 	//start appropriate autonomous task
 	if (skills) {
 		startTask(skillz);
 	} else	if (1500>sidePos || sidePos>2200) {
+		turnDefaults.reversed = sidePos <= 2585;
+		autonVariant = 400<sidePos && sidePos<3600;	//true if in upper half of potentiometer
+
 		if (modePos < 450) {
 			startTask(blockingAuton);
 		} else if (modePos < 1970) {
