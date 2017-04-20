@@ -60,7 +60,7 @@
 enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 
-int liftPositions[5] = { 1050, 1860, 2340, 2160, 2820 };	//same order as corresponding enums
+int liftPositions[5] = { 1025, 1860, 2340, 2160, 2725 };	//same order as corresponding enums
 int clawPositions[3] = { 350, 1285, 1900 };
 //#endregion
 
@@ -137,7 +137,7 @@ void setLiftState(liftState state) {
 
 void setLiftPIDmode(bool auto) {
 	if (auto)
-		setTargetingPIDconsts(lift, 0.4, 0.001, 0.4, 25);
+		setTargetingPIDconsts(lift, 0.3, 0.0005, 0.15, 25);
 	else
 		setTargetingPIDconsts(lift, 0.2, 0.001, 0.2, 25);
 }
@@ -221,9 +221,9 @@ task maneuvers() {
 	while (true) {
 		executeClawPIDs();
 
-		if (lift.posPID.target==liftPositions[BOTTOM] && errorLessThan(lift, liftErrorMargin))
+		/*if (lift.posPID.target==liftPositions[BOTTOM] && errorLessThan(lift, 50))
 			setPower(lift, -liftStillSpeed);
-		else
+		else*/
 			maintainTargetPos(lift);
 
 		EndTimeSlice();
@@ -389,8 +389,8 @@ void initialSide(bool skillz=false) {	//dumps preload and corner jack first if p
 
   //dump
   setLiftState(MIDDLE);
-  driveStraight(skillz ? -27 : -15);
-  turnDriveDump(17, (skillz ? -17 : -25), 7);
+  driveStraight(skillz ? -29 : -15);
+  turnDriveDump(13, (skillz ? -17 : -25), 7);
 }
 
 task skillz() {
@@ -398,10 +398,12 @@ task skillz() {
 	initialSide(true);
 
 	for (int i=0; i<3; i++) { //dump preload pillows
+		moveClawTo(CLOSED, 250);
 		setLiftState(BOTTOM);
 		ramToRealign();
 
-		driveStraight(fenceToWallDist);
+		setClawState(OPEN);
+		driveStraight(fenceToWallDist + 1.5);
 
 		grabNdump(500);
 	}
@@ -420,25 +422,24 @@ task skillz() {
 	liftTo(BOTTOM);
 	//setTargetPosition(lift, 1110);	//so claw rolls along bottom bar
 	driveStraight(42);
-	moveClawTo(CLOSED);
-	wait1Msec(500);
+	moveClawTo(CLOSED, 600);
 	setTargetPosition(lift, liftPositions[MIDDLE]+250);
 	driveStraight(-6);
 	turnDriveDump(-75, -5, 0, 40, 95, -30);
 
 	//get and dump pillow in center of field
 	setLiftState(MIDDLE);
-	ramToRealign();
-	liftTo(BOTTOM);
-	driveStraight(13);
-	moveClawTo(CLOSED); //grab pillow
-	turnDriveDump(0, -15);
+	ramToRealign(750);
+	liftTo(BOTTOM, 250);
+	driveStraight(15);
+	moveClawTo(CLOSED, 500); //grab pillow
+	turnDriveDump(0, -17);
 
 	//grab and dump center back jacks
 	setClawState(HYPEREXTENDED);
 	setLiftState(BOTTOM);
 	ramToRealign();
-	driveStraight(fenceToWallDist+1, true);
+	driveStraight(fenceToWallDist+3, true);
 	waitForMovementToFinish();
 	grabNdump(0, fenceToWallDist+3, 750);
 
@@ -446,11 +447,11 @@ task skillz() {
 	setLiftState(BOTTOM);
 	ramToRealign();
 	driveStraight(3);
-	turn(25, true);
+	turn(17, true);
 	waitForMovementToFinish();
 	driveStraight(45);
 	moveClawTo(CLOSED);
-	turnDriveDump(-25, -fenceToWallDist, 10);
+	turnDriveDump(-17, -fenceToWallDist, 10);
 
 	//get first right side jack
 	setLiftState(MIDDLE);
@@ -507,7 +508,7 @@ task blockingAuton() {	//variant blocks for nearly entire autonomous period
  	setClawState(HYPEREXTENDED);
 
  	driveStraight(-5);
- 	turn(135);
+ 	turn(140);
  	liftTo(BOTTOM);
  	driveStraight(fenceToWallDist + 2);
  	grabNdump(0);
@@ -598,6 +599,7 @@ task autonomous() {
 	int modePos = SensorValue[modePot];
 	clearTimer(T4);	//debug
 
+	//tuning();
 	//start appropriate autonomous task
 	if (skills) {
 		startTask(skillz);
