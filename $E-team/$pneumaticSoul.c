@@ -60,7 +60,7 @@
 enum liftState { BOTTOM, MIDDLE, TOP, THROW, MAX };
 enum clawState { CLOSED, OPEN, HYPEREXTENDED };
 
-int liftPositions[5] = { 1025, 1860, 2340, 2160, 2725 };	//same order as corresponding enums
+int liftPositions[5] = { 1025, 1860, 2280, 2160, 2725 };	//same order as corresponding enums
 int clawPositions[3] = { 350, 1285, 1900 };
 //#endregion
 
@@ -91,6 +91,7 @@ bool autoDumping = false;
 clawState currentState;
 int liftDirection;
 bool autonVariant = false; //whether using standard or variant auton routine
+int timeToBlock;	//amount of time (ms) after the beginning of blocking auton after which robot will release the cube
 
 motorGroup lift;
 motorGroup rightClaw;
@@ -389,8 +390,15 @@ void initialSide(bool skillz=false) {	//dumps preload and corner jack first if p
 
   //dump
   setLiftState(MIDDLE);
-  driveStraight(skillz ? -29 : -15);
-  turnDriveDump(13, (skillz ? -17 : -25), 7);
+  if (skills) {
+  	driveStraight(-29);
+  	turn(13);
+  	driveStraight(10);
+  	turnDriveDump(0, -35, 5);
+  } else {
+  	driveStraight(-15);
+  	turnDriveDump(13, -25);
+  }
 }
 
 task skillz() {
@@ -439,7 +447,7 @@ task skillz() {
 	setClawState(HYPEREXTENDED);
 	setLiftState(BOTTOM);
 	ramToRealign();
-	driveStraight(fenceToWallDist+3, true);
+	driveStraight(fenceToWallDist+5, true);
 	waitForMovementToFinish();
 	grabNdump(0, fenceToWallDist+3, 750);
 
@@ -449,9 +457,9 @@ task skillz() {
 	driveStraight(3);
 	turn(17, true);
 	waitForMovementToFinish();
-	driveStraight(45);
+	driveStraight(40);
 	moveClawTo(CLOSED);
-	turnDriveDump(-17, -fenceToWallDist, 10);
+	turnDriveDump(-17, -fenceToWallDist-10, 10);
 
 	//get first right side jack
 	setLiftState(MIDDLE);
@@ -463,38 +471,46 @@ task skillz() {
 	driveStraight(10);
 
 	//get second side jack
-	turn(-60);
+	turn(-50);
 	driveStraight(fenceToWallDist);
-	grabNdump(0);
+	grabNdump(0, fenceToWallDist+5);
 
 	//for redundancy
-	for (int i=0; i>=0; i+=5) {
+	for (int i=5; true; i+=5) {
 		setLiftState(BOTTOM);
 		ramToRealign();
 		driveStraight(fenceToWallDist + i);
 		grabNdump(500);
 	}
+
+	/*//clean sweep
+	setLiftState(BOTTOM);
+	setClawState(HYPEREXTENDED);
+	ramToRealign();
+	driveStraight(25);
+	turn(-60);
+	driveStraight(100);
+	moveClawTo(CLOSED);
+	turnDriveDump(60, -30, 5);*/
 }
 
-task blockingAuton() {	//variant blocks for nearly entire autonomous period
+task blockingAuton() {	//variant blocks for nearly entire autonomous period, variant on fat angel triggers this and blocks for ~1/2
 	clearTimer(autonTimer);
 	initialPillow();
 
 	//go to fence and lift up
 	setLiftState(TOP);
-	driveStraight(12, false, 40, 95, -30);
+	driveStraight(10, false, 40, 95, -30);
 	wait1Msec(100);
 	turn(40, false, 40, 100, -30); //turn to face fence
 	driveStraight(30, false, 60, 127, -20); // drive up to wall
 	waitForMovementToFinish();
 
-	if (autonVariant) {
+	while (time1(autonTimer) < timeToBlock)
 		setDrivePower(drive, 15, 15);
-		while (time1(autonTimer) < 14000) EndTimeSlice();
-	}
 
 	moveClawTo(OPEN); //release pillow
-	wait1Msec(500); //wait for pillow to fall
+	wait1Msec(750); //wait for pillow to fall
 	setClawState(CLOSED);
 	driveStraight(-7, true); //back up
 	while (driveData.totalDist < 5);
@@ -505,15 +521,15 @@ task blockingAuton() {	//variant blocks for nearly entire autonomous period
  	driveStraight(10);
  	moveClawTo(OPEN);
 
- 	setClawState(HYPEREXTENDED);
-
  	driveStraight(-5);
  	turn(140);
- 	liftTo(BOTTOM);
- 	driveStraight(fenceToWallDist + 2);
+ 	setLiftState(BOTTOM);
+ 	setClawState(HYPEREXTENDED);
+ 	waitForMovementToFinish();
+ 	driveStraight(fenceToWallDist + 3);
  	grabNdump(0);
 
- 	liftTo(BOTTOM);
+ 	//liftTo(BOTTOM);
 }
 
 task dumpyAuton() {	//variant dumps to side
@@ -522,26 +538,28 @@ task dumpyAuton() {	//variant dumps to side
 	liftTo(MIDDLE);
 	driveStraight(11, false, 40, 95, -30);
 
-	turnDriveDump((autonVariant ? -70 : -95), -24, 7, 45, 100, -20);
+	turnDriveDump((autonVariant ? -55 : -95), -24, 7, 45, 100, -20);
+	setClawState(HYPEREXTENDED);
+	setLiftState(BOTTOM);
+
 	if (autonVariant) {
-		setLiftState(BOTTOM);
-		driveStraight(24);
+		driveStraight(20);
 		turn(-10);
 	} else {
-		setLiftState(BOTTOM);
 		ramToRealign();
 	}
 
-	setClawState(HYPEREXTENDED);
 	waitForMovementToFinish();
 	driveStraight(autonVariant ? 15 : fenceToWallDist+6);
-	grabNdump(0, fenceToWallDist, 750);
-	setLiftState(BOTTOM);
+	grabNdump(0, fenceToWallDist+10, 750);
+
+	setDrivePower(drive, -15, -15);	//block
+	/*setLiftState(BOTTOM);	//for redundancy
 	ramToRealign();
 	driveStraight(fenceToWallDist);
 	grabNdump(0, fenceToWallDist, 750);
 
-	liftTo(BOTTOM);
+	liftTo(BOTTOM);*/
 }
 
 task oneSideAuton() {	//variant doesn't get center back jacks
@@ -559,12 +577,12 @@ task oneSideAuton() {	//variant doesn't get center back jacks
     setLiftState(BOTTOM);
     driveStraight(-4);
     waitForMovementToFinish();
-    driveStraight(45);
+    driveStraight(50);
     moveClawTo(CLOSED);
     while (getPosition(rightClaw) > 600);
     setLiftState(MIDDLE);
     driveStraight(-40);
-    turnDriveDump(-40, -fenceToWallDist-15, 13);
+    turnDriveDump(-55, -fenceToWallDist-15, 13);
   }
 }
 
@@ -575,17 +593,17 @@ task fatAngel() {	//no variant
   setLiftState(BOTTOM);
   turn(35);
   waitForMovementToFinish();
-  driveStraight(33);
+  driveStraight(30);
   moveClawTo(CLOSED);
   liftTo(MIDDLE);
-  driveStraight(7, false, 40, 100, -20);
-  turnDriveDump(-35, -20, 5);
-  //turnDriveDump(-43, -20, 5);
+  driveStraight(6, false, 40, 90, -20);
+  //wait1Msec(500);
+  turnDriveDump(-30, -30, 10);
 
   //center back jacks
   setClawState(HYPEREXTENDED);
   liftTo(BOTTOM);
-  driveStraight(fenceToWallDist + 2);
+  driveStraight(fenceToWallDist);
   moveClawTo(CLOSED);
   turnDriveDump(0, -fenceToWallDist-5, 1);
 }
@@ -608,15 +626,25 @@ task autonomous() {
 		autonVariant = 400<sidePos && sidePos<3600;	//true if in upper half of potentiometer
 
 		if (modePos < 450) {
+			timeToBlock = (autonVariant ? 14000 : 5000);
 			startTask(blockingAuton);
 		} else if (modePos < 1970) {
 			startTask(dumpyAuton);
 		} else if (modePos < 3645) {
 			startTask(oneSideAuton);
 		} else {
-			startTask(fatAngel);
+			if (!autonVariant) {
+				startTask(fatAngel);
+			} else {
+				timeToBlock = 9000;
+				startTask(blockingAuton);
+			}
 		}
 	}
+
+	setClawPower(0);
+	setPower(lift, 0);
+	setDrivePower(drive, 0, 0);
 
 	while (true) EndTimeSlice();
 }
