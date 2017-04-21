@@ -395,7 +395,8 @@ void initialSide(bool skillz=false) {	//dumps preload and corner jack first if p
   while (getPosition(rightClaw) > 600);
 
   //dump
-  setLiftState(MIDDLE);
+  //setLiftState(MIDDLE);
+  setTargetPosition(lift, liftPositions[MIDDLE]-200);
   if (skills) {
   	driveStraight(-29);
   	turn(13);
@@ -403,7 +404,7 @@ void initialSide(bool skillz=false) {	//dumps preload and corner jack first if p
   	turnDriveDump(0, -35, 5);
   } else {
   	driveStraight(-15);
-  	turnDriveDump(13, -25);
+  	turnDriveDump(13, -25, 5);
   }
 }
 
@@ -588,7 +589,7 @@ task oneSideAuton() {	//variant doesn't get center back jacks
     while (getPosition(rightClaw) > 600);
     setLiftState(MIDDLE);
     driveStraight(-40);
-    turnDriveDump(-55, -fenceToWallDist-15, 13);
+    turnDriveDump(-50, -fenceToWallDist-15, 13);
   }
 }
 
