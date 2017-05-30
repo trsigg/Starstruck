@@ -381,9 +381,10 @@ void initialPillow(bool deployScoop=false) {
 
 void initialSide(bool skillz=false) {	//dumps preload and corner jack first if preloadFirst is true
   //back up
-  driveStraight(-35, true);
+	driveStraight(-35, true);
   setLiftState(MIDDLE);
   setClawTargets(clawPositions[OPEN] - 350);
+  //driveStraight(-35);
   waitForMovementToFinish(false);
 
   //get corner jacks
@@ -397,15 +398,8 @@ void initialSide(bool skillz=false) {	//dumps preload and corner jack first if p
   //dump
   //setLiftState(MIDDLE);
   setTargetPosition(lift, liftPositions[MIDDLE]-200);
-  if (skills) {
-  	driveStraight(-29);
-  	turn(13);
-  	driveStraight(10);
-  	turnDriveDump(0, -35, 5);
-  } else {
-  	driveStraight(-15);
-  	turnDriveDump(13, -30, 8);
-  }
+  driveStraight(-15);
+  turnDriveDump(13, -30, 8);
 }
 
 task skillz() {
@@ -572,19 +566,21 @@ task dumpyAuton() {	//variant dumps to side
 task oneSideAuton() {	//variant doesn't get center back jacks
   initialSide(false);
 
-  if (!autonVariant) {
+  if (autonVariant) {
+  	setDrivePower(drive, -15, -15);
+  } else {
     //drive to back
     setClawTargets(clawPositions[OPEN] - 300);
     setLiftState(MIDDLE);
-    ramToRealign();
+    ramToRealign(150);
     driveStraight(fenceToWallDist + 15);
 
     //get and dump back center jacks
-    turn(50);
+    turn(45);
     setLiftState(BOTTOM);
     driveStraight(-4);
     waitForMovementToFinish();
-    driveStraight(45);
+    driveStraight(37);
     moveClawTo(CLOSED);
     while (getPosition(rightClaw) > 600);
     setLiftState(MIDDLE);
@@ -594,7 +590,12 @@ task oneSideAuton() {	//variant doesn't get center back jacks
 }
 
 task fatAngel() {	//no variant
-  initialSide(true);
+	setTargetPosition(lift, 2500);
+	setClawState(HYPEREXTENDED);
+	driveStraight(55);
+	setDrivePower(drive, 15, 15);
+	while (true);
+  /*initialSide(true);
 
   //center cube
   setLiftState(BOTTOM);
@@ -612,7 +613,7 @@ task fatAngel() {	//no variant
   liftTo(BOTTOM);
   driveStraight(fenceToWallDist);
   moveClawTo(CLOSED);
-  turnDriveDump(0, -fenceToWallDist-5, 1);
+  turnDriveDump(0, -fenceToWallDist-5, 1);*/
 }
 
 task autonomous() {
